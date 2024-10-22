@@ -443,7 +443,11 @@ fun BasicTab(viewModel: ProfileViewModel, dashboardViewModel: DashboardViewModel
                 )
                 BasicTextField(
                     value = viewModel.profileState.defaultTipAmount,
-                    onValueChange = { viewModel.onDefaultTipAmountChange(it) },
+                    onValueChange = {
+                        if (it.all { char -> char.isDigit() }) {
+                            viewModel.onDefaultTipAmountChange(it)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
                     singleLine = true,

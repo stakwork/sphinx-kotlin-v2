@@ -12,9 +12,11 @@ import chat.sphinx.response.ResponseError
 import chat.sphinx.utils.ServersUrlsHelper
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.Contact
-import chat.sphinx.wrapper.contact.toPrivatePhoto
+import chat.sphinx.wrapper.contact.toNotNullPrivatePhoto
 import chat.sphinx.wrapper.lightning.LightningNodeDescriptor
+import chat.sphinx.wrapper.lightning.Sat
 import chat.sphinx.wrapper.lightning.VirtualLightningNodeAddress
+import chat.sphinx.wrapper.lightning.toSat
 import chat.sphinx.wrapper.message.media.MediaType
 import chat.sphinx.wrapper.message.media.toFileName
 import chat.sphinx.wrapper.relay.isOnionAddress
@@ -73,6 +75,7 @@ class ProfileViewModel {
                             nodeDescription = nodeDescriptor?.value ?: "",
                             photoUrl = owner.photoUrl,
                             serverUrl = "",
+                            defaultTipAmount = owner.tipAmount?.value?.toString() ?: "",
                             privatePhoto = toPrivatePhotoBoolean(owner.privatePhoto.value)
                         )
                     }
@@ -136,13 +139,14 @@ class ProfileViewModel {
                 contactOwner?.let { owner ->
 
                     val aliasDidChange = owner.alias?.value ?: "" != profileState.alias
+                    val tipAmount = (owner.tipAmount?.value?.toString() ?: "") != profileState.defaultTipAmount
                     val serverUrlDidChange = false
                     val privatePhotoDidChange = toPrivatePhotoBoolean(owner.privatePhoto.value) != profileState.privatePhoto
                     val meetingServerDidChange = serversUrls.getMeetingServer() != profileState.meetingServerUrl
 
                     setProfileState {
                         copy(
-                            saveButtonEnabled = (aliasDidChange || serverUrlDidChange || privatePhotoDidChange || meetingServerDidChange)
+                            saveButtonEnabled = (aliasDidChange || serverUrlDidChange || privatePhotoDidChange || meetingServerDidChange || tipAmount)
                         )
                     }
                 }
@@ -164,8 +168,8 @@ class ProfileViewModel {
                 scope.launch(dispatchers.mainImmediate) {
                     contactRepository.updateOwner(
                         alias = profileState.alias,
-                        privatePhoto = profileState.privatePhoto?.toPrivatePhoto(),
-                        tipAmount = null
+                        privatePhoto = profileState.privatePhoto.toNotNullPrivatePhoto(),
+                        tipAmount = profileState.defaultTipAmount.toLongOrNull()?.toSat() ?: Sat(0)
                     ).let { loadResponse ->
                         setStatus(loadResponse)
                     }
