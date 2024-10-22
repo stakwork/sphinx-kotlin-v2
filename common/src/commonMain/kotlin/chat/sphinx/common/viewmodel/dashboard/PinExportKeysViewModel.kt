@@ -5,10 +5,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import chat.sphinx.common.state.BackupKeysState
 import chat.sphinx.common.viewmodel.PinAuthenticationViewModel
+import chat.sphinx.concepts.authentication.coordinator.AuthenticationRequest
+import chat.sphinx.concepts.authentication.coordinator.AuthenticationResponse
 import chat.sphinx.crypto.common.annotations.RawPasswordAccess
 import chat.sphinx.crypto.common.clazzes.Password
 import chat.sphinx.di.container.SphinxContainer
+import chat.sphinx.features.authentication.core.AuthenticationCoreCoordinator
 import io.ktor.util.*
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import org.cryptonode.jncryptor.AES256JNCryptor
 import org.cryptonode.jncryptor.CryptorException
@@ -19,6 +23,7 @@ class PinExportKeysViewModel : PinAuthenticationViewModel() {
     var backupKeysState: BackupKeysState by mutableStateOf(initialState())
 
     val relayDataHandler = SphinxContainer.networkModule.relayDataHandlerImpl
+    val authenticationCoordinator: AuthenticationCoreCoordinator = SphinxContainer.authenticationModule.authenticationCoreCoordinator
 
     private fun initialState(): BackupKeysState = BackupKeysState()
 
@@ -31,51 +36,40 @@ class PinExportKeysViewModel : PinAuthenticationViewModel() {
         backupKeysState = initialState()
     }
 
+
     @OptIn(RawPasswordAccess::class, InternalAPI::class)
     override fun onAuthenticationSucceed() {
         scope.launch(dispatchers.mainImmediate) {
 
-            authenticationCoreManager.getEncryptionKey()?.let { encryptionKey ->
-                val passwordPin = Password(pinState.sphinxPIN.toCharArray())
-                val authToken = relayDataHandler.retrieveAuthorizationToken()?.value
-                val privateKey = String(encryptionKey.privateKey.value)
-                val publicKey = String(encryptionKey.publicKey.value)
-
-                val keysString = "$privateKey::$publicKey::${authToken}"
-
-                try {
-                    val encryptedString = AES256JNCryptor()
-                        .encryptData(keysString.toByteArray(), passwordPin.value)
-                        .encodeBase64()
-
-                    val finalString = "keys::${encryptedString}"
-                        .toByteArray()
-                        .encodeBase64()
-
-                    setBackupKeysState {
-                        copy(
-                            restoreString = finalString,
-                            error = false
-                        )
+            authenticationCoordinator.submitAuthenticationRequest(
+                AuthenticationRequest.GetEncryptionKey()
+            ).firstOrNull().let { keyResponse ->
+                Exhaustive@
+                when (keyResponse) {
+                    null,
+                    is AuthenticationResponse.Failure -> {
+                        setBackupKeysState {
+                            copy(
+                                restoreString = null,
+                                error = true
+                            )
+                        }
                     }
 
-                } catch (e: CryptorException) {
-                    setBackupKeysState {
-                        copy(
-                            restoreString = null,
-                            error = true
-                        )
-                    }
-                } catch (e: IllegalArgumentException) {
-                    setBackupKeysState {
-                        copy(
-                            restoreString = null,
-                            error = true
-                        )
+                    is AuthenticationResponse.Success.Authenticated -> {}
+
+                    is AuthenticationResponse.Success.Key -> {
+                        relayDataHandler.retrieveWalletMnemonic()?.let { mnemonic ->
+                            setBackupKeysState {
+                                copy(
+                                    restoreString = mnemonic.value,
+                                    error = false
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
-
 }
