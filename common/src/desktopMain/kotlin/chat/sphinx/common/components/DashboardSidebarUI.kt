@@ -308,6 +308,8 @@ fun DashboardSidebarUI(
             AddContactWindow(dashboardViewModel)
             ProfileWindow(dashboardViewModel)
             TransactionsWindow(dashboardViewModel)
+            CreateInvoiceWindow(dashboardViewModel)
+            PayInvoiceWindow(dashboardViewModel)
             TribeDetailWindow(dashboardViewModel)
             CreateTribeWindow(dashboardViewModel)
             QRWindow(dashboardViewModel)
@@ -342,9 +344,15 @@ fun DashboardSidebarUI(
                         isMenuExpanded = !isMenuExpanded
                     })
                     // Request Payment Option
-                    MenuItem(icon = Icons.Default.NorthEast, title = "Request Payment")
+                    MenuItem(icon = Icons.Default.NorthEast, title = "Request Payment", clickAction = {
+                        dashboardViewModel.toggleCreateInvoiceWindow(true)
+                        isMenuExpanded = !isMenuExpanded
+                    })
                     // Pay Invoice Option
-                    MenuItem(icon = Icons.Default.SouthWest, title = "Pay Invoice")
+                    MenuItem(icon = Icons.Default.SouthWest, title = "Pay Invoice", clickAction = {
+                        dashboardViewModel.togglePayInvoiceWindow(true)
+                        isMenuExpanded = !isMenuExpanded
+                    })
                     Spacer(modifier = Modifier.height(8.dp))
                     // Connect with Friend
                     CommonMenuButton(
@@ -544,6 +552,26 @@ fun TransactionsWindow(
     val transactionsWindowState by dashboardViewModel.transactionsStateFlow.collectAsState()
     if (transactionsWindowState) {
         TransactionsUI(dashboardViewModel)
+    }
+}
+
+@Composable
+fun CreateInvoiceWindow(
+    dashboardViewModel: DashboardViewModel
+) {
+    val createInvoiceWindowState by dashboardViewModel.createInvoiceWindowStateFlow.collectAsState()
+    if (createInvoiceWindowState) {
+        CreateInvoiceWindowUI(dashboardViewModel)
+    }
+}
+
+@Composable
+fun PayInvoiceWindow(
+    dashboardViewModel: DashboardViewModel
+) {
+    val payInvoiceWindowState by dashboardViewModel.payInvoiceWindowStateFlow.collectAsState()
+    if (payInvoiceWindowState) {
+        PayInvoiceWindowUI(dashboardViewModel)
     }
 }
 

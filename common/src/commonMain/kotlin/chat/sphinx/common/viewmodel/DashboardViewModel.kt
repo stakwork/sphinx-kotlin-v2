@@ -70,6 +70,28 @@ class DashboardViewModel(): WindowFocusListener {
     val contactWindowStateFlow: StateFlow<Pair<Boolean, ContactScreenState?>>
         get() = _contactWindowStateFlow.asStateFlow()
 
+    private val _payInvoiceWindowStateFlow: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(false)
+    }
+
+    private val _createInvoiceWindowStateFlow: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(false)
+    }
+
+    val payInvoiceWindowStateFlow: StateFlow<Boolean>
+        get() = _payInvoiceWindowStateFlow.asStateFlow()
+
+    val createInvoiceWindowStateFlow: StateFlow<Boolean>
+        get() = _createInvoiceWindowStateFlow.asStateFlow()
+
+
+    fun togglePayInvoiceWindow(open: Boolean) {
+        _payInvoiceWindowStateFlow.value = open
+    }
+
+    fun toggleCreateInvoiceWindow(open: Boolean) {
+        _createInvoiceWindowStateFlow.value = open
+    }
 
     fun setWebViewState(state: WebViewState) {
         webViewState.value = state
