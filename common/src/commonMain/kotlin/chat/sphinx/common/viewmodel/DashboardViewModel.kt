@@ -3,8 +3,10 @@ package chat.sphinx.common.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import chat.sphinx.common.components.toast
 import chat.sphinx.common.state.*
 import chat.sphinx.concepts.repository.connect_manager.model.NetworkStatus
+import chat.sphinx.concepts.repository.message.model.SendPaymentRequest
 import chat.sphinx.database.core.SphinxDatabaseQueries
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.features.repository.util.deleteAll
@@ -30,6 +32,7 @@ class DashboardViewModel(): WindowFocusListener {
     private val sphinxNotificationManager = createSphinxNotificationManager()
     private val repositoryDashboard = SphinxContainer.repositoryModule(sphinxNotificationManager).repositoryDashboard
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
+    private val messageRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).messageRepository
     private val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
 
     enum class WebViewState {
@@ -294,12 +297,60 @@ class DashboardViewModel(): WindowFocusListener {
         }
     }
 
+    // Payments
+
+    private val sendPaymentRequestBuilder = SendPaymentRequest.Builder()
+
+    var createInvoiceState: CreateInvoiceState by mutableStateOf(initialInvoiceState())
+
+    private fun initialInvoiceState(): CreateInvoiceState = CreateInvoiceState()
+
+    private inline fun setCreateInvoiceState(update: CreateInvoiceState.() -> CreateInvoiceState) {
+        createInvoiceState = createInvoiceState.update()
+    }
+
+    fun onInvoiceAmountChange(text: String) {
+        setCreateInvoiceState {
+            copy(amount = text)
+        }
+    }
+
+    fun onInvoiceMemoChange(text: String) {
+        setCreateInvoiceState {
+            copy(memo = text)
+        }
+    }
+
+    fun requestPayment() {
+        sendPaymentRequestBuilder.clear()
+        sendPaymentRequestBuilder.setChatId(null)
+        sendPaymentRequestBuilder.setContactId(null)
+        sendPaymentRequestBuilder.setAmount(createInvoiceState.amount.toLongOrNull() ?: 0)
+        sendPaymentRequestBuilder.setMemo(createInvoiceState.memo)
+
+        viewModelScope.launch(dispatchers.mainImmediate) {
+            val requestPayment = sendPaymentRequestBuilder.build()
+
+            if (requestPayment != null) {
+                val invoiceAndHash = connectManagerRepository.createInvoice(requestPayment.amount, requestPayment.memo ?: "")
+
+                if (invoiceAndHash != null) {
+                    toggleQRWindow(true, "Payment Request", invoiceAndHash.first)
+
+                } else {
+                    toast("Failed to request payment")
+                }
+            } else {
+                toast("Failed to request payment")
+            }
+        }
+    }
+
     override fun windowGainedFocus(p0: WindowEvent?) {
         if (DashboardScreenState.screenState() == DashboardScreenType.Unlocked) {
             networkRefresh()
         }
     }
-
 
     override fun windowLostFocus(p0: WindowEvent?) { }
 
@@ -319,7 +370,6 @@ class DashboardViewModel(): WindowFocusListener {
     private fun initialRestoreCancelledState(): Boolean = false
 
     private var jobRestore: Job? = null
-
 
     fun networkRefresh() {
         jobRestore = viewModelScope.launch(dispatchers.mainImmediate) {

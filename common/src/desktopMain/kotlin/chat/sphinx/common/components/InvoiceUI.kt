@@ -4,9 +4,7 @@ import CommonButton
 import Roboto
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -15,7 +13,6 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.Divider
 import androidx.compose.material.Text
 import androidx.compose.material3.*
 import androidx.compose.ui.text.font.FontWeight
@@ -25,9 +22,7 @@ import androidx.compose.ui.unit.sp
 import chat.sphinx.common.components.tribe.TribeTextField
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.utils.getPreferredWindowSize
-import chat.sphinx.wrapper.view.Sp
 import theme.primary_blue
-import theme.primary_green
 
 @Composable
 fun PayInvoiceWindowUI(dashboardViewModel: DashboardViewModel) {
@@ -113,9 +108,6 @@ fun PayInvoiceContent(dashboardViewModel: DashboardViewModel) {
 
 @Composable
 fun CreateInvoiceContent(dashboardViewModel: DashboardViewModel) {
-    var amount by remember { mutableStateOf(TextFieldValue()) }
-    var memo by remember { mutableStateOf(TextFieldValue()) }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -141,10 +133,10 @@ fun CreateInvoiceContent(dashboardViewModel: DashboardViewModel) {
                     modifier = Modifier.padding(start = 32.dp)
                 ) {
                     TextField(
-                        value = amount.text,
+                        value = dashboardViewModel.createInvoiceState.amount,
                         onValueChange = {
                             if (it.all { char -> char.isDigit() } && it.length <= 7) {
-                                amount = TextFieldValue(it)
+                                dashboardViewModel.onInvoiceAmountChange(it)
                             }
                         },
                         modifier = Modifier
@@ -197,8 +189,8 @@ fun CreateInvoiceContent(dashboardViewModel: DashboardViewModel) {
 
             TribeTextField(
                 label = "Memo",
-                value = memo.text,
-                onTextChange = { memo = TextFieldValue(it) },
+                value = dashboardViewModel.createInvoiceState.memo,
+                onTextChange = { dashboardViewModel.onInvoiceMemoChange(it) },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -211,6 +203,8 @@ fun CreateInvoiceContent(dashboardViewModel: DashboardViewModel) {
             ) {
                 CommonButton(
                     callback = {
+                        dashboardViewModel.requestPayment()
+                        dashboardViewModel.toggleCreateInvoiceWindow(false)
                     },
                     text = "Confirm",
                     backgroundColor = primary_blue,
