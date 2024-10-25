@@ -14,12 +14,12 @@ import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
-import chat.sphinx.wrapper.lightning.LightningNodeDescriptor
-import chat.sphinx.wrapper.lightning.NodeBalance
-import chat.sphinx.wrapper.lightning.VirtualLightningNodeAddress
+import chat.sphinx.wrapper.lightning.*
+import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
 import chat.sphinx.wrapper.tribe.TribeJoinLink
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import theme.primary_red
 import java.awt.event.WindowEvent
 import java.awt.event.WindowFocusListener
 
@@ -32,6 +32,7 @@ class DashboardViewModel(): WindowFocusListener {
     private val sphinxNotificationManager = createSphinxNotificationManager()
     private val repositoryDashboard = SphinxContainer.repositoryModule(sphinxNotificationManager).repositoryDashboard
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
+    private val lightningRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).lightningRepository
     private val messageRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).messageRepository
     private val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
 
@@ -58,6 +59,15 @@ class DashboardViewModel(): WindowFocusListener {
     val accountOwnerStateFlow: StateFlow<Contact?>
         get() = contactRepository.accountOwner
 
+    private val _payInvoiceInfoStateFlow: MutableStateFlow<PayInvoiceInfo> by lazy {
+        MutableStateFlow(PayInvoiceInfo(null))
+    }
+    val payInvoiceInfoStateFlow: StateFlow<PayInvoiceInfo>
+        get() = _payInvoiceInfoStateFlow.asStateFlow()
+
+    fun setInvoiceString(invoice: String) {
+        _payInvoiceInfoStateFlow.value = _payInvoiceInfoStateFlow.value.copy(invoiceString = invoice)
+    }
     private val _packageVersionAndUpgrade: MutableStateFlow<Pair<String?, Boolean>> by lazy {
         MutableStateFlow(Pair(null, false))
     }
@@ -336,14 +346,44 @@ class DashboardViewModel(): WindowFocusListener {
 
                 if (invoiceAndHash != null) {
                     toggleQRWindow(true, "Payment Request", invoiceAndHash.first)
+                    createInvoiceState = initialInvoiceState()
 
                 } else {
-                    toast("Failed to request payment")
+                    toast("Failed to request payment", primary_red)
                 }
             } else {
-                toast("Failed to request payment")
+                toast("Failed to request payment", primary_red)
             }
         }
+    }
+
+    fun verifyInvoice() {
+        viewModelScope.launch(dispatchers.mainImmediate) {
+            val invoice = _payInvoiceInfoStateFlow.value.invoiceString?.toLightningPaymentRequestOrNull()
+            if (invoice != null) {
+                val bolt11 = connectManagerRepository.getInvoiceInfo(invoice.value)?.toInvoiceBolt11()
+                val amount = bolt11?.getSatsAmount()
+
+                // Update the UI with the additional information if the invoice is valid
+                if (amount != null) {
+                    _payInvoiceInfoStateFlow.value = _payInvoiceInfoStateFlow.value.copy(
+                        amount = amount.value,
+                        expirationDate = bolt11.getExpiryTime().toString(),
+                        memo = bolt11.getMemo()
+                    )
+                    lightningRepository.processLightningPaymentRequest(
+                        invoice,
+                        bolt11
+                    )
+                }
+            } else {
+                toast("Invalid invoice", primary_red)
+            }
+        }
+    }
+
+    fun clearInvoice() {
+        _payInvoiceInfoStateFlow.value = PayInvoiceInfo(null)
     }
 
     override fun windowGainedFocus(p0: WindowEvent?) {
