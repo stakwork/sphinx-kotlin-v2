@@ -88,7 +88,7 @@ fun PayInvoiceContent(dashboardViewModel: DashboardViewModel) {
                     }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close, // Use the back arrow icon
+                        imageVector = Icons.Default.Close,
                         contentDescription = "Back",
                         tint = MaterialTheme.colorScheme.onBackground
                     )
@@ -116,12 +116,11 @@ fun PayInvoiceContent(dashboardViewModel: DashboardViewModel) {
 
             Spacer(Modifier.height(24.dp))
 
-            // Placeholder for additional invoice information to maintain layout stability
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
-                    .heightIn(min = 80.dp) // Ensure enough height to maintain consistent layout
+                    .heightIn(min = 80.dp)
             ) {
                 if (payInvoiceInfo.amount != null) {
                     Column(
@@ -158,7 +157,11 @@ fun PayInvoiceContent(dashboardViewModel: DashboardViewModel) {
             ) {
                 CommonButton(
                     callback = {
-                        dashboardViewModel.verifyInvoice()
+                        if (payInvoiceInfo.amount != null) {
+                            dashboardViewModel.processInvoicePayment()
+                        } else {
+                            dashboardViewModel.verifyInvoice()
+                        }
                     },
                     text = if (payInvoiceInfo.amount != null) "Pay" else "Verify",
                     backgroundColor = primary_blue,

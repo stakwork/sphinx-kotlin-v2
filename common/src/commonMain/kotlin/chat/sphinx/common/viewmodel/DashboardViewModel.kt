@@ -14,8 +14,11 @@ import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
+import chat.sphinx.wrapper.eeemmddhmma
+import chat.sphinx.wrapper.hhmmElseDate
 import chat.sphinx.wrapper.lightning.*
 import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
+import chat.sphinx.wrapper.toDateTime
 import chat.sphinx.wrapper.tribe.TribeJoinLink
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -364,16 +367,11 @@ class DashboardViewModel(): WindowFocusListener {
                 val bolt11 = connectManagerRepository.getInvoiceInfo(invoice.value)?.toInvoiceBolt11()
                 val amount = bolt11?.getSatsAmount()
 
-                // Update the UI with the additional information if the invoice is valid
                 if (amount != null) {
                     _payInvoiceInfoStateFlow.value = _payInvoiceInfoStateFlow.value.copy(
                         amount = amount.value,
-                        expirationDate = bolt11.getExpiryTime().toString(),
+                        expirationDate = bolt11.getExpiryTime()?.toDateTime()?.eeemmddhmma(),
                         memo = bolt11.getMemo()
-                    )
-                    lightningRepository.processLightningPaymentRequest(
-                        invoice,
-                        bolt11
                     )
                 }
             } else {
@@ -381,6 +379,22 @@ class DashboardViewModel(): WindowFocusListener {
             }
         }
     }
+
+    fun processInvoicePayment() {
+        viewModelScope.launch(dispatchers.mainImmediate) {
+            val invoice = _payInvoiceInfoStateFlow.value.invoiceString?.toLightningPaymentRequestOrNull()
+            val bolt11 = invoice?.value?.let { connectManagerRepository.getInvoiceInfo(it)?.toInvoiceBolt11() }
+
+            if (invoice != null && bolt11 != null) {
+                lightningRepository.processLightningPaymentRequest(invoice, bolt11)
+                togglePayInvoiceWindow(false)
+                clearInvoice()
+            } else {
+                toast("Unable to process payment", primary_red)
+            }
+        }
+    }
+
 
     fun clearInvoice() {
         _payInvoiceInfoStateFlow.value = PayInvoiceInfo(null)
