@@ -7,8 +7,6 @@ import chat.sphinx.common.state.ProfileState
 import chat.sphinx.common.state.TransactionType
 import chat.sphinx.common.state.TransactionState
 import chat.sphinx.common.state.TransactionsViewState
-import chat.sphinx.concepts.network.query.chat.NetworkQueryChat
-import chat.sphinx.concepts.network.query.message.model.TransactionDto
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
@@ -23,6 +21,8 @@ import chat.sphinx.wrapper.localDateTimeString
 import chat.sphinx.wrapper.message.MessageUUID
 import chat.sphinx.wrapper.message.SenderAlias
 import chat.sphinx.wrapper.message.toMessageUUID
+import chat.sphinx.wrapper.message.toSenderAlias
+import chat.sphinx.wrapper.mqtt.TransactionDto
 import chat.sphinx.wrapper.toDateTime
 import com.squareup.sqldelight.Transacter
 import kotlinx.coroutines.delay
@@ -43,9 +43,12 @@ class TransactionsViewModel {
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
     private val chatRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).chatRepository
     private val messageRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).messageRepository
+    private val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
 
     private var page: Int = 0
     private val itemsPerPage: Int = 50
+    private var loadedItems: Int = 0
+    private var lastMessageDate: Long = System.currentTimeMillis()
 
     var transactionViewState: TransactionsViewState by mutableStateOf(initialState())
 
@@ -57,8 +60,11 @@ class TransactionsViewModel {
 
     init {
         scope.launch(dispatchers.mainImmediate) {
-            loadTransactions()
+            loadTransactions(
+                System.currentTimeMillis()
+            )
         }
+        collectTransactions()
     }
 
     private suspend fun getOwner(): Contact {
@@ -83,40 +89,9 @@ class TransactionsViewModel {
         }
     }
 
-    private suspend fun loadTransactions() {
-        // TODO V2 getPayments
-
-//        networkQueryMessage.getPayments(
-//            offset = page * itemsPerPage,
-//            limit = itemsPerPage
-//        ).collect() { loadResponse ->
-//            when (loadResponse) {
-//                is LoadResponse.Loading -> {}
-//                is Response.Error -> {
-//                    setTransactionsViewState {
-//                        copy(
-//                            loadingTransactions = false
-//                        )
-//                    }
-//                }
-//                is Response.Success -> {
-//                    if (loadResponse.value.isNotEmpty()) {
-//                        generateTransactionsStateList(loadResponse.value)
-//                    } else {
-//                        setTransactionsViewState {
-//                            copy(
-//                                loadingTransactions = false
-//                            )
-//                        }
-//                    }
-//                }
-//            }
-//        }
-    }
 
     private suspend fun generateTransactionsStateList(
         transactions: List<TransactionDto>
-
     ) {
         val owner = getOwner()
         val transactionsList = mutableListOf<TransactionState>()
@@ -203,8 +178,8 @@ class TransactionsViewModel {
                 contactAliasMap[transaction.id]?.value ?: contactsMap[senderId?.value]?.alias?.value
 
             val transactionAmount = transaction.amount.toString()
-            val date = transaction.date.toDateTime()
-            val dateString = date.localDateTimeString(DateTime.getFormateeemmddhmma())
+            val date = transaction.date?.toDateTime()
+            val dateString = date?.localDateTimeString(DateTime.getFormateeemmddhmma())
             val failedTransaction = transaction.error_message
 
 
@@ -212,7 +187,7 @@ class TransactionsViewModel {
                 transactionsList.add(
                     TransactionState(
                         amount = transactionAmount,
-                        date = dateString,
+                        date = dateString ?: "",
                         senderReceiverName = senderAlias ?: "-",
                         transactionType = TransactionType.Failed,
                         failedTransactionMessage = failedTransaction
@@ -221,7 +196,7 @@ class TransactionsViewModel {
             } else if (transaction.sender == owner.id.value) transactionsList.add(
                 TransactionState(
                     amount = transactionAmount,
-                    date = dateString,
+                    date = dateString ?: "",
                     senderReceiverName = senderAlias ?: "-",
                     transactionType = TransactionType.Outgoing,
                     failedTransactionMessage = null
@@ -231,7 +206,7 @@ class TransactionsViewModel {
                 transactionsList.add(
                     TransactionState(
                         amount = transactionAmount,
-                        date = dateString,
+                        date = dateString ?: "",
                         senderReceiverName = senderAlias ?: "-",
                         transactionType = TransactionType.Incoming,
                         failedTransactionMessage = null
@@ -255,6 +230,46 @@ class TransactionsViewModel {
         }
     }
 
+    private fun collectTransactions(){
+        scope.launch(dispatchers.mainImmediate) {
+            connectManagerRepository.transactionDtoState.collect { transactionsDto ->
+                if (!transactionsDto.isNullOrEmpty()) {
+                    val firstPage = (page == 0)
+                    val lastItemDate =  transactionsDto.lastOrNull()?.date ?: lastMessageDate
+
+                    if (lastMessageDate == lastItemDate) {
+                        setTransactionsViewState {
+                            copy(
+                                loadingTransactions = false,
+                                loadingMore = false
+                            )
+                        }
+                        return@collect
+                    }
+
+                    lastMessageDate = lastItemDate
+                    loadedItems = loadedItems.plus(transactionsDto.size)
+
+                    generateTransactionsStateList(transactionsDto)
+                    setTransactionsViewState {
+                        copy(
+                            loadingTransactions = false,
+                            loadingMore = false
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+
+    private fun loadTransactions(
+        lastMessageDate: Long
+    ) {
+        connectManagerRepository.getPayments(lastMessageDate, itemsPerPage)
+    }
+
+
     fun loadMoreTransactions() {
         if (transactionViewState.loadingTransactions || transactionViewState.loadingMore) {
             return
@@ -270,8 +285,7 @@ class TransactionsViewModel {
         page += 1
 
         scope.launch(dispatchers.mainImmediate) {
-            loadTransactions()
-
+            loadTransactions(lastMessageDate)
         }
     }
 }
