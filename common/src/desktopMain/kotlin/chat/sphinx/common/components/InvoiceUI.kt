@@ -14,11 +14,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Text
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import chat.sphinx.common.components.tribe.TribeTextField
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.utils.getPreferredWindowSize
+import theme.light_divider
+import theme.place_holder_text
 import theme.primary_blue
 
 @Composable
@@ -187,77 +191,106 @@ fun CreateInvoiceContent(dashboardViewModel: DashboardViewModel) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+                contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(start = 32.dp)
+                Column(modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
                 ) {
-                    TextField(
-                        value = dashboardViewModel.createInvoiceState.amount,
-                        onValueChange = {
-                            if (it.all { char -> char.isDigit() } && it.length <= 7) {
-                                dashboardViewModel.onInvoiceAmountChange(it)
-                            }
-                        },
-                        modifier = Modifier
-                            .width(180.dp)
-                            .wrapContentWidth(Alignment.CenterHorizontally),
-                        singleLine = true,
-                        maxLines = 1,
-                        textStyle = androidx.compose.ui.text.TextStyle(
-                            fontSize = 38.sp,
-                            fontWeight = FontWeight.W400,
-                            textAlign = TextAlign.Center
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.background,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.background,
-                            cursorColor = MaterialTheme.colorScheme.onBackground
-                        ),
-                        placeholder = {
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center
-                            ) {
+                    Row(modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Spacer(modifier = Modifier.width(66.dp))
+                        androidx.compose.material.OutlinedTextField(
+                            value = dashboardViewModel.createInvoiceState.amount,
+                            onValueChange = {
+                                if (it.all { char -> char.isDigit() } && it.length <= 7) {
+                                    dashboardViewModel.onInvoiceAmountChange(it)
+                                }
+                            },
+                            modifier = Modifier.width(150.dp),
+                            textStyle = TextStyle(
+                                textAlign = TextAlign.Center,
+                                color = Color.White,
+                                fontSize = 50.sp,
+                                fontFamily = Roboto
+                            ),
+                            placeholder = {
                                 Text(
-                                    text = "0",
-                                    style = androidx.compose.ui.text.TextStyle(
-                                        fontSize = 38.sp,
-                                        fontWeight = FontWeight.W400,
-                                        textAlign = TextAlign.Center,
-                                        fontFamily = Roboto
-                                    ),
-                                    color = MaterialTheme.colorScheme.onBackground
+                                    "0",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = place_holder_text,
+                                    fontFamily = Roboto,
+                                    fontSize = 50.sp,
+                                    textAlign = TextAlign.Center
                                 )
-                            }
-                        }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "sat",
-                        style = androidx.compose.ui.text.TextStyle(
-                            fontSize = 24.sp,
-                            fontFamily = Roboto,
-                            color = MaterialTheme.colorScheme.onBackground
+                            },
+                            singleLine = true,
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                cursorColor = primary_blue
+                            )
                         )
-                    )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(
+                            modifier = Modifier.width(50.dp)
+                        ) {
+                            Text(
+                                "sats",
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontFamily = Roboto,
+                                fontWeight = FontWeight.Light,
+                                fontSize = 20.sp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(40.dp).fillMaxWidth())
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 40.dp)
+                    ) {
+                        androidx.compose.material.OutlinedTextField(
+                            value = dashboardViewModel.createInvoiceState.memo ,
+                            onValueChange = {
+                                dashboardViewModel.onInvoiceMemoChange(it)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = TextStyle(
+                                textAlign = TextAlign.Center,
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontFamily = Roboto
+                            ),
+                            placeholder = {
+                                Text(
+                                    "Memo",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = place_holder_text,
+                                    fontFamily = Roboto,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            },
+                            singleLine = true,
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                cursorColor = primary_blue
+                            )
+                        )
+                        androidx.compose.material.Divider(modifier = Modifier.fillMaxWidth(), color = light_divider)
+                    }
+                    Spacer(modifier = Modifier.height(80.dp).fillMaxWidth())
                 }
             }
 
-            Spacer(Modifier.height(42.dp))
-
-            TribeTextField(
-                label = "Memo",
-                value = dashboardViewModel.createInvoiceState.memo,
-                onTextChange = { dashboardViewModel.onInvoiceMemoChange(it) },
-                modifier = Modifier.fillMaxWidth()
-            )
 
             Spacer(Modifier.height(84.dp))
 
