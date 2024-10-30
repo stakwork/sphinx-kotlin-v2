@@ -242,7 +242,7 @@ fun CreateInvoiceContent(dashboardViewModel: DashboardViewModel) {
                             modifier = Modifier.width(50.dp)
                         ) {
                             Text(
-                                "sats",
+                                "sat",
                                 color = MaterialTheme.colorScheme.onBackground,
                                 fontFamily = Roboto,
                                 fontWeight = FontWeight.Light,
@@ -290,9 +290,6 @@ fun CreateInvoiceContent(dashboardViewModel: DashboardViewModel) {
                     Spacer(modifier = Modifier.height(80.dp).fillMaxWidth())
                 }
             }
-
-
-            Spacer(Modifier.height(84.dp))
 
             Box(
                 modifier = Modifier

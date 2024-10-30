@@ -70,7 +70,7 @@ fun DashboardSidebarUI(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PhotoUrlImage(
-                        photoUrl = null,
+                        photoUrl = dashboardViewModel.accountOwnerStateFlow.collectAsState().value?.photoUrl,
                         modifier = Modifier
                             .size(46.dp)
                             .clip(CircleShape)
@@ -147,7 +147,6 @@ fun DashboardSidebarUI(
                         modifier = Modifier.size(24.dp),
                         onClick = {
                             dashboardViewModel.triggerNetworkRefresh()
-                            isMenuExpanded = !isMenuExpanded
                         }
                     ) {
                         Icon(

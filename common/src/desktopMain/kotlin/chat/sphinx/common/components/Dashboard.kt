@@ -48,10 +48,7 @@ import chat.sphinx.platform.imageResource
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.utils.onKeyUp
-import chat.sphinx.wrapper.chat.isMuted
-import chat.sphinx.wrapper.chat.isPending
-import chat.sphinx.wrapper.chat.isPrivateTribe
-import chat.sphinx.wrapper.chat.isTribe
+import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.lightning.asFormattedString
 import chat.sphinx.wrapper.message.media.isImage
@@ -253,10 +250,10 @@ fun SphinxChatDetailTopAppBar(
                     )
 
                     chatViewModel?.let {
-                        val checkRouteResponse by chatViewModel.checkRoute.collectAsState(
+                        val checkChatStatus by chatViewModel.checkChatStatus.collectAsState(
                             LoadResponse.Loading
                         )
-                        val color = when (checkRouteResponse) {
+                        val color = when (checkChatStatus) {
                             is LoadResponse.Loading -> {
                                 androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                             }
@@ -484,10 +481,12 @@ fun SphinxChatDetailBottomAppBar(
                             placeholderText = "Message...",
                             singleLine = false,
                             maxLines = 4,
-                            onValueChange = {
-                                if (chatViewModel != null) run {
-                                    chatViewModel.onMessageTextChanged(it)
-                                }
+                            onValueChange = { newValue ->
+                                val proposedText = newValue.text
+                                val proposedTextBytes = proposedText.toByteArray().size
+                                if (proposedTextBytes <= 592) {
+                                    chatViewModel?.onMessageTextChanged(newValue)
+                                } else {}
                             },
                             value = chatViewModel?.editMessageState?.messageText?.value ?: TextFieldValue(""),
                             cursorBrush = primary_blue,

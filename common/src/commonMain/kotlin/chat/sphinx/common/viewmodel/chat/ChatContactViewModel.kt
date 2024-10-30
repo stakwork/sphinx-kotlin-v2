@@ -15,6 +15,7 @@ import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.chat.Chat
 import chat.sphinx.wrapper.chat.ChatName
 import chat.sphinx.wrapper.chat.TribeData
+import chat.sphinx.wrapper.chat.isApproved
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.contact.ContactAlias
 import chat.sphinx.wrapper.contact.getColorKey
@@ -100,58 +101,21 @@ class ChatContactViewModel(
         return contactId?.let { contactRepository.getContactById(it).firstOrNull() }
     }
 
-    override val checkRoute: Flow<LoadResponse<Boolean, ResponseError>> = flow {
+    override val checkChatStatus: Flow<LoadResponse<Boolean, ResponseError>> = flow {
         emit(LoadResponse.Loading)
 
-//        val networkFlow: Flow<LoadResponse<RouteSuccessProbabilityDto, ResponseError>>? = let {
-//            emit(LoadResponse.Loading)
-//
-//            var contact: Contact? = contactSharedFlow.replayCache.firstOrNull()
-//                ?: contactSharedFlow.firstOrNull()
-//
-//            if (contact == null) {
-//                try {
-//                    contactSharedFlow.collect {
-//                        if (contact != null) {
-//                            contact = it
-//                            throw Exception()
-//                        }
-//                    }
-//                } catch (e: Exception) {}
-//                delay(25L)
-//            }
-//
-//            contact?.let { nnContact ->
-//                nnContact.nodePubKey?.let { pubKey ->
-//
-//                    nnContact.routeHint?.let { hint ->
-//
-//
-//                        networkQueryLightning.checkRoute(pubKey, hint)
-//
-//                    } ?: networkQueryLightning.checkRoute(pubKey)
-//
-//                }
-//            }
-//        }
-//
-//        networkFlow?.let { flow ->
-//            flow.collect { response ->
-//                when (response) {
-//                    LoadResponse.Loading -> {}
-//                    is Response.Error -> {
-//                        emit(response)
-//                    }
-//                    is Response.Success -> {
-//                        emit(
-//                            Response.Success(response.value.isRouteAvailable)
-//                        )
-//                    }
-//                }
-//            }
-//        } ?: emit(Response.Error(
-//            ResponseError("Contact and chatId were null, unable to check route")
-//        ))
+        try {
+            val chat = getChat()
+            if (chat != null) {
+                val route = chat.status.isApproved()
+                emit(Response.Success(route))
+            } else {
+                emit(Response.Error(ResponseError("Chat not found")))
+            }
+        } catch (e: Exception) {
+            emit(Response.Error(ResponseError("Failed to get route", e)))
+        }
+
     }
 
     override var editMessageState: EditMessageState by mutableStateOf(initialState())

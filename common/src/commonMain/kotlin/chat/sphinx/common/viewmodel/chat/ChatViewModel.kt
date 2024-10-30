@@ -5,8 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import chat.sphinx.common.components.AudioPlayer
 import chat.sphinx.common.models.ChatMessage
@@ -47,16 +45,11 @@ import chat.sphinx.wrapper.tribe.toTribeJoinLink
 import chat.sphinx.wrapper_chat.NotificationLevel
 import chat.sphinx.wrapper_chat.isMuteChat
 import chat.sphinx.wrapper_message.toThreadUUID
-import com.soywiz.korio.lang.substr
-import com.soywiz.korio.util.substringAfterLastOrNull
-import com.soywiz.korio.util.substringBeforeLastOrNull
-import com.soywiz.korio.util.substringBeforeOrNull
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import okio.Path
-import org.jetbrains.skia.impl.Log
 import theme.primary_green
 import theme.primary_red
 import utils.deduceMediaType
@@ -502,12 +495,7 @@ abstract class ChatViewModel(
 
     private fun deleteMessage(message: Message) {
         scope.launch(dispatchers.mainImmediate) {
-            when (messageRepository.deleteMessage(message)) {
-                is Response.Error -> {
-                    toast("Failed to delete Message", primary_red)
-                }
-                is Response.Success -> {}
-            }
+            messageRepository.deleteMessage(message)
         }
     }
 
@@ -556,7 +544,7 @@ abstract class ChatViewModel(
 
     protected abstract suspend fun getChatInfo(): Triple<ChatName?, PhotoUrl?, String>?
 
-    abstract val checkRoute: Flow<LoadResponse<Boolean, ResponseError>>
+    abstract val checkChatStatus: Flow<LoadResponse<Boolean, ResponseError>>
 
     // Message sending logic...
     abstract var editMessageState: EditMessageState
@@ -625,9 +613,9 @@ abstract class ChatViewModel(
         if (sendMessageJob?.isActive == true) {
             return
         }
+        val messageText = editMessageState.messageText.value.text.trim()
 
         sendMessageJob = scope.launch(dispatchers.mainImmediate) {
-            val messageText = editMessageState.messageText.value.text.trim()
             val isCallMessage = messageText.toCallLinkMessageOrNull() != null
 
             val sendMessageBuilder = SendMessage.Builder()
@@ -642,8 +630,6 @@ abstract class ChatViewModel(
 
                         builder.setReplyUUID(uuid.toReplyUUID())
                         builder.setThreadUUID(threadUUID ?: uuid.toThreadUUID())
-
-                    println("pimmmmm $threadUUID")
                     }
                 }
 
