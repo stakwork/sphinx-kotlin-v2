@@ -4,24 +4,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import chat.sphinx.common.state.ContactState
 import androidx.compose.runtime.setValue
+import chat.sphinx.common.components.toast
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.response.LoadResponse
+import chat.sphinx.response.Response
 import chat.sphinx.response.ResponseError
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.ContactAlias
+import chat.sphinx.wrapper.contact.NewContact
 import chat.sphinx.wrapper.contact.toContactAlias
 import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.lightning.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
-
+import kotlinx.coroutines.flow.firstOrNull
 
 
 class AddContactViewModel() : ContactViewModel() {
 
     private val sphinxNotificationManager = createSphinxNotificationManager()
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
+    private val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
 
     override var contactState: ContactState by mutableStateOf(initialState())
 
@@ -67,14 +71,17 @@ class AddContactViewModel() : ContactViewModel() {
     }
 
     override fun onAddressTextChanged(text: String) {
-        text.toVirtualLightningNodeAddress()?.let { nnVirtualAddress ->
+        val contact = text.split("_")
+        if (contact.size == 3) {
+            val pubKey = contact.getOrNull(0)?.toLightningNodePubKey()?.value ?: ""
+            val routeHint = "${contact.getOrNull(1)}_${contact.getOrNull(2)}"
             setContactState {
                 copy(
-                    lightningNodePubKey = nnVirtualAddress.getPubKey()?.value ?: "",
-                    lightningRouteHint = nnVirtualAddress.getRouteHint()?.value ?: ""
+                    lightningNodePubKey = pubKey,
+                    lightningRouteHint = routeHint
                 )
             }
-        } ?: run {
+        } else {
             setContactState {
                 copy(
                     lightningNodePubKey = text
@@ -124,12 +131,29 @@ class AddContactViewModel() : ContactViewModel() {
         }
         saveContactJob = scope.launch(dispatchers.mainImmediate) {
 
-            contactRepository.createContact(
-                ContactAlias(contactState.contactAlias),
-                LightningNodePubKey(contactState.lightningNodePubKey),
-                contactState.lightningRouteHint?.let { LightningRouteHint(it) }
-            ).collect { loadResponse ->
-                setStatus(loadResponse)
+            val pubkey = contactState.lightningNodePubKey.toLightningNodePubKey()
+            val exitingContact = pubkey?.let { contactRepository.getContactByPubKey(it).firstOrNull() }
+            val routeHint = contactState.lightningRouteHint?.toLightningRouteHint()
+
+            if (routeHint != null && exitingContact == null) {
+
+                val newContact = NewContact(
+                    contactState.contactAlias.toContactAlias(),
+                    LightningNodePubKey(contactState.lightningNodePubKey),
+                    routeHint,
+                    null,
+                    false,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                )
+                connectManagerRepository.createContact(newContact)
+                println("CREATE_CONTACT: connectManagerRepository.createContact(newContact)")
+                setStatus(Response.Success(true))
+            } else {
+                setStatus(Response.Error(ResponseError("Invalid Contact")))
             }
         }
     }
