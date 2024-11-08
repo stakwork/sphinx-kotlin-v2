@@ -2,6 +2,7 @@ package chat.sphinx.common.chatMesssageUI
 
 import Roboto
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
@@ -18,7 +19,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -47,6 +53,7 @@ import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.message.retrieveTextToShow
 import chat.sphinx.wrapper.tribe.toTribeJoinLink
 import com.multiplatform.webview.web.WebView
+import theme.primary_green
 import theme.sphinx_orange
 
 @Composable
@@ -57,8 +64,14 @@ fun ChatCard(
 ) {
     val uriHandler = LocalUriHandler.current
 
+    val backgroundColor = when {
+        chatMessage.message.type.isInvoice() -> MaterialTheme.colorScheme.background
+        chatMessage.isReceived -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.inversePrimary
+    }
+
     Card(
-        backgroundColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary,
+        backgroundColor = backgroundColor,
         shape = getBubbleShape(chatMessage),
         modifier = modifier ?: Modifier
     ) {
@@ -74,7 +87,9 @@ fun ChatCard(
             }
             chatMessage.message.type == MessageType.BotRes -> {
                 BotResponse(chatMessage, chatViewModel)
-                // create a component with WebView
+            }
+            chatMessage.message.type == MessageType.Invoice -> {
+                InvoiceUI(chatMessage, chatViewModel)
             }
             else -> {
                 Column(modifier = Modifier.onSizeChanged {
@@ -379,6 +394,75 @@ fun getBubbleShape(chatMessage: ChatMessage): RoundedCornerShape {
             else -> {
                 RoundedCornerShape(topEnd = 0.dp, topStart = 10.dp, bottomEnd = 10.dp, bottomStart = 10.dp)
             }
+        }
+    }
+}
+@Composable
+fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
+    val borderColor = if (chatMessage.isSent) MaterialTheme.colorScheme.onBackground else primary_green
+    val cornerRadius = 16.dp
+    val dashWidth = 10.dp
+    val dashGap = 6.dp
+
+    Box(
+        modifier = Modifier
+            .padding(8.dp)
+            .wrapContentWidth()
+            .wrapContentHeight()
+            .drawBehind {
+                val strokeWidth = 2.dp.toPx()
+                val cornerRadiusPx = cornerRadius.toPx()
+                val dashWidthPx = dashWidth.toPx()
+                val dashGapPx = dashGap.toPx()
+
+                drawRoundRect(
+                    color = borderColor,
+                    topLeft = Offset(x = strokeWidth / 2, y = strokeWidth / 2),
+                    size = Size(width = size.width - strokeWidth, height = size.height - strokeWidth),
+                    cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                    style = Stroke(width = strokeWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidthPx, dashGapPx)))
+                )
+            }
+    ) {
+        val endPadding = if (chatMessage.isSent) 128.dp else 0.dp
+        Row(
+            modifier = Modifier
+                .padding(8.dp)
+                .background(MaterialTheme.colorScheme.background, shape = RoundedCornerShape(12.dp))
+                .padding(
+                    start = 8.dp,
+                    top = 6.dp,
+                    end = endPadding,
+                    bottom = 6.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.QrCode,
+                contentDescription = "Invoice Icon",
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = chatMessage.message.amount.value.toString() ?: "",
+                style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "sat",
+                style = TextStyle(
+                    fontWeight = FontWeight.Light,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            )
         }
     }
 }

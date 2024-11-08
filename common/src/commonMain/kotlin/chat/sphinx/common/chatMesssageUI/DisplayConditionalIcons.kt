@@ -20,6 +20,11 @@ import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.wrapper.chat.isTribe
 import chat.sphinx.wrapper.chatTimeFormat
+import chat.sphinx.wrapper.invoiceExpirationTimeFormat
+import chat.sphinx.wrapper.message.isDeleted
+import chat.sphinx.wrapper.message.isInvoice
+import chat.sphinx.wrapper.time
+import chat.sphinx.wrapper.toDateTime
 import theme.place_holder_text
 
 @Composable
@@ -39,6 +44,27 @@ fun DisplayConditionalIcons(
             .height(15.dp)
             .padding(bottom = 2.dp, end = if (chatMessage.isSent) 5.dp else 0.dp, start = if (chatMessage.isSent) 0.dp else 5.dp)
     ) {
+        if (chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
+            val expiration = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
+            Text(
+                text = "EXPIRES AT: $expiration" ?: "",
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 10.sp,
+                fontFamily = Roboto,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.padding(end = 76.dp)
+            )
+        }
+
+        if (chatMessage.showBoltIcon) {
+            Icon(
+                Icons.Default.FlashOn,
+                "Confirmed",
+                tint = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.height(14.dp).width(13.dp).padding(bottom = 1.dp)
+            )
+        }
+
         if (
             chatMessage.chat.isTribe() &&
             chatMessage.isReceived &&
@@ -61,15 +87,6 @@ fun DisplayConditionalIcons(
                 modifier = Modifier.height(14.dp).width(14.dp).padding(end = 4.dp, bottom = 2.dp),
                 color = MaterialTheme.colorScheme.tertiary,
                 strokeWidth = 2.dp
-            )
-        }
-
-        if (chatMessage.showBoltIcon) {
-            Icon(
-                Icons.Default.FlashOn,
-                "Confirmed",
-                tint = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.height(14.dp).width(13.dp).padding(bottom = 1.dp)
             )
         }
 
@@ -97,6 +114,17 @@ fun DisplayConditionalIcons(
                 "Secure chat",
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.height(14.dp).width(13.dp).padding(end = 1.dp, bottom = 2.dp)
+            )
+        }
+        if (!chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
+            val expiration = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
+            Text(
+                text = "EXPIRES AT: $expiration" ?: "",
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 10.sp,
+                fontFamily = Roboto,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.padding(start = 4.dp)
             )
         }
     }
