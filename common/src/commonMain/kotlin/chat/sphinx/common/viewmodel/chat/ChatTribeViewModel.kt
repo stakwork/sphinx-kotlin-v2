@@ -77,7 +77,7 @@ class ChatTribeViewModel(
         return null
     }
 
-    override val checkRoute: Flow<LoadResponse<Boolean, ResponseError>> = flow {
+    override val checkChatStatus: Flow<LoadResponse<Boolean, ResponseError>> = flow {
         // TODO V2 checkRoute
 
 //        networkQueryLightning.checkRoute(chatId).collect { response ->
