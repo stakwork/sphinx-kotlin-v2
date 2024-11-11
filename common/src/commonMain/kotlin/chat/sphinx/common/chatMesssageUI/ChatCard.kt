@@ -401,33 +401,37 @@ fun getBubbleShape(chatMessage: ChatMessage): RoundedCornerShape {
 
 @Composable
 fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
+    val isInvoiceExpired = chatMessage.message.isExpiredInvoice()
     val borderColor = if (chatMessage.isSent) MaterialTheme.colorScheme.onBackground else primary_green
     val cornerRadius = 16.dp
     val dashWidth = 10.dp
     val dashGap = 6.dp
+    val alphaValue = if (isInvoiceExpired) 0.5f else 1.0f
 
     Box(
         modifier = Modifier
             .padding(8.dp)
             .width(300.dp)
             .wrapContentHeight()
-            .drawBehind {
-                val strokeWidth = 2.dp.toPx()
-                val cornerRadiusPx = cornerRadius.toPx()
-                val dashWidthPx = dashWidth.toPx()
-                val dashGapPx = dashGap.toPx()
+            .then(
+                if (!isInvoiceExpired) Modifier.drawBehind {
+                    val strokeWidth = 2.dp.toPx()
+                    val cornerRadiusPx = cornerRadius.toPx()
+                    val dashWidthPx = dashWidth.toPx()
+                    val dashGapPx = dashGap.toPx()
 
-                drawRoundRect(
-                    color = borderColor,
-                    topLeft = Offset(x = strokeWidth / 2, y = strokeWidth / 2),
-                    size = Size(width = size.width - strokeWidth, height = size.height - strokeWidth),
-                    cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                    style = Stroke(
-                        width = strokeWidth,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidthPx, dashGapPx))
+                    drawRoundRect(
+                        color = borderColor,
+                        topLeft = Offset(x = strokeWidth / 2, y = strokeWidth / 2),
+                        size = Size(width = size.width - strokeWidth, height = size.height - strokeWidth),
+                        cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                        style = Stroke(
+                            width = strokeWidth,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidthPx, dashGapPx))
+                        )
                     )
-                )
-            }
+                } else Modifier
+            )
     ) {
         Column(
             modifier = Modifier
@@ -446,7 +450,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 Icon(
                     imageVector = Icons.Default.QrCode,
                     contentDescription = "Invoice Icon",
-                    tint = MaterialTheme.colorScheme.tertiary,
+                    tint = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue),
                     modifier = Modifier.size(24.dp)
                 )
 
@@ -457,7 +461,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.tertiary
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue)
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -466,7 +470,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                     style = TextStyle(
                         fontWeight = FontWeight.Light,
                         fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.tertiary
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue)
                     )
                 )
             }
@@ -479,6 +483,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 ) {
                     Button(
                         onClick = { /* Handle payment click here */ },
+                        enabled = isInvoiceExpired || !isInvoiceExpired,
                         colors = ButtonDefaults.buttonColors(backgroundColor = primary_green),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -490,7 +495,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                                 text = "PAY",
                                 modifier = Modifier.align(Alignment.Center),
                                 fontSize = 13.sp,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue),
                                 fontWeight = FontWeight.W600,
                                 fontFamily = Roboto,
                                 textAlign = TextAlign.Center
@@ -502,7 +507,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
                                     .size(26.dp),
-                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.tertiary)
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue))
                             )
                         }
                     }
