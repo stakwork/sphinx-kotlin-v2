@@ -44,6 +44,8 @@ fun DisplayConditionalIcons(
         modifier = Modifier
             .height(15.dp)
             .padding(bottom = 2.dp, end = if (chatMessage.isSent) 5.dp else 0.dp, start = if (chatMessage.isSent) 0.dp else 5.dp)
+            .fillMaxWidth(), // Ensure the Row takes the full width to align elements properly
+        horizontalArrangement = if (chatMessage.isSent) Arrangement.End else Arrangement.Start
     ) {
         if (chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
             val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
@@ -54,7 +56,7 @@ fun DisplayConditionalIcons(
                 fontSize = 10.sp,
                 fontFamily = Roboto,
                 fontWeight = FontWeight.Normal,
-                modifier = Modifier.padding(end = 138.dp)
+                modifier = Modifier.padding(end = 8.dp)
             )
         }
 
@@ -63,7 +65,10 @@ fun DisplayConditionalIcons(
                 Icons.Default.FlashOn,
                 "Confirmed",
                 tint = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.height(14.dp).width(13.dp).padding(bottom = 1.dp)
+                modifier = Modifier
+                    .height(14.dp)
+                    .width(13.dp)
+                    .padding(bottom = 1.dp)
             )
         }
 
@@ -78,6 +83,7 @@ fun DisplayConditionalIcons(
                 fontSize = 10.sp,
                 fontFamily = Roboto,
                 fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f, fill = true)
             )
             Spacer(
                 modifier = Modifier.width(4.dp)
@@ -86,7 +92,10 @@ fun DisplayConditionalIcons(
 
         if (chatMessage.showSendingIcon) {
             CircularProgressIndicator(
-                modifier = Modifier.height(14.dp).width(14.dp).padding(end = 4.dp, bottom = 2.dp),
+                modifier = Modifier
+                    .height(14.dp)
+                    .width(14.dp)
+                    .padding(end = 4.dp, bottom = 2.dp),
                 color = MaterialTheme.colorScheme.tertiary,
                 strokeWidth = 2.dp
             )
@@ -97,7 +106,10 @@ fun DisplayConditionalIcons(
                 Icons.Default.Lock,
                 "Secure chat",
                 tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.height(14.dp).width(13.dp).padding(end = 1.dp, bottom = 2.dp)
+                modifier = Modifier
+                    .height(14.dp)
+                    .width(13.dp)
+                    .padding(end = 1.dp, bottom = 2.dp)
             )
         }
 
@@ -108,6 +120,7 @@ fun DisplayConditionalIcons(
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 10.sp,
             textAlign = if (chatMessage.isSent) TextAlign.End else TextAlign.Start,
+            modifier = Modifier.weight(1f, fill = false)
         )
 
         if (chatMessage.showLockIcon && chatMessage.isReceived) {
@@ -115,7 +128,10 @@ fun DisplayConditionalIcons(
                 Icons.Default.Lock,
                 "Secure chat",
                 tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.height(14.dp).width(13.dp).padding(end = 1.dp, bottom = 2.dp)
+                modifier = Modifier
+                    .height(14.dp)
+                    .width(13.dp)
+                    .padding(end = 1.dp, bottom = 2.dp)
             )
         }
         if (!chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
@@ -127,7 +143,7 @@ fun DisplayConditionalIcons(
                 fontSize = 10.sp,
                 fontFamily = Roboto,
                 fontWeight = FontWeight.Normal,
-                modifier = Modifier.padding(start = 164.dp)
+                modifier = Modifier.padding(start = 8.dp)
             )
         }
     }
