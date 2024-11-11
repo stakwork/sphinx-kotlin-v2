@@ -52,7 +52,7 @@ fun DisplayConditionalIcons(
                 fontSize = 10.sp,
                 fontFamily = Roboto,
                 fontWeight = FontWeight.Normal,
-                modifier = Modifier.padding(end = 76.dp)
+                modifier = Modifier.padding(end = 138.dp)
             )
         }
 
@@ -124,7 +124,7 @@ fun DisplayConditionalIcons(
                 fontSize = 10.sp,
                 fontFamily = Roboto,
                 fontWeight = FontWeight.Normal,
-                modifier = Modifier.padding(start = 4.dp)
+                modifier = Modifier.padding(start = 164.dp)
             )
         }
     }

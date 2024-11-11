@@ -6,9 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.MaterialTheme
@@ -397,6 +395,7 @@ fun getBubbleShape(chatMessage: ChatMessage): RoundedCornerShape {
         }
     }
 }
+
 @Composable
 fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
     val borderColor = if (chatMessage.isSent) MaterialTheme.colorScheme.onBackground else primary_green
@@ -407,7 +406,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
     Box(
         modifier = Modifier
             .padding(8.dp)
-            .wrapContentWidth()
+            .width(300.dp)
             .wrapContentHeight()
             .drawBehind {
                 val strokeWidth = 2.dp.toPx()
@@ -420,49 +419,93 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                     topLeft = Offset(x = strokeWidth / 2, y = strokeWidth / 2),
                     size = Size(width = size.width - strokeWidth, height = size.height - strokeWidth),
                     cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                    style = Stroke(width = strokeWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidthPx, dashGapPx)))
+                    style = Stroke(
+                        width = strokeWidth,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidthPx, dashGapPx))
+                    )
                 )
             }
     ) {
-        val endPadding = if (chatMessage.isSent) 128.dp else 0.dp
-        Row(
+        val endPadding = if(chatMessage.isReceived) 128.dp else 0.dp
+        Column(
             modifier = Modifier
                 .padding(8.dp)
                 .background(MaterialTheme.colorScheme.background, shape = RoundedCornerShape(12.dp))
                 .padding(
                     start = 8.dp,
                     top = 6.dp,
-                    end = endPadding,
+                    end = 6.dp,
                     bottom = 6.dp
-                ),
-            verticalAlignment = Alignment.CenterVertically
+                )
         ) {
-            Icon(
-                imageVector = Icons.Default.QrCode,
-                contentDescription = "Invoice Icon",
-                tint = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.size(24.dp)
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = chatMessage.message.amount.value.toString() ?: "",
-                style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.tertiary
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.QrCode,
+                    contentDescription = "Invoice Icon",
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(24.dp)
                 )
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "sat",
-                style = TextStyle(
-                    fontWeight = FontWeight.Light,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.tertiary
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = chatMessage.message.amount.value.toString() ?: "",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
                 )
-            )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "sat",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Light,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                )
+            }
+
+            if (chatMessage.isReceived) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Button(
+                        onClick = { /* Handle payment click here */ },
+                        colors = ButtonDefaults.buttonColors(backgroundColor = primary_green),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "PAY",
+                                modifier = Modifier.align(Alignment.Center),
+                                fontSize = 13.sp,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                                fontWeight = FontWeight.W600,
+                                fontFamily = Roboto,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Icon(
+                                imageVector = Icons.Filled.ArrowOutward,
+                                contentDescription = "Arrow Outward Icon",
+                                tint = Color.White,
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
