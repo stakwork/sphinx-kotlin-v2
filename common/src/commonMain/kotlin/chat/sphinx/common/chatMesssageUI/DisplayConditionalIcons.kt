@@ -22,6 +22,7 @@ import chat.sphinx.wrapper.chat.isTribe
 import chat.sphinx.wrapper.chatTimeFormat
 import chat.sphinx.wrapper.invoiceExpirationTimeFormat
 import chat.sphinx.wrapper.message.isDeleted
+import chat.sphinx.wrapper.message.isExpiredInvoice
 import chat.sphinx.wrapper.message.isInvoice
 import chat.sphinx.wrapper.time
 import chat.sphinx.wrapper.toDateTime
@@ -45,9 +46,10 @@ fun DisplayConditionalIcons(
             .padding(bottom = 2.dp, end = if (chatMessage.isSent) 5.dp else 0.dp, start = if (chatMessage.isSent) 0.dp else 5.dp)
     ) {
         if (chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
-            val expiration = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
+            val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
+            val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
             Text(
-                text = "EXPIRES AT: $expiration" ?: "",
+                text = text,
                 color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 10.sp,
                 fontFamily = Roboto,
@@ -117,9 +119,10 @@ fun DisplayConditionalIcons(
             )
         }
         if (!chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
-            val expiration = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
+            val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
+            val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
             Text(
-                text = "EXPIRES AT: $expiration" ?: "",
+                text = text,
                 color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 10.sp,
                 fontFamily = Roboto,

@@ -133,11 +133,12 @@ fun ChatMessageUI(
                                     }
                                 }
                                 else -> {
-                                    if (chatMessage.isSent) {
+                                    if (chatMessage.isSent && !chatMessage.message.type.isInvoice()) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
                                     if (chatMessage.isReceived) {
-                                        BubbleArrow(false, bubbleColor, chatMessage)
+                                        val color = if (chatMessage.message.type.isInvoice()) MaterialTheme.colorScheme.background else bubbleColor
+                                        BubbleArrow(false, color, chatMessage)
                                     }
 
                                     val messageContainsLinks = chatMessage.message.retrieveTextToShow()?.containLinksWithPreview() ?: false
@@ -161,11 +162,17 @@ fun ChatMessageUI(
                                             }
                                         )
                                     }
-                                    if (chatMessage.isReceived && chatMessage.isDeleted.not()) {
+                                    if (chatMessage.isReceived && chatMessage.isDeleted.not() && !chatMessage.message.type.isInvoice()) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
                                     if (chatMessage.isSent) {
-                                        BubbleArrow(true, bubbleColor, chatMessage)
+                                        if (chatMessage.message.type.isInvoice()) {
+                                            if (chatMessage.message.isExpiredInvoice()) {
+                                                BubbleArrow(true, bubbleColor, chatMessage)
+                                            }
+                                        } else {
+                                            BubbleArrow(true, bubbleColor, chatMessage)
+                                        }
                                     }
                                 }
                             }

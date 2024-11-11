@@ -187,7 +187,7 @@ class ChatMessage(
 
     val invoiceExpirationHeader: String? by lazy {
         if (message.type.isInvoice() && !message.status.isDeleted()) {
-            if (message.isExpiredInvoice) {
+            if (message.isExpiredInvoice()) {
                 "REQUEST EXPIRED"
             } else {
                 message.expirationDate?.invoiceExpirationTimeFormat()?.let {

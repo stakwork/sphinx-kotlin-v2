@@ -1,6 +1,7 @@
 package chat.sphinx.common.chatMesssageUI
 
 import Roboto
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -33,10 +34,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import chat.sphinx.common.Res
 import chat.sphinx.common.components.*
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
+import chat.sphinx.platform.imageResource
 import chat.sphinx.utils.linkify.LinkTag
 import chat.sphinx.utils.linkify.SphinxLinkify
 import chat.sphinx.utils.toAnnotatedString
@@ -426,7 +429,6 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 )
             }
     ) {
-        val endPadding = if(chatMessage.isReceived) 128.dp else 0.dp
         Column(
             modifier = Modifier
                 .padding(8.dp)
@@ -494,13 +496,13 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                                 textAlign = TextAlign.Center
                             )
 
-                            Icon(
-                                imageVector = Icons.Filled.ArrowOutward,
-                                contentDescription = "Arrow Outward Icon",
-                                tint = Color.White,
+                            Image(
+                                painter = imageResource(Res.drawable.ic_sent),
+                                contentDescription = "Sent Icon",
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
-                                    .size(20.dp)
+                                    .size(26.dp),
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.tertiary)
                             )
                         }
                     }
