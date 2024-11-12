@@ -137,7 +137,7 @@ fun ChatMessageUI(
                                     }
                                 }
                                 else -> {
-                                    if (chatMessage.isSent && !chatMessage.message.type.isInvoice()) {
+                                    if (chatMessage.isSent && !chatMessage.message.isPaidInvoice) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
                                     if (chatMessage.isReceived) {
@@ -158,11 +158,12 @@ fun ChatMessageUI(
                                     ) {
                                         if (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived) {
                                             Text(
+                                                modifier = Modifier.padding(end = 4.dp),
                                                 text = "Invoice of ${chatMessage.message.amount.value} sats Paid on ${chatMessage.message.date.invoicePaymentDateFormat()}",
                                                 style = TextStyle(
                                                     fontWeight = FontWeight.W400,
                                                     fontSize = 11.sp,
-                                                    color = MaterialTheme.colorScheme.tertiary
+                                                    color = MaterialTheme.colorScheme.tertiary,
                                                 )
                                             )
 
@@ -178,7 +179,7 @@ fun ChatMessageUI(
                                             )
                                         }
                                     }
-                                    if (chatMessage.isReceived && chatMessage.isDeleted.not() && !chatMessage.message.type.isInvoice()) {
+                                    if (chatMessage.isReceived && chatMessage.isDeleted.not() && !chatMessage.message.type.isInvoicePayment()) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
                                     if (chatMessage.isSent) {

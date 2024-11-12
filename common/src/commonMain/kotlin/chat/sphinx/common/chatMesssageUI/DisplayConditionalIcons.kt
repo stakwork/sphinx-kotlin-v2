@@ -21,10 +21,7 @@ import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.wrapper.chat.isTribe
 import chat.sphinx.wrapper.chatTimeFormat
 import chat.sphinx.wrapper.invoiceExpirationTimeFormat
-import chat.sphinx.wrapper.message.MessageType
-import chat.sphinx.wrapper.message.isDeleted
-import chat.sphinx.wrapper.message.isExpiredInvoice
-import chat.sphinx.wrapper.message.isInvoice
+import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.time
 import chat.sphinx.wrapper.toDateTime
 import theme.place_holder_text
@@ -55,16 +52,18 @@ fun DisplayConditionalIcons(
         if (isSentLikeMessage && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
             val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
             val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
-            Text(
-                text = text,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 10.sp,
-                fontFamily = Roboto,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.padding(end = 8.dp)
-            )
-        }
 
+            if (!chatMessage.message.isPaidInvoice) {
+                Text(
+                    text = text,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 10.sp,
+                    fontFamily = Roboto,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+        }
 
         if (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived) {
             Icon(

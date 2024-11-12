@@ -66,11 +66,19 @@ fun ChatCard(
     val uriHandler = LocalUriHandler.current
 
     val backgroundColor = when {
-        chatMessage.isSent && chatMessage.message.isPaidInvoice -> MaterialTheme.colorScheme.inversePrimary
-        chatMessage.message.type.isInvoice() -> MaterialTheme.colorScheme.background
-        chatMessage.isReceived -> MaterialTheme.colorScheme.onSecondaryContainer
-        else -> MaterialTheme.colorScheme.inversePrimary
+        chatMessage.isSent && (chatMessage.message.isPaidInvoice || chatMessage.message.isExpiredInvoice()) ->
+            MaterialTheme.colorScheme.inversePrimary
+
+        chatMessage.message.type.isInvoice() ->
+            MaterialTheme.colorScheme.background
+
+        chatMessage.isReceived ->
+            MaterialTheme.colorScheme.onSecondaryContainer
+
+        else ->
+            MaterialTheme.colorScheme.inversePrimary
     }
+
 
     Card(
         backgroundColor = backgroundColor,
@@ -422,7 +430,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 } else Modifier
             )
     ) {
-        val columnBg = if (chatMessage.isSent && chatMessage.message.isPaidInvoice) {
+        val columnBg = if (chatMessage.isSent && (chatMessage.message.isPaidInvoice || isInvoiceExpired)) {
             MaterialTheme.colorScheme.inversePrimary
         } else {
             MaterialTheme.colorScheme.background
