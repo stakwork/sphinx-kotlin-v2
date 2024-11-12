@@ -66,6 +66,7 @@ fun ChatCard(
     val uriHandler = LocalUriHandler.current
 
     val backgroundColor = when {
+        chatMessage.isSent && chatMessage.message.isPaidInvoice -> MaterialTheme.colorScheme.inversePrimary
         chatMessage.message.type.isInvoice() -> MaterialTheme.colorScheme.background
         chatMessage.isReceived -> MaterialTheme.colorScheme.onSecondaryContainer
         else -> MaterialTheme.colorScheme.inversePrimary
@@ -402,7 +403,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
             .width(300.dp)
             .wrapContentHeight()
             .then(
-                if (!isInvoiceExpired) Modifier.drawBehind {
+                if (!isInvoiceExpired && (chatMessage.isSent && !chatMessage.message.isPaidInvoice) ) Modifier.drawBehind {
                     val strokeWidth = 2.dp.toPx()
                     val cornerRadiusPx = cornerRadius.toPx()
                     val dashWidthPx = dashWidth.toPx()
@@ -421,10 +422,15 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 } else Modifier
             )
     ) {
+        val columnBg = if (chatMessage.isSent && chatMessage.message.isPaidInvoice) {
+            MaterialTheme.colorScheme.inversePrimary
+        } else {
+            MaterialTheme.colorScheme.background
+        }
         Column(
             modifier = Modifier
                 .padding(8.dp)
-                .background(MaterialTheme.colorScheme.background, shape = RoundedCornerShape(12.dp))
+                .background(columnBg, shape = RoundedCornerShape(12.dp))
                 .padding(
                     start = 8.dp,
                     top = 6.dp,
@@ -471,7 +477,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 ) {
                     Button(
                         onClick = { /* Handle payment click here */ },
-                        enabled = isInvoiceExpired || !isInvoiceExpired,
+                        enabled = !chatMessage.message.isExpiredInvoice(),
                         colors = ButtonDefaults.buttonColors(backgroundColor = primary_green),
                         modifier = Modifier.fillMaxWidth(),
                     ) {

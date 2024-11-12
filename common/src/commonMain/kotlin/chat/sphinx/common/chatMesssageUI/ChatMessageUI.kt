@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.font.FontStyle
 import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.wrapper.chat.isTribe
 import chat.sphinx.utils.containLinksWithPreview
+import chat.sphinx.wrapper.invoicePaymentDateFormat
 
 @Composable
 fun ChatMessageUI(
@@ -155,15 +157,15 @@ fun ChatMessageUI(
                                         }
                                     ) {
                                         if (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived) {
-                                            // Special handling for payment message that is received
                                             Text(
-                                                text = "Payment received: ${chatMessage.message.amount?.value ?: "Unknown amount"}",
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = Roboto,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                fontSize = 14.sp,
-                                                textAlign = TextAlign.End,
+                                                text = "Invoice of ${chatMessage.message.amount.value} sats Paid on ${chatMessage.message.date.invoicePaymentDateFormat()}",
+                                                style = TextStyle(
+                                                    fontWeight = FontWeight.W400,
+                                                    fontSize = 11.sp,
+                                                    color = MaterialTheme.colorScheme.tertiary
+                                                )
                                             )
+
                                         } else {
                                             ChatCard(
                                                 chatMessage,
@@ -181,7 +183,7 @@ fun ChatMessageUI(
                                     }
                                     if (chatMessage.isSent) {
                                         if (chatMessage.message.type.isInvoice()) {
-                                            if (chatMessage.message.isExpiredInvoice()) {
+                                            if (chatMessage.message.isExpiredInvoice() || (chatMessage.isSent && chatMessage.message.isPaidInvoice)) {
                                                 BubbleArrow(true, bubbleColor, chatMessage)
                                             }
                                         } else {
