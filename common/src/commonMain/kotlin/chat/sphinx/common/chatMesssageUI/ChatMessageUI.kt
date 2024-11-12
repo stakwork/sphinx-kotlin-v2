@@ -37,7 +37,7 @@ fun ChatMessageUI(
     Column(modifier = getMessageUIPadding(chatMessage)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = if (chatMessage.isSent) Arrangement.End else Arrangement.Start
+            horizontalArrangement = if (chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived)) Arrangement.End else Arrangement.Start
         ) {
             Row(
                 verticalAlignment = Alignment.Top,
@@ -48,14 +48,16 @@ fun ChatMessageUI(
 
                 /**
                  * Show [ImageProfile] at the starting of chat message if
-                 * message is received, message doesn't contains [MessageType.GroupAction] and it's not deleted yet
+                 * message is received, message doesn't contain [MessageType.GroupAction], it's not deleted,
+                 * it's not flagged, and it's not a payment message.
                  */
                 val showProfilePic = (
-                    chatMessage.message.type.isGroupAction().not() &&
-                    chatMessage.isReceived &&
-                    chatMessage.isDeleted.not() &&
-                    chatMessage.isFlagged.not()
-                )
+                        chatMessage.message.type.isGroupAction().not() &&
+                                chatMessage.isReceived &&
+                                chatMessage.message.type != MessageType.Payment &&  // Do not show profile pic for received payment messages
+                                chatMessage.isDeleted.not() &&
+                                chatMessage.isFlagged.not()
+                        )
 
                 if (showProfilePic) {
                     Box(modifier = Modifier.width(42.dp)) {
@@ -100,14 +102,14 @@ fun ChatMessageUI(
                     } else {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (chatMessage.isSent) Arrangement.End else Arrangement.Start,
+                            horizontalArrangement = if (chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived)) Arrangement.End else Arrangement.Start,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             DisplayConditionalIcons(chatMessage)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (chatMessage.isSent) Arrangement.End else Arrangement.Start,
+                            horizontalArrangement = if (chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived)) Arrangement.End else Arrangement.Start,
                             verticalAlignment = Alignment.Top,
                         ) {
                             when {
@@ -152,15 +154,27 @@ fun ChatMessageUI(
                                             Modifier.weight(1f, fill = false)
                                         }
                                     ) {
-                                        ChatCard(
-                                            chatMessage,
-                                            chatViewModel,
-                                            modifier = if (messageContainsLinks) {
-                                                Modifier.width(350.dp)
-                                            } else {
-                                                null
-                                            }
-                                        )
+                                        if (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived) {
+                                            // Special handling for payment message that is received
+                                            Text(
+                                                text = "Payment received: ${chatMessage.message.amount?.value ?: "Unknown amount"}",
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = Roboto,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontSize = 14.sp,
+                                                textAlign = TextAlign.End,
+                                            )
+                                        } else {
+                                            ChatCard(
+                                                chatMessage,
+                                                chatViewModel,
+                                                modifier = if (messageContainsLinks) {
+                                                    Modifier.width(350.dp)
+                                                } else {
+                                                    null
+                                                }
+                                            )
+                                        }
                                     }
                                     if (chatMessage.isReceived && chatMessage.isDeleted.not() && !chatMessage.message.type.isInvoice()) {
                                         ChatOptionMenu(chatMessage, chatViewModel)

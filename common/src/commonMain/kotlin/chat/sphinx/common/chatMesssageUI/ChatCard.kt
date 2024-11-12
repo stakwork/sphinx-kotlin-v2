@@ -229,18 +229,6 @@ fun MessageTextLabel(
             //
             //                                }
         }
-    } else if (chatMessage.isUnsupportedType) {
-        Text(
-            modifier = Modifier
-                .wrapContentWidth(if (chatMessage.isSent) Alignment.End else Alignment.Start)
-                .padding(12.dp),
-            text = "Unsupported Message Type: ${chatMessage.unsupportedTypeLabel}",
-            fontWeight = FontWeight.W300,
-            fontFamily = Roboto,
-            fontStyle = FontStyle.Italic,
-            fontSize = 13.sp,
-            color = sphinx_orange
-        )
     } else if (chatMessage.message.messageDecryptionError) {
         Text(
             modifier = Modifier
