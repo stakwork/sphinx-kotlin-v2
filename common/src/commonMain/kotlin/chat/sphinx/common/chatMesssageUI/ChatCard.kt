@@ -46,16 +46,13 @@ import chat.sphinx.utils.toAnnotatedString
 import chat.sphinx.wrapper.lightning.toLightningNodePubKey
 import chat.sphinx.wrapper.lightning.toVirtualLightningNodeAddress
 import chat.sphinx.wrapper.message.*
-import theme.badge_red
-import theme.light_divider
 import chat.sphinx.wrapper.message.MessageType
 import chat.sphinx.wrapper.message.isSphinxCallLink
 import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.message.retrieveTextToShow
 import chat.sphinx.wrapper.tribe.toTribeJoinLink
 import com.multiplatform.webview.web.WebView
-import theme.primary_green
-import theme.sphinx_orange
+import theme.*
 
 @Composable
 fun ChatCard(
@@ -411,7 +408,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
             .width(300.dp)
             .wrapContentHeight()
             .then(
-                if (!isInvoiceExpired && (chatMessage.isSent && !chatMessage.message.isPaidInvoice) ) Modifier.drawBehind {
+                if (!isInvoiceExpired && (!chatMessage.message.isPaidInvoice) ) Modifier.drawBehind {
                     val strokeWidth = 2.dp.toPx()
                     val cornerRadiusPx = cornerRadius.toPx()
                     val dashWidthPx = dashWidth.toPx()
@@ -449,12 +446,24 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.QrCode,
-                    contentDescription = "Invoice Icon",
-                    tint = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue),
-                    modifier = Modifier.size(24.dp)
-                )
+                if (chatMessage.message.isPaidInvoice) {
+                    val icon = if (chatMessage.isReceived) Res.drawable.ic_received else Res.drawable.ic_sent
+                    val color = if (chatMessage.isReceived) primary_blue else MaterialTheme.colorScheme.tertiary
+
+                    Image(
+                        painter = imageResource(icon),
+                        contentDescription = "Icon",
+                        modifier = Modifier.size(32.dp),
+                        colorFilter = ColorFilter.tint(color.copy(alpha = alphaValue))
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.QrCode,
+                        contentDescription = "Invoice Icon",
+                        tint = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.width(8.dp))
 

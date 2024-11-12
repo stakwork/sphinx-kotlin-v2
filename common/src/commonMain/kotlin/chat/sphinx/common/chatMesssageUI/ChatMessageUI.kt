@@ -35,11 +35,24 @@ fun ChatMessageUI(
     print("rebuilding ${chatMessage.message.id}")
 
     val bubbleColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary
+//    val horizontalArrangement = if (chatMessage.isSent || (chatMessage.message.type.isInvoicePayment() && chatMessage.isReceived)) Arrangement.End else Arrangement.Start
+
+    val horizontalArrangement = when {
+        (chatMessage.isSent || (chatMessage.message.type.isInvoicePayment() && chatMessage.isReceived)) -> {
+            Arrangement.End
+        }
+        (chatMessage.isReceived || (chatMessage.message.type.isInvoicePayment() && chatMessage.isSent)) -> {
+            Arrangement.Start
+        }
+        else -> {
+            Arrangement.End
+        }
+    }
 
     Column(modifier = getMessageUIPadding(chatMessage)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = if (chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived)) Arrangement.End else Arrangement.Start
+            horizontalArrangement = horizontalArrangement
         ) {
             Row(
                 verticalAlignment = Alignment.Top,
@@ -56,7 +69,7 @@ fun ChatMessageUI(
                 val showProfilePic = (
                         chatMessage.message.type.isGroupAction().not() &&
                                 chatMessage.isReceived &&
-                                chatMessage.message.type != MessageType.Payment &&  // Do not show profile pic for received payment messages
+                                chatMessage.message.type != MessageType.Payment &&
                                 chatMessage.isDeleted.not() &&
                                 chatMessage.isFlagged.not()
                         )
@@ -104,14 +117,14 @@ fun ChatMessageUI(
                     } else {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived)) Arrangement.End else Arrangement.Start,
+                            horizontalArrangement = horizontalArrangement,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             DisplayConditionalIcons(chatMessage)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived)) Arrangement.End else Arrangement.Start,
+                            horizontalArrangement = horizontalArrangement,
                             verticalAlignment = Alignment.Top,
                         ) {
                             when {
