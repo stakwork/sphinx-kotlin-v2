@@ -400,7 +400,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
     val cornerRadius = 16.dp
     val dashWidth = 10.dp
     val dashGap = 6.dp
-    val alphaValue = if (isInvoiceExpired) 0.5f else 1.0f
+    val alphaValue = if (isInvoiceExpired && !chatMessage.message.isPaidInvoice) 0.5f else 1.0f
 
     Box(
         modifier = Modifier
@@ -408,7 +408,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
             .width(300.dp)
             .wrapContentHeight()
             .then(
-                if (!isInvoiceExpired && (!chatMessage.message.isPaidInvoice) ) Modifier.drawBehind {
+                if (!isInvoiceExpired && (!chatMessage.message.isPaidInvoice)) Modifier.drawBehind {
                     val strokeWidth = 2.dp.toPx()
                     val cornerRadiusPx = cornerRadius.toPx()
                     val dashWidthPx = dashWidth.toPx()
@@ -486,7 +486,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 )
             }
 
-            if (chatMessage.isReceived) {
+            if (chatMessage.isReceived && !chatMessage.message.isPaidInvoice) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(

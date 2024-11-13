@@ -35,18 +35,14 @@ fun ChatMessageUI(
     print("rebuilding ${chatMessage.message.id}")
 
     val bubbleColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary
-//    val horizontalArrangement = if (chatMessage.isSent || (chatMessage.message.type.isInvoicePayment() && chatMessage.isReceived)) Arrangement.End else Arrangement.Start
 
     val horizontalArrangement = when {
-        (chatMessage.isSent || (chatMessage.message.type.isInvoicePayment() && chatMessage.isReceived)) -> {
-            Arrangement.End
+        chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived() -> {
+            if (chatMessage.isSent) Arrangement.Start else Arrangement.End
         }
-        (chatMessage.isReceived || (chatMessage.message.type.isInvoicePayment() && chatMessage.isSent)) -> {
-            Arrangement.Start
-        }
-        else -> {
-            Arrangement.End
-        }
+        chatMessage.isSent -> Arrangement.End
+        chatMessage.isReceived -> Arrangement.Start
+        else -> Arrangement.End
     }
 
     Column(modifier = getMessageUIPadding(chatMessage)) {
@@ -74,7 +70,9 @@ fun ChatMessageUI(
                                 chatMessage.isFlagged.not()
                         )
 
-                if (showProfilePic) {
+                val isPaidInvoice = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived() && chatMessage.isSent
+
+                if (showProfilePic || isPaidInvoice) {
                     Box(modifier = Modifier.width(42.dp)) {
                         if (chatMessage.background is BubbleBackground.First) {
                             ImageProfile(
@@ -120,7 +118,7 @@ fun ChatMessageUI(
                             horizontalArrangement = horizontalArrangement,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            DisplayConditionalIcons(chatMessage)
+                            DisplayConditionalIcons(chatMessage, horizontalArrangement)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -169,7 +167,7 @@ fun ChatMessageUI(
                                             Modifier.weight(1f, fill = false)
                                         }
                                     ) {
-                                        if (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived) {
+                                        if (chatMessage.message.type == MessageType.Payment && chatMessage.message.status.isReceived()) {
                                             Text(
                                                 modifier = Modifier.padding(end = 4.dp),
                                                 text = "Invoice of ${chatMessage.message.amount.value} sats Paid on ${chatMessage.message.date.invoicePaymentDateFormat()}",

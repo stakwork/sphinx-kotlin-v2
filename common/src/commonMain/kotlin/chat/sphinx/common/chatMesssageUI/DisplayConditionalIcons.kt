@@ -29,7 +29,8 @@ import theme.primary_green
 
 @Composable
 fun DisplayConditionalIcons(
-    chatMessage: ChatMessage
+    chatMessage: ChatMessage,
+    horizontalArrangement: Arrangement.Horizontal
 ) {
     if (
         chatMessage.background !is BubbleBackground.First
@@ -38,7 +39,6 @@ fun DisplayConditionalIcons(
     }
 
     val color = chatMessage.colors[chatMessage.message.id.value]
-
     val isSentLikeMessage = chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived)
 
     Row(
@@ -46,9 +46,8 @@ fun DisplayConditionalIcons(
             .height(15.dp)
             .padding(bottom = 2.dp, end = if (isSentLikeMessage) 5.dp else 0.dp, start = if (isSentLikeMessage) 0.dp else 5.dp)
             .fillMaxWidth(),
-        horizontalArrangement = if (isSentLikeMessage) Arrangement.End else Arrangement.Start
+        horizontalArrangement = horizontalArrangement
     ) {
-
         if (isSentLikeMessage && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
             val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
             val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
@@ -153,14 +152,17 @@ fun DisplayConditionalIcons(
         if (!isSentLikeMessage && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
             val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
             val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
-            Text(
-                text = text,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 10.sp,
-                fontFamily = Roboto,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.padding(start = 8.dp)
-            )
+
+            if (!chatMessage.message.isPaidInvoice) {
+                Text(
+                    text = text,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 10.sp,
+                    fontFamily = Roboto,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
         }
     }
 }
