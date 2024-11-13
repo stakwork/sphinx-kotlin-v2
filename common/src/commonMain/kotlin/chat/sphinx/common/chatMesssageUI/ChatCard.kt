@@ -63,8 +63,14 @@ fun ChatCard(
     val uriHandler = LocalUriHandler.current
 
     val backgroundColor = when {
-        chatMessage.isSent && (chatMessage.message.isPaidInvoice || chatMessage.message.isExpiredInvoice()) ->
-            MaterialTheme.colorScheme.inversePrimary
+        chatMessage.isSent && chatMessage.message.isPaidInvoice ->
+            MaterialTheme.colorScheme.onSecondaryContainer
+
+        chatMessage.isSent &&  chatMessage.message.isExpiredInvoice() ->
+            MaterialTheme.colorScheme.background
+
+        chatMessage.isReceived && (chatMessage.message.isPaidInvoice || chatMessage.message.isExpiredInvoice()) ->
+            MaterialTheme.colorScheme.onSecondaryContainer
 
         chatMessage.message.type.isInvoice() ->
             MaterialTheme.colorScheme.background
@@ -96,7 +102,7 @@ fun ChatCard(
                 BotResponse(chatMessage, chatViewModel)
             }
             chatMessage.message.type == MessageType.Invoice -> {
-                InvoiceUI(chatMessage, chatViewModel)
+                InvoiceUI(chatMessage, backgroundColor)
             }
             else -> {
                 Column(modifier = Modifier.onSizeChanged {
@@ -394,7 +400,7 @@ fun getBubbleShape(chatMessage: ChatMessage): RoundedCornerShape {
 }
 
 @Composable
-fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
+fun InvoiceUI(chatMessage: ChatMessage, columnBackground: Color) {
     val isInvoiceExpired = chatMessage.message.isExpiredInvoice()
     val borderColor = if (chatMessage.isSent) MaterialTheme.colorScheme.onBackground else primary_green
     val cornerRadius = 16.dp
@@ -427,15 +433,15 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 } else Modifier
             )
     ) {
-        val columnBg = if (chatMessage.isSent && (chatMessage.message.isPaidInvoice || isInvoiceExpired)) {
+        val columnBg = if (chatMessage.isReceived && (chatMessage.message.isPaidInvoice || isInvoiceExpired)) {
             MaterialTheme.colorScheme.inversePrimary
         } else {
-            MaterialTheme.colorScheme.background
+            MaterialTheme.colorScheme.onSecondaryContainer
         }
         Column(
             modifier = Modifier
                 .padding(8.dp)
-                .background(columnBg, shape = RoundedCornerShape(12.dp))
+                .background(columnBackground, shape = RoundedCornerShape(12.dp))
                 .padding(
                     start = 8.dp,
                     top = 6.dp,
@@ -447,8 +453,8 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (chatMessage.message.isPaidInvoice) {
-                    val icon = if (chatMessage.isReceived) Res.drawable.ic_received else Res.drawable.ic_sent
-                    val color = if (chatMessage.isReceived) primary_blue else MaterialTheme.colorScheme.tertiary
+                    val icon = if (chatMessage.isSent) Res.drawable.ic_received else Res.drawable.ic_sent
+                    val color = if (chatMessage.isSent) primary_blue else MaterialTheme.colorScheme.tertiary
 
                     Image(
                         painter = imageResource(icon),
@@ -481,7 +487,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                     style = TextStyle(
                         fontWeight = FontWeight.Light,
                         fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue)
+                        color = if (chatMessage.message.isPaidInvoice) wash_out_send else MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue)
                     )
                 )
             }
@@ -492,10 +498,10 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    val alpha = !chatMessage.message.isExpiredInvoice()
                     Button(
                         onClick = { /* Handle payment click here */ },
-                        enabled = !chatMessage.message.isExpiredInvoice(),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = primary_green),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = primary_green.copy(alpha = if (alpha) 1.0f else 0.5f)),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Box(

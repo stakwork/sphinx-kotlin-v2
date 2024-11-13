@@ -34,10 +34,13 @@ fun ChatMessageUI(
 ) {
     print("rebuilding ${chatMessage.message.id}")
 
-    val bubbleColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary
+    val arrowColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary
 
     val horizontalArrangement = when {
         chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived() -> {
+            if (chatMessage.isSent) Arrangement.End else Arrangement.Start
+        }
+        chatMessage.message.type.isInvoice() && chatMessage.message.isPaidInvoice -> {
             if (chatMessage.isSent) Arrangement.Start else Arrangement.End
         }
         chatMessage.isSent -> Arrangement.End
@@ -70,7 +73,7 @@ fun ChatMessageUI(
                                 chatMessage.isFlagged.not()
                         )
 
-                val isPaidInvoice = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived() && chatMessage.isSent
+                val isPaidInvoice = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived() && chatMessage.isReceived
 
                 if (showProfilePic || isPaidInvoice) {
                     Box(modifier = Modifier.width(42.dp)) {
@@ -152,7 +155,7 @@ fun ChatMessageUI(
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
                                     if (chatMessage.isReceived) {
-                                        val color = if (chatMessage.message.type.isInvoice()) MaterialTheme.colorScheme.background else bubbleColor
+                                        val color = if (chatMessage.message.type.isInvoice()) MaterialTheme.colorScheme.background else arrowColor
                                         BubbleArrow(false, color, chatMessage)
                                     }
 
@@ -202,10 +205,10 @@ fun ChatMessageUI(
                                     if (chatMessage.isSent) {
                                         if (chatMessage.message.type.isInvoice()) {
                                             if (chatMessage.message.isExpiredInvoice() || (chatMessage.isSent && chatMessage.message.isPaidInvoice)) {
-                                                BubbleArrow(true, bubbleColor, chatMessage)
+                                                BubbleArrow(true, arrowColor, chatMessage)
                                             }
                                         } else {
-                                            BubbleArrow(true, bubbleColor, chatMessage)
+                                            BubbleArrow(true, arrowColor, chatMessage)
                                         }
                                     }
                                 }
