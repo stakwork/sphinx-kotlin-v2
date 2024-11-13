@@ -148,7 +148,7 @@ fun ChatMessageUI(
                                     }
                                 }
                                 else -> {
-                                    if (chatMessage.isSent && !chatMessage.message.isPaidInvoice) {
+                                    if (chatMessage.isSent && !chatMessage.message.isPaidInvoice && !chatMessage.message.type.isInvoicePayment()) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
                                     if (chatMessage.isReceived) {
@@ -169,7 +169,13 @@ fun ChatMessageUI(
                                     ) {
                                         if (chatMessage.message.type == MessageType.Payment && chatMessage.message.status.isReceived()) {
                                             Text(
-                                                modifier = Modifier.padding(end = 4.dp),
+                                                modifier = Modifier.padding(
+                                                    if (chatMessage.isReceived) {
+                                                        PaddingValues(end = 4.dp)
+                                                    } else {
+                                                        PaddingValues(start = 4.dp)
+                                                    }
+                                                ),
                                                 text = "Invoice of ${chatMessage.message.amount.value} sats Paid on ${chatMessage.message.date.invoicePaymentDateFormat()}",
                                                 style = TextStyle(
                                                     fontWeight = FontWeight.W400,

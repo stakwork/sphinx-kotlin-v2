@@ -39,7 +39,7 @@ fun DisplayConditionalIcons(
     }
 
     val color = chatMessage.colors[chatMessage.message.id.value]
-    val isSentLikeMessage = chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived)
+    val isSentLikeMessage = chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.message.status.isReceived())
 
     Row(
         modifier = Modifier
@@ -74,7 +74,7 @@ fun DisplayConditionalIcons(
                     .width(13.dp)
                     .padding(bottom = 1.dp)
             )
-        } else if (chatMessage.showBoltIcon) {
+        } else if (chatMessage.showBoltIcon && !(chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived())) {
             Icon(
                 Icons.Default.FlashOn,
                 "Confirmed",
@@ -137,7 +137,10 @@ fun DisplayConditionalIcons(
             modifier = Modifier.weight(1f, fill = false)
         )
 
-        if (chatMessage.showLockIcon && chatMessage.isReceived && !isSentLikeMessage) {
+        if ((chatMessage.showLockIcon && chatMessage.isReceived && !isSentLikeMessage) ||
+            chatMessage.message.type.isInvoicePayment() ||
+            chatMessage.message.type.isInvoice()
+        ) {
             Icon(
                 Icons.Default.Lock,
                 "Secure chat",
