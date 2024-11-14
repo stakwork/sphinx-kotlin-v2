@@ -66,7 +66,10 @@ fun ChatCard(
         chatMessage.isSent && chatMessage.message.isPaidInvoice ->
             MaterialTheme.colorScheme.onSecondaryContainer
 
-        chatMessage.isSent &&  chatMessage.message.isExpiredInvoice() ->
+        chatMessage.isReceived && chatMessage.message.isPaidInvoice ->
+            MaterialTheme.colorScheme.inversePrimary
+
+        chatMessage.isSent && chatMessage.message.isExpiredInvoice() ->
             MaterialTheme.colorScheme.inversePrimary
 
         chatMessage.isReceived && (chatMessage.message.isPaidInvoice || chatMessage.message.isExpiredInvoice()) ->
@@ -81,7 +84,6 @@ fun ChatCard(
         else ->
             MaterialTheme.colorScheme.inversePrimary
     }
-
 
     Card(
         backgroundColor = backgroundColor,

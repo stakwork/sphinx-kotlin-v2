@@ -35,14 +35,14 @@ fun ChatMessageUI(
     print("rebuilding ${chatMessage.message.id}")
 
     val arrowColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary
+    val isPaidInvoice = chatMessage.message.isPaidInvoice
+    val isPaymentConfirmed = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived()
 
     val horizontalArrangement = when {
-        chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived() -> {
-            if (chatMessage.isSent) Arrangement.End else Arrangement.Start
-        }
-        chatMessage.message.type.isInvoice() && chatMessage.message.isPaidInvoice -> {
-            if (chatMessage.isSent) Arrangement.Start else Arrangement.End
-        }
+        isPaidInvoice && chatMessage.isReceived -> Arrangement.End
+        isPaidInvoice && chatMessage.isSent -> Arrangement.Start
+        isPaymentConfirmed && chatMessage.isSent -> Arrangement.End
+        isPaymentConfirmed && chatMessage.isReceived -> Arrangement.Start
         chatMessage.isSent -> Arrangement.End
         chatMessage.isReceived -> Arrangement.Start
         else -> Arrangement.End
@@ -69,13 +69,12 @@ fun ChatMessageUI(
                         chatMessage.message.type.isGroupAction().not() &&
                                 chatMessage.isReceived &&
                                 chatMessage.message.type != MessageType.Payment &&
+                                chatMessage.message.isPaidInvoice.not() &&
                                 chatMessage.isDeleted.not() &&
                                 chatMessage.isFlagged.not()
                         )
 
-                val isPaidInvoice = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived() && chatMessage.isReceived
-
-                if (showProfilePic || isPaidInvoice) {
+                if (showProfilePic || (chatMessage.isSent && chatMessage.message.isPaidInvoice) || (chatMessage.isReceived && isPaymentConfirmed)) {
                     Box(modifier = Modifier.width(42.dp)) {
                         if (chatMessage.background is BubbleBackground.First) {
                             ImageProfile(
@@ -151,7 +150,7 @@ fun ChatMessageUI(
                                     }
                                 }
                                 else -> {
-                                    if (chatMessage.isSent && !chatMessage.message.isPaidInvoice && !chatMessage.message.type.isInvoicePayment()) {
+                                    if (chatMessage.isSent && !isPaidInvoice && !isPaymentConfirmed) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
                                     if (chatMessage.isReceived) {
@@ -170,7 +169,7 @@ fun ChatMessageUI(
                                             Modifier.weight(1f, fill = false)
                                         }
                                     ) {
-                                        if (chatMessage.message.type == MessageType.Payment && chatMessage.message.status.isReceived()) {
+                                        if (isPaymentConfirmed) {
                                             Text(
                                                 modifier = Modifier.padding(
                                                     if (chatMessage.isReceived) {
@@ -199,7 +198,7 @@ fun ChatMessageUI(
                                             )
                                         }
                                     }
-                                    if (chatMessage.isReceived && chatMessage.isDeleted.not() && !chatMessage.message.type.isInvoicePayment()) {
+                                    if (chatMessage.isReceived && chatMessage.isDeleted.not() && !isPaymentConfirmed && !isPaidInvoice) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
                                     if (chatMessage.isSent) {

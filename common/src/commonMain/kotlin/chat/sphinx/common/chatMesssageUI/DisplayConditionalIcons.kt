@@ -22,9 +22,6 @@ import chat.sphinx.wrapper.chat.isTribe
 import chat.sphinx.wrapper.chatTimeFormat
 import chat.sphinx.wrapper.invoiceExpirationTimeFormat
 import chat.sphinx.wrapper.message.*
-import chat.sphinx.wrapper.time
-import chat.sphinx.wrapper.toDateTime
-import theme.place_holder_text
 import theme.primary_green
 
 @Composable
@@ -39,16 +36,16 @@ fun DisplayConditionalIcons(
     }
 
     val color = chatMessage.colors[chatMessage.message.id.value]
-    val isSentLikeMessage = chatMessage.isSent || (chatMessage.message.type == MessageType.Payment && chatMessage.message.status.isReceived())
+    val isPaymentReceived = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived()
 
     Row(
         modifier = Modifier
             .height(15.dp)
-            .padding(bottom = 2.dp, end = if (isSentLikeMessage) 5.dp else 0.dp, start = if (isSentLikeMessage) 0.dp else 5.dp)
+            .padding(bottom = 2.dp, end = if (isPaymentReceived) 5.dp else 0.dp, start = if (isPaymentReceived) 0.dp else 5.dp)
             .fillMaxWidth(),
         horizontalArrangement = horizontalArrangement
     ) {
-        if (isSentLikeMessage && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
+        if (chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
             val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
             val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
 
@@ -64,7 +61,8 @@ fun DisplayConditionalIcons(
             }
         }
 
-        if (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived) {
+        if (isPaymentReceived && chatMessage.isSent) {
+            // This is showing the bolt icon for payments already paid
             Icon(
                 Icons.Default.FlashOn,
                 "Confirmed",
@@ -74,7 +72,8 @@ fun DisplayConditionalIcons(
                     .width(13.dp)
                     .padding(bottom = 1.dp)
             )
-        } else if (chatMessage.showBoltIcon && !(chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived())) {
+            } else if (chatMessage.showBoltIcon && !chatMessage.message.type.isInvoice()) {
+            // This is showing the bolt icon for type Invoice when it is received and it should be not shown
             Icon(
                 Icons.Default.FlashOn,
                 "Confirmed",
@@ -115,7 +114,7 @@ fun DisplayConditionalIcons(
             )
         }
 
-        if ((chatMessage.showLockIcon && isSentLikeMessage) || (chatMessage.message.type == MessageType.Payment && chatMessage.isReceived)) {
+        if ((chatMessage.showLockIcon) || (chatMessage.message.type.isInvoice() && chatMessage.isSent)) {
             Icon(
                 Icons.Default.Lock,
                 "Secure chat",
@@ -133,11 +132,11 @@ fun DisplayConditionalIcons(
             fontFamily = Roboto,
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 10.sp,
-            textAlign = if (isSentLikeMessage) TextAlign.End else TextAlign.Start,
+            textAlign = if (isPaymentReceived) TextAlign.End else TextAlign.Start,
             modifier = Modifier.weight(1f, fill = false)
         )
 
-        if ((chatMessage.showLockIcon && chatMessage.isReceived && !isSentLikeMessage) ||
+        if ((chatMessage.showLockIcon && chatMessage.isReceived && !isPaymentReceived) ||
             chatMessage.message.type.isInvoicePayment() ||
             chatMessage.message.type.isInvoice()
         ) {
@@ -152,7 +151,7 @@ fun DisplayConditionalIcons(
             )
         }
 
-        if (!isSentLikeMessage && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
+        if (chatMessage.isReceived && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
             val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
             val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
 
