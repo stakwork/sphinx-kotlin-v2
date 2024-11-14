@@ -153,7 +153,7 @@ fun ChatMessageUI(
                                     if (chatMessage.isSent && !isPaidInvoice && !isPaymentConfirmed) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
-                                    if (chatMessage.isReceived) {
+                                    if (chatMessage.isReceived && !isPaidInvoice && !isPaymentConfirmed) {
                                         val color = if (chatMessage.message.type.isInvoice()) MaterialTheme.colorScheme.background else arrowColor
                                         BubbleArrow(false, color, chatMessage)
                                     }
@@ -172,7 +172,7 @@ fun ChatMessageUI(
                                         if (isPaymentConfirmed) {
                                             Text(
                                                 modifier = Modifier.padding(
-                                                    if (chatMessage.isReceived) {
+                                                    if (chatMessage.isSent) {
                                                         PaddingValues(end = 4.dp)
                                                     } else {
                                                         PaddingValues(start = 4.dp)
@@ -194,21 +194,16 @@ fun ChatMessageUI(
                                                     Modifier.width(350.dp)
                                                 } else {
                                                     null
-                                                }
+                                                },
                                             )
                                         }
                                     }
                                     if (chatMessage.isReceived && chatMessage.isDeleted.not() && !isPaymentConfirmed && !isPaidInvoice) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
-                                    if (chatMessage.isSent) {
-                                        if (chatMessage.message.type.isInvoice()) {
-                                            if (chatMessage.message.isExpiredInvoice() || (chatMessage.isSent && chatMessage.message.isPaidInvoice)) {
-                                                BubbleArrow(true, arrowColor, chatMessage)
-                                            }
-                                        } else {
-                                            BubbleArrow(true, arrowColor, chatMessage)
-                                        }
+
+                                    if (chatMessage.isSent && !isPaymentConfirmed && !isPaidInvoice) {
+                                        BubbleArrow(true, arrowColor, chatMessage)
                                     }
                                 }
                             }

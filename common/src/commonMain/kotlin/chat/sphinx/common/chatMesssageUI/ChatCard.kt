@@ -435,11 +435,6 @@ fun InvoiceUI(chatMessage: ChatMessage, columnBackground: Color) {
                 } else Modifier
             )
     ) {
-        val columnBg = if (chatMessage.isReceived && (chatMessage.message.isPaidInvoice || isInvoiceExpired)) {
-            MaterialTheme.colorScheme.inversePrimary
-        } else {
-            MaterialTheme.colorScheme.onSecondaryContainer
-        }
         Column(
             modifier = Modifier
                 .padding(8.dp)

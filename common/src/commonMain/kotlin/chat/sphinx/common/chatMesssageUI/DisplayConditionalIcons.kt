@@ -29,6 +29,10 @@ fun DisplayConditionalIcons(
     chatMessage: ChatMessage,
     horizontalArrangement: Arrangement.Horizontal
 ) {
+    val isPaymentReceived = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived()
+    val isPaidInvoice = chatMessage.message.isPaidInvoice
+
+
     if (
         chatMessage.background !is BubbleBackground.First
     ) {
@@ -36,14 +40,11 @@ fun DisplayConditionalIcons(
     }
 
     val color = chatMessage.colors[chatMessage.message.id.value]
-    val isPaymentReceived = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived()
 
     Row(
         modifier = Modifier
             .height(15.dp)
-            .padding(bottom = 2.dp, end = if (isPaymentReceived) 5.dp else 0.dp, start = if (isPaymentReceived) 0.dp else 5.dp)
-            .fillMaxWidth(),
-        horizontalArrangement = horizontalArrangement
+            .padding(bottom = 2.dp, end = if (chatMessage.isSent) 5.dp else 0.dp, start = if (chatMessage.isSent) 0.dp else 5.dp)
     ) {
         if (chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
             val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
@@ -61,30 +62,6 @@ fun DisplayConditionalIcons(
             }
         }
 
-        if (isPaymentReceived && chatMessage.isSent) {
-            // This is showing the bolt icon for payments already paid
-            Icon(
-                Icons.Default.FlashOn,
-                "Confirmed",
-                tint = primary_green,
-                modifier = Modifier
-                    .height(14.dp)
-                    .width(13.dp)
-                    .padding(bottom = 1.dp)
-            )
-            } else if (chatMessage.showBoltIcon && !chatMessage.message.type.isInvoice()) {
-            // This is showing the bolt icon for type Invoice when it is received and it should be not shown
-            Icon(
-                Icons.Default.FlashOn,
-                "Confirmed",
-                tint = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier
-                    .height(14.dp)
-                    .width(13.dp)
-                    .padding(bottom = 1.dp)
-            )
-        }
-
         if (
             chatMessage.chat.isTribe() &&
             chatMessage.isReceived &&
@@ -96,7 +73,6 @@ fun DisplayConditionalIcons(
                 fontSize = 10.sp,
                 fontFamily = Roboto,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f, fill = true)
             )
             Spacer(
                 modifier = Modifier.width(4.dp)
@@ -105,24 +81,41 @@ fun DisplayConditionalIcons(
 
         if (chatMessage.showSendingIcon) {
             CircularProgressIndicator(
-                modifier = Modifier
-                    .height(14.dp)
-                    .width(14.dp)
-                    .padding(end = 4.dp, bottom = 2.dp),
+                modifier = Modifier.height(14.dp).width(14.dp).padding(end = 4.dp, bottom = 2.dp),
                 color = MaterialTheme.colorScheme.tertiary,
                 strokeWidth = 2.dp
             )
         }
 
-        if ((chatMessage.showLockIcon) || (chatMessage.message.type.isInvoice() && chatMessage.isSent)) {
+        val isUnsentPaymentReceived = !chatMessage.isSent && isPaymentReceived
+        val isUnpaidSentInvoice = chatMessage.isSent && chatMessage.message.type.isInvoice() && !isPaidInvoice
+        val isReceivedPaidInvoice = chatMessage.isReceived && isPaidInvoice
+        val isSentPaymentReceived = isPaymentReceived && chatMessage.isSent
+
+        if (chatMessage.showBoltIcon ||
+            (isUnsentPaymentReceived ||
+            isUnpaidSentInvoice ||
+            isReceivedPaidInvoice ||
+            isSentPaymentReceived)
+            ) {
+            Icon(
+                Icons.Default.FlashOn,
+                "Confirmed",
+                tint = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.height(14.dp).width(13.dp).padding(bottom = 1.dp)
+            )
+        }
+
+        if (chatMessage.showLockIcon && chatMessage.isSent || (isUnsentPaymentReceived ||
+            isUnpaidSentInvoice ||
+            isReceivedPaidInvoice ||
+            isSentPaymentReceived
+            )) {
             Icon(
                 Icons.Default.Lock,
                 "Secure chat",
                 tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .height(14.dp)
-                    .width(13.dp)
-                    .padding(end = 1.dp, bottom = 2.dp)
+                modifier = Modifier.height(14.dp).width(13.dp).padding(end = 1.dp, bottom = 2.dp)
             )
         }
 
@@ -132,22 +125,15 @@ fun DisplayConditionalIcons(
             fontFamily = Roboto,
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 10.sp,
-            textAlign = if (isPaymentReceived) TextAlign.End else TextAlign.Start,
-            modifier = Modifier.weight(1f, fill = false)
+            textAlign = if (chatMessage.isSent) TextAlign.End else TextAlign.Start,
         )
 
-        if ((chatMessage.showLockIcon && chatMessage.isReceived && !isPaymentReceived) ||
-            chatMessage.message.type.isInvoicePayment() ||
-            chatMessage.message.type.isInvoice()
-        ) {
+        if (chatMessage.showLockIcon && chatMessage.isReceived) {
             Icon(
                 Icons.Default.Lock,
                 "Secure chat",
                 tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .height(14.dp)
-                    .width(13.dp)
-                    .padding(end = 1.dp, bottom = 2.dp)
+                modifier = Modifier.height(14.dp).width(13.dp).padding(end = 1.dp, bottom = 2.dp)
             )
         }
 
