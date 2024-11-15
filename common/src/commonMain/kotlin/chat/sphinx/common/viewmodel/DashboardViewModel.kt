@@ -17,6 +17,7 @@ import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.eeemmddhmma
 import chat.sphinx.wrapper.hhmmElseDate
 import chat.sphinx.wrapper.lightning.*
+import chat.sphinx.wrapper.message.Message
 import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
 import chat.sphinx.wrapper.toDateTime
 import chat.sphinx.wrapper.tribe.TribeJoinLink
@@ -71,6 +72,7 @@ class DashboardViewModel(): WindowFocusListener {
     fun setInvoiceString(invoice: String) {
         _payInvoiceInfoStateFlow.value = _payInvoiceInfoStateFlow.value.copy(invoiceString = invoice)
     }
+
     private val _packageVersionAndUpgrade: MutableStateFlow<Pair<String?, Boolean>> by lazy {
         MutableStateFlow(Pair(null, false))
     }
@@ -214,6 +216,17 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun toggleJoinTribeWindow(open: Boolean, tribeJoinLink: TribeJoinLink? = null) {
         _joinTribeStateFlow.value = Pair(open, tribeJoinLink)
+    }
+
+    private val _payInvoiceConfirmationStateFlow: MutableStateFlow<Pair<Boolean, Message?>> by lazy {
+        MutableStateFlow(Pair(false, null))
+    }
+
+    val payInvoiceConfirmationStateFlow: StateFlow<Pair<Boolean, Message?>>
+        get() = _payInvoiceConfirmationStateFlow.asStateFlow()
+
+    fun togglePayInvoiceConfirmationWindow(open: Boolean, message: Message? = null) {
+        _payInvoiceConfirmationStateFlow.value = Pair(open, message)
     }
 
     private val _backUpWindowStateFlow: MutableStateFlow<Boolean> by lazy {
@@ -395,6 +408,21 @@ class DashboardViewModel(): WindowFocusListener {
         }
     }
 
+    private var payInvoiceJob: Job? = null
+    fun payContactInvoice(message: Message) {
+        if (payInvoiceJob?.isActive == true) {
+            return
+        }
+        payInvoiceJob = scope.launch(dispatchers.mainImmediate) {
+            repositoryDashboard.getAccountBalanceStateFlow().firstOrNull()?.let { balance ->
+                if (message.amount.value > balance.balance.value) {
+                    toast("Insufficient balance", primary_red)
+                } else {
+//                    connectManagerRepository.payContactPaymentRequest(message.paymentRequest)
+                }
+            }
+        }
+    }
 
     fun clearInvoice() {
         _payInvoiceInfoStateFlow.value = PayInvoiceInfo(null)

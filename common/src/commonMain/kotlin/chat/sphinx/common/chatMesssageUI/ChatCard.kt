@@ -3,7 +3,6 @@ package chat.sphinx.common.chatMesssageUI
 import Roboto
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
@@ -51,7 +50,6 @@ import chat.sphinx.wrapper.message.isSphinxCallLink
 import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.message.retrieveTextToShow
 import chat.sphinx.wrapper.tribe.toTribeJoinLink
-import com.multiplatform.webview.web.WebView
 import theme.*
 
 @Composable
@@ -104,7 +102,7 @@ fun ChatCard(
                 BotResponse(chatMessage, chatViewModel)
             }
             chatMessage.message.type == MessageType.Invoice -> {
-                InvoiceUI(chatMessage, backgroundColor)
+                InvoiceUI(chatMessage, chatViewModel, backgroundColor)
             }
             else -> {
                 Column(modifier = Modifier.onSizeChanged {
@@ -402,7 +400,7 @@ fun getBubbleShape(chatMessage: ChatMessage): RoundedCornerShape {
 }
 
 @Composable
-fun InvoiceUI(chatMessage: ChatMessage, columnBackground: Color) {
+fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel, columnBackground: Color) {
     val isInvoiceExpired = chatMessage.message.isExpiredInvoice()
     val borderColor = if (chatMessage.isSent) MaterialTheme.colorScheme.onBackground else primary_green
     val cornerRadius = 16.dp
@@ -497,7 +495,9 @@ fun InvoiceUI(chatMessage: ChatMessage, columnBackground: Color) {
                 ) {
                     val alpha = !chatMessage.message.isExpiredInvoice()
                     Button(
-                        onClick = { /* Handle payment click here */ },
+                        onClick = {
+                            chatViewModel.payContactInvoice(chatMessage.message)
+                        },
                         colors = ButtonDefaults.buttonColors(backgroundColor = primary_green.copy(alpha = if (alpha) 1.0f else 0.5f)),
                         modifier = Modifier.fillMaxWidth(),
                     ) {

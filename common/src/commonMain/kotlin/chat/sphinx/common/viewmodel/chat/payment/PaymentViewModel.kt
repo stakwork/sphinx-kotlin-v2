@@ -193,7 +193,6 @@ class PaymentViewModel(
             val requestPayment = sendPaymentBuilder.build()
 
             if (requestPayment != null) {
-
                 messageRepository.sendNewPaymentRequest(requestPayment)
                 chatViewModel.hideChatActionsPopup()
 

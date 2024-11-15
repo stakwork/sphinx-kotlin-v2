@@ -482,6 +482,11 @@ abstract class ChatViewModel(
         }
     }
 
+    fun payContactInvoice(message: Message) {
+        dashboardViewModel.togglePayInvoiceConfirmationWindow(true, message)
+    }
+
+
     private fun flagMessage(chat: Chat, message: Message) {
         scope.launch(dispatchers.mainImmediate) {
             messageRepository.flagMessage(message, chat)
