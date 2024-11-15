@@ -418,7 +418,7 @@ class DashboardViewModel(): WindowFocusListener {
                 if (message.amount.value > balance.balance.value) {
                     toast("Insufficient balance", primary_red)
                 } else {
-//                    connectManagerRepository.payContactPaymentRequest(message.paymentRequest)
+                    connectManagerRepository.payContactPaymentRequest(message.paymentRequest)
                 }
             }
         }
