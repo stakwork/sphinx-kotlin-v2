@@ -64,6 +64,8 @@ fun ChatAction(
                         ChatActionMenu(chatViewModel)
                     }
                     ChatViewModel.ChatActionsMode.SEND_AMOUNT -> {
+                        paymentViewModel.setPaymentMode(PaymentViewModel.PaymentMode.SEND)
+
                         SendReceiveAmountPopup(
                             chatViewModel, paymentViewModel
                         )
@@ -81,10 +83,10 @@ fun ChatAction(
                         )
                     }
                     ChatViewModel.ChatActionsMode.REQUEST -> {
-                        //TODO implement request payment
-//                        SendReceiveAmountPopup(
-//                            chatViewModel
-//                        )
+                        paymentViewModel.setPaymentMode(PaymentViewModel.PaymentMode.RECEIVE)
+                        SendReceiveAmountPopup(
+                            chatViewModel, paymentViewModel
+                        )
                     }
                     ChatViewModel.ChatActionsMode.SEND_TEMPLATE -> {
                         PaymentDetailTemplate(

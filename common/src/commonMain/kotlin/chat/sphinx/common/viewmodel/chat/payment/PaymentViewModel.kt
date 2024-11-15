@@ -29,7 +29,7 @@ import theme.primary_green
 
 class PaymentViewModel(
     val chatViewModel: ChatViewModel,
-    val mode: PaymentMode = PaymentMode.SEND
+    var mode: PaymentMode = PaymentMode.SEND
 ) {
 
     val scope = SphinxContainer.appModule.applicationScope
@@ -51,6 +51,10 @@ class PaymentViewModel(
 
     fun getPaymentData() : PaymentData? {
         return this.paymentData
+    }
+
+    fun setPaymentMode(paymentMode: PaymentMode) {
+        this.mode = paymentMode
     }
 
     enum class PaymentMode {

@@ -127,11 +127,6 @@ abstract class ChatViewModel(
         mode: ChatActionsMode,
         data: PaymentViewModel.PaymentData? = null
     ) {
-        if (mode == ChatActionsMode.REQUEST) {
-            toast("Request amount not implemented yet")
-            return
-        }
-
         _chatActionsStateFlow.value = Pair(mode, data)
     }
 
