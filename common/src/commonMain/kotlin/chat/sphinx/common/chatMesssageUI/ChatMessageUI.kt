@@ -36,7 +36,7 @@ fun ChatMessageUI(
 
     val arrowColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary
     val isPaidInvoice = chatMessage.message.isPaidInvoice
-    val isPaymentConfirmed = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived()
+    val isPaymentConfirmed = chatMessage.message.type.isInvoicePayment()
 
     val horizontalArrangement = when {
         isPaidInvoice && chatMessage.isReceived -> Arrangement.End
