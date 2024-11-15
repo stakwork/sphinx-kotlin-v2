@@ -195,7 +195,11 @@ fun SendReceiveAmountPopup(
             ) {
                 CommonButton(
                     callback = {
-                        viewModel.sendPayment()
+                        if (viewModel.mode == PaymentViewModel.PaymentMode.SEND) {
+                            viewModel.sendPayment()
+                        } else {
+                            viewModel.requestContactPayment()
+                        }
                     },
                     text = if (viewModel.isTribePayment() || viewModel.mode == PaymentViewModel.PaymentMode.RECEIVE) "Confirm" else "Continue",
                     enabled = viewModel.chatPaymentState.saveButtonEnabled

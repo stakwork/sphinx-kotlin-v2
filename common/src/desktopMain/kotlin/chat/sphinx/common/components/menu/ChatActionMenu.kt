@@ -65,7 +65,6 @@ fun ChatAction(
                     }
                     ChatViewModel.ChatActionsMode.SEND_AMOUNT -> {
                         paymentViewModel.setPaymentMode(PaymentViewModel.PaymentMode.SEND)
-
                         SendReceiveAmountPopup(
                             chatViewModel, paymentViewModel
                         )
@@ -166,9 +165,14 @@ fun ChatActionMenu(
                     .fillMaxWidth()
                     .height(55.dp)
                     .clickable(
-                        onClick =
-                        {
-                            chatViewModel.toggleChatActionsPopup(ChatViewModel.ChatActionsMode.REQUEST)
+                        onClick = {
+                            chatViewModel.toggleChatActionsPopup(
+                                ChatViewModel.ChatActionsMode.REQUEST,
+                                PaymentViewModel.PaymentData(
+                                    chatViewModel.chatId,
+                                    (chatViewModel as? ChatContactViewModel)?.contactId
+                                )
+                            )
                         },
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }

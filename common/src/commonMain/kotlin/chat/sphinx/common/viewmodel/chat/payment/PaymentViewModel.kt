@@ -8,7 +8,6 @@ import chat.sphinx.common.state.ChatPaymentState
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.concepts.repository.message.model.SendPayment
 import chat.sphinx.di.container.SphinxContainer
-import chat.sphinx.logger.LogType
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
@@ -175,6 +174,31 @@ class PaymentViewModel(
                 is Response.Success -> {
                     chatViewModel.hideChatActionsPopup()
                 }
+            }
+        }
+    }
+
+    private var requestContactPaymentJob: Job? = null
+    fun requestContactPayment() {
+        if (requestContactPaymentJob?.isActive == true) {
+            return
+        }
+
+        sendPaymentBuilder.setAmount(chatPaymentState.amount ?: 0)
+        sendPaymentBuilder.setChatId(paymentData?.chatId)
+        sendPaymentBuilder.setContactId(paymentData?.contactId)
+        sendPaymentBuilder.setText(chatPaymentState.message)
+
+        scope.launch(dispatchers.mainImmediate) {
+            val requestPayment = sendPaymentBuilder.build()
+
+            if (requestPayment != null) {
+
+                messageRepository.sendNewPaymentRequest(requestPayment)
+                chatViewModel.hideChatActionsPopup()
+
+            } else {
+                toast("There was an error requesting the payment. Please try again later.", badge_red)
             }
         }
     }
