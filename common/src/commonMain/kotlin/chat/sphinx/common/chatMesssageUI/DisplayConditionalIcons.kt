@@ -24,17 +24,20 @@ import chat.sphinx.wrapper.invoiceExpirationTimeFormat
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.time
 import chat.sphinx.wrapper.toDateTime
-import com.soywiz.klock.wrapped.value
-import theme.primary_green
 
 @Composable
 fun DisplayConditionalIcons(
     chatMessage: ChatMessage,
     horizontalArrangement: Arrangement.Horizontal
 ) {
-    val isPaymentReceived = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived()
+    val isPaymentPaid = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived()
     val isPaidInvoice = chatMessage.message.isPaidInvoice
-
+    val isReceivedPaidInvoice = chatMessage.isReceived && isPaidInvoice
+    val isPaidSentInvoice = chatMessage.isSent && isPaidInvoice
+    val isPaymentTypeReceived = chatMessage.isReceived && isPaymentPaid
+    val isPaymentTypeSent = isPaymentPaid && chatMessage.isSent
+    val isUnpaidReceivedInvoice = chatMessage.isReceived && chatMessage.message.type.isInvoice() && !isPaidInvoice
+    val isUnpaidSentInvoice = chatMessage.isSent && chatMessage.message.type.isInvoice() && !isPaidInvoice
 
     if (
         chatMessage.background !is BubbleBackground.First
@@ -90,17 +93,9 @@ fun DisplayConditionalIcons(
             )
         }
 
-        val isUnsentPaymentReceived = !chatMessage.isSent && isPaymentReceived
-        val isUnpaidSentInvoice = chatMessage.isSent && chatMessage.message.type.isInvoice() && !isPaidInvoice
-        val isReceivedPaidInvoice = chatMessage.isReceived && isPaidInvoice
-        val isSentPaymentReceived = isPaymentReceived && chatMessage.isSent
-
-        if (chatMessage.showBoltIcon ||
-            (isUnsentPaymentReceived ||
-            isUnpaidSentInvoice ||
-            isReceivedPaidInvoice ||
-            isSentPaymentReceived)
-            ) {
+        if (chatMessage.showBoltIcon && !isPaidSentInvoice ||
+            (isUnpaidSentInvoice || isReceivedPaidInvoice || isPaymentTypeSent)
+        ) {
             Icon(
                 Icons.Default.FlashOn,
                 "Confirmed",
@@ -109,11 +104,9 @@ fun DisplayConditionalIcons(
             )
         }
 
-        if (chatMessage.showLockIcon && chatMessage.isSent || (isUnsentPaymentReceived ||
-            isUnpaidSentInvoice ||
-            isReceivedPaidInvoice ||
-            isSentPaymentReceived
-            )) {
+        if (chatMessage.showLockIcon && chatMessage.isSent ||
+            (isUnpaidSentInvoice || isReceivedPaidInvoice ||  isPaymentTypeSent)
+        ) {
             Icon(
                 Icons.Default.Lock,
                 "Secure chat",
@@ -131,7 +124,9 @@ fun DisplayConditionalIcons(
             textAlign = if (chatMessage.isSent) TextAlign.End else TextAlign.Start,
         )
 
-        if (chatMessage.showLockIcon && chatMessage.isReceived) {
+        if (chatMessage.showLockIcon && chatMessage.isReceived ||
+            (isUnpaidReceivedInvoice || isPaidSentInvoice || isPaymentTypeReceived))
+        {
             Icon(
                 Icons.Default.Lock,
                 "Secure chat",
