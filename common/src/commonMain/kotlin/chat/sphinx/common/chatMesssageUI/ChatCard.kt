@@ -1,13 +1,12 @@
 package chat.sphinx.common.chatMesssageUI
 
 import Roboto
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.MaterialTheme
@@ -18,7 +17,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -29,25 +33,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import chat.sphinx.common.Res
 import chat.sphinx.common.components.*
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
+import chat.sphinx.platform.imageResource
 import chat.sphinx.utils.linkify.LinkTag
 import chat.sphinx.utils.linkify.SphinxLinkify
 import chat.sphinx.utils.toAnnotatedString
 import chat.sphinx.wrapper.lightning.toLightningNodePubKey
 import chat.sphinx.wrapper.lightning.toVirtualLightningNodeAddress
 import chat.sphinx.wrapper.message.*
-import theme.badge_red
-import theme.light_divider
 import chat.sphinx.wrapper.message.MessageType
 import chat.sphinx.wrapper.message.isSphinxCallLink
 import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.message.retrieveTextToShow
 import chat.sphinx.wrapper.tribe.toTribeJoinLink
-import com.multiplatform.webview.web.WebView
-import theme.sphinx_orange
+import theme.*
 
 @Composable
 fun ChatCard(
@@ -57,8 +60,31 @@ fun ChatCard(
 ) {
     val uriHandler = LocalUriHandler.current
 
+    val backgroundColor = when {
+        chatMessage.isSent && chatMessage.message.isPaidInvoice ->
+            MaterialTheme.colorScheme.onSecondaryContainer
+
+        chatMessage.isReceived && chatMessage.message.isPaidInvoice ->
+            MaterialTheme.colorScheme.inversePrimary
+
+        chatMessage.isSent && chatMessage.message.isExpiredInvoice() ->
+            MaterialTheme.colorScheme.inversePrimary
+
+        chatMessage.isReceived && (chatMessage.message.isPaidInvoice || chatMessage.message.isExpiredInvoice()) ->
+            MaterialTheme.colorScheme.onSecondaryContainer
+
+        chatMessage.message.type.isInvoice() ->
+            MaterialTheme.colorScheme.background
+
+        chatMessage.isReceived ->
+            MaterialTheme.colorScheme.onSecondaryContainer
+
+        else ->
+            MaterialTheme.colorScheme.inversePrimary
+    }
+
     Card(
-        backgroundColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary,
+        backgroundColor = backgroundColor,
         shape = getBubbleShape(chatMessage),
         modifier = modifier ?: Modifier
     ) {
@@ -74,7 +100,9 @@ fun ChatCard(
             }
             chatMessage.message.type == MessageType.BotRes -> {
                 BotResponse(chatMessage, chatViewModel)
-                // create a component with WebView
+            }
+            chatMessage.message.type == MessageType.Invoice -> {
+                InvoiceMessage(chatMessage, chatViewModel, backgroundColor)
             }
             else -> {
                 Column(modifier = Modifier.onSizeChanged {
@@ -213,18 +241,6 @@ fun MessageTextLabel(
             //
             //                                }
         }
-    } else if (chatMessage.isUnsupportedType) {
-        Text(
-            modifier = Modifier
-                .wrapContentWidth(if (chatMessage.isSent) Alignment.End else Alignment.Start)
-                .padding(12.dp),
-            text = "Unsupported Message Type: ${chatMessage.unsupportedTypeLabel}",
-            fontWeight = FontWeight.W300,
-            fontFamily = Roboto,
-            fontStyle = FontStyle.Italic,
-            fontSize = 13.sp,
-            color = sphinx_orange
-        )
     } else if (chatMessage.message.messageDecryptionError) {
         Text(
             modifier = Modifier
@@ -378,6 +394,138 @@ fun getBubbleShape(chatMessage: ChatMessage): RoundedCornerShape {
             }
             else -> {
                 RoundedCornerShape(topEnd = 0.dp, topStart = 10.dp, bottomEnd = 10.dp, bottomStart = 10.dp)
+            }
+        }
+    }
+}
+
+@Composable
+fun InvoiceMessage(chatMessage: ChatMessage, chatViewModel: ChatViewModel, columnBackground: Color) {
+    val isInvoiceExpired = chatMessage.message.isExpiredInvoice()
+    val borderColor = if (chatMessage.isSent) MaterialTheme.colorScheme.onBackground else primary_green
+    val cornerRadius = 14.dp
+    val dashWidth = 8.dp
+    val dashGap = 4.dp
+    val alphaValue = if (isInvoiceExpired && !chatMessage.message.isPaidInvoice) 0.5f else 1.0f
+
+    Box(
+        modifier = Modifier
+            .padding(6.dp)
+            .width(260.dp)
+            .wrapContentHeight()
+            .then(
+                if (!isInvoiceExpired && (!chatMessage.message.isPaidInvoice)) Modifier.drawBehind {
+                    val strokeWidth = 1.5.dp.toPx()
+                    val cornerRadiusPx = cornerRadius.toPx()
+                    val dashWidthPx = dashWidth.toPx()
+                    val dashGapPx = dashGap.toPx()
+
+                    drawRoundRect(
+                        color = borderColor,
+                        topLeft = Offset(x = strokeWidth / 2, y = strokeWidth / 2),
+                        size = Size(width = size.width - strokeWidth, height = size.height - strokeWidth),
+                        cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                        style = Stroke(
+                            width = strokeWidth,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidthPx, dashGapPx))
+                        )
+                    )
+                } else Modifier
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(6.dp)
+                .background(columnBackground, shape = RoundedCornerShape(10.dp))
+                .padding(
+                    start = 6.dp,
+                    top = 4.dp,
+                    end = 4.dp,
+                    bottom = 4.dp
+                )
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (chatMessage.message.isPaidInvoice) {
+                    val icon = if (chatMessage.isSent) Res.drawable.ic_received else Res.drawable.ic_sent
+                    val color = if (chatMessage.isSent) primary_blue else MaterialTheme.colorScheme.tertiary
+
+                    Image(
+                        painter = imageResource(icon),
+                        contentDescription = "Icon",
+                        modifier = Modifier.size(28.dp),
+                        colorFilter = ColorFilter.tint(color.copy(alpha = alphaValue))
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.QrCode,
+                        contentDescription = "Invoice Icon",
+                        tint = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                Text(
+                    text = chatMessage.message.amount.value.toString() ?: "",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue)
+                    )
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "sat",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Light,
+                        fontSize = 12.sp,
+                        color = if (chatMessage.message.isPaidInvoice) wash_out_send else MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue)
+                    )
+                )
+            }
+
+            if (chatMessage.isReceived && !chatMessage.message.isPaidInvoice) {
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val alpha = !chatMessage.message.isExpiredInvoice()
+                    Button(
+                        onClick = {
+                            chatViewModel.payContactInvoice(chatMessage.message)
+                        },
+                        colors = ButtonDefaults.buttonColors(backgroundColor = primary_green.copy(alpha = if (alpha) 1.0f else 0.5f)),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "PAY",
+                                modifier = Modifier.align(Alignment.Center),
+                                fontSize = 12.sp,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue),
+                                fontWeight = FontWeight.W600,
+                                fontFamily = Roboto,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Image(
+                                painter = imageResource(Res.drawable.ic_sent),
+                                contentDescription = "Sent Icon",
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .size(22.dp),
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue))
+                            )
+                        }
+                    }
+                }
             }
         }
     }

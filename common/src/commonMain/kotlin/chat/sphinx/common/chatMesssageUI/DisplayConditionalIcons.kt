@@ -18,14 +18,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.BubbleBackground
+import chat.sphinx.wrapper.*
 import chat.sphinx.wrapper.chat.isTribe
-import chat.sphinx.wrapper.chatTimeFormat
-import theme.place_holder_text
+import chat.sphinx.wrapper.message.*
 
 @Composable
 fun DisplayConditionalIcons(
-    chatMessage: ChatMessage
+    chatMessage: ChatMessage,
+    horizontalArrangement: Arrangement.Horizontal
 ) {
+    val isPaymentPaid = chatMessage.message.type.isInvoicePayment() && chatMessage.message.status.isReceived()
+    val isPaidInvoice = chatMessage.message.isPaidInvoice
+    val isReceivedPaidInvoice = chatMessage.isReceived && isPaidInvoice
+    val isPaidSentInvoice = chatMessage.isSent && isPaidInvoice
+    val isPaymentTypeReceived = chatMessage.isReceived && isPaymentPaid
+    val isPaymentTypeSent = isPaymentPaid && chatMessage.isSent
+    val isUnpaidReceivedInvoice = chatMessage.isReceived && chatMessage.message.type.isInvoice() && !isPaidInvoice
+    val isUnpaidSentInvoice = chatMessage.isSent && chatMessage.message.type.isInvoice() && !isPaidInvoice
+
     if (
         chatMessage.background !is BubbleBackground.First
     ) {
@@ -39,6 +49,22 @@ fun DisplayConditionalIcons(
             .height(15.dp)
             .padding(bottom = 2.dp, end = if (chatMessage.isSent) 5.dp else 0.dp, start = if (chatMessage.isSent) 0.dp else 5.dp)
     ) {
+        if (chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
+            val expirationDate = chatMessage.message.expirationDate?.time?.let { it * 1000 }?.toDateTimeUTC()?.invoiceExpirationTimeFormat()
+            val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
+
+            if (!chatMessage.message.isPaidInvoice) {
+                Text(
+                    text = text,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 10.sp,
+                    fontFamily = Roboto,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+        }
+
         if (
             chatMessage.chat.isTribe() &&
             chatMessage.isReceived &&
@@ -64,7 +90,9 @@ fun DisplayConditionalIcons(
             )
         }
 
-        if (chatMessage.showBoltIcon) {
+        if (chatMessage.showBoltIcon && !isPaidSentInvoice ||
+            (isUnpaidSentInvoice || isReceivedPaidInvoice || isPaymentTypeSent)
+        ) {
             Icon(
                 Icons.Default.FlashOn,
                 "Confirmed",
@@ -73,7 +101,9 @@ fun DisplayConditionalIcons(
             )
         }
 
-        if (chatMessage.showLockIcon && chatMessage.isSent) {
+        if (chatMessage.showLockIcon && chatMessage.isSent ||
+            (isUnpaidSentInvoice || isReceivedPaidInvoice ||  isPaymentTypeSent)
+        ) {
             Icon(
                 Icons.Default.Lock,
                 "Secure chat",
@@ -91,13 +121,31 @@ fun DisplayConditionalIcons(
             textAlign = if (chatMessage.isSent) TextAlign.End else TextAlign.Start,
         )
 
-        if (chatMessage.showLockIcon && chatMessage.isReceived) {
+        if (chatMessage.showLockIcon && chatMessage.isReceived ||
+            (isUnpaidReceivedInvoice || isPaidSentInvoice || isPaymentTypeReceived))
+        {
             Icon(
                 Icons.Default.Lock,
                 "Secure chat",
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.height(14.dp).width(13.dp).padding(end = 1.dp, bottom = 2.dp)
             )
+        }
+
+        if (chatMessage.isReceived && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
+            val expirationDate = chatMessage.message.expirationDate?.time?.let { it * 1000 }?.toDateTimeUTC()?.invoiceExpirationTimeFormat()
+            val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
+
+            if (!chatMessage.message.isPaidInvoice) {
+                Text(
+                    text = text,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 10.sp,
+                    fontFamily = Roboto,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
         }
     }
 }

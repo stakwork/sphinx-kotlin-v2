@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.font.FontStyle
 import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.wrapper.chat.isTribe
 import chat.sphinx.utils.containLinksWithPreview
+import chat.sphinx.wrapper.invoicePaymentDateFormat
 
 @Composable
 fun ChatMessageUI(
@@ -32,12 +34,24 @@ fun ChatMessageUI(
 ) {
     print("rebuilding ${chatMessage.message.id}")
 
-    val bubbleColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary
+    val arrowColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary
+    val isPaidInvoice = chatMessage.message.isPaidInvoice
+    val isPaymentConfirmed = chatMessage.message.type.isInvoicePayment()
+
+    val horizontalArrangement = when {
+        isPaidInvoice && chatMessage.isReceived -> Arrangement.End
+        isPaidInvoice && chatMessage.isSent -> Arrangement.Start
+        isPaymentConfirmed && chatMessage.isSent -> Arrangement.End
+        isPaymentConfirmed && chatMessage.isReceived -> Arrangement.Start
+        chatMessage.isSent -> Arrangement.End
+        chatMessage.isReceived -> Arrangement.Start
+        else -> Arrangement.End
+    }
 
     Column(modifier = getMessageUIPadding(chatMessage)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = if (chatMessage.isSent) Arrangement.End else Arrangement.Start
+            horizontalArrangement = horizontalArrangement
         ) {
             Row(
                 verticalAlignment = Alignment.Top,
@@ -48,16 +62,19 @@ fun ChatMessageUI(
 
                 /**
                  * Show [ImageProfile] at the starting of chat message if
-                 * message is received, message doesn't contains [MessageType.GroupAction] and it's not deleted yet
+                 * message is received, message doesn't contain [MessageType.GroupAction], it's not deleted,
+                 * it's not flagged, and it's not a payment message.
                  */
                 val showProfilePic = (
-                    chatMessage.message.type.isGroupAction().not() &&
-                    chatMessage.isReceived &&
-                    chatMessage.isDeleted.not() &&
-                    chatMessage.isFlagged.not()
-                )
+                        chatMessage.message.type.isGroupAction().not() &&
+                                chatMessage.isReceived &&
+                                chatMessage.message.type != MessageType.Payment &&
+                                chatMessage.message.isPaidInvoice.not() &&
+                                chatMessage.isDeleted.not() &&
+                                chatMessage.isFlagged.not()
+                        )
 
-                if (showProfilePic) {
+                if (showProfilePic || (chatMessage.isSent && chatMessage.message.isPaidInvoice) || (chatMessage.isReceived && isPaymentConfirmed)) {
                     Box(modifier = Modifier.width(42.dp)) {
                         if (chatMessage.background is BubbleBackground.First) {
                             ImageProfile(
@@ -100,14 +117,14 @@ fun ChatMessageUI(
                     } else {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (chatMessage.isSent) Arrangement.End else Arrangement.Start,
+                            horizontalArrangement = horizontalArrangement,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            DisplayConditionalIcons(chatMessage)
+                            DisplayConditionalIcons(chatMessage, horizontalArrangement)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (chatMessage.isSent) Arrangement.End else Arrangement.Start,
+                            horizontalArrangement = horizontalArrangement,
                             verticalAlignment = Alignment.Top,
                         ) {
                             when {
@@ -133,11 +150,12 @@ fun ChatMessageUI(
                                     }
                                 }
                                 else -> {
-                                    if (chatMessage.isSent) {
+                                    if (chatMessage.isSent && !isPaidInvoice && !isPaymentConfirmed) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
-                                    if (chatMessage.isReceived) {
-                                        BubbleArrow(false, bubbleColor, chatMessage)
+                                    if (chatMessage.isReceived && !isPaidInvoice && !isPaymentConfirmed) {
+                                        val color = if (chatMessage.message.type.isInvoice()) MaterialTheme.colorScheme.background else arrowColor
+                                        BubbleArrow(false, color, chatMessage)
                                     }
 
                                     val messageContainsLinks = chatMessage.message.retrieveTextToShow()?.containLinksWithPreview() ?: false
@@ -151,21 +169,41 @@ fun ChatMessageUI(
                                             Modifier.weight(1f, fill = false)
                                         }
                                     ) {
-                                        ChatCard(
-                                            chatMessage,
-                                            chatViewModel,
-                                            modifier = if (messageContainsLinks) {
-                                                Modifier.width(350.dp)
-                                            } else {
-                                                null
-                                            }
-                                        )
+                                        if (isPaymentConfirmed) {
+                                            Text(
+                                                modifier = Modifier.padding(
+                                                    if (chatMessage.isSent) {
+                                                        PaddingValues(end = 4.dp)
+                                                    } else {
+                                                        PaddingValues(start = 4.dp)
+                                                    }
+                                                ),
+                                                text = "Invoice of ${chatMessage.message.amount.value} sats Paid on ${chatMessage.message.date.invoicePaymentDateFormat()}",
+                                                style = TextStyle(
+                                                    fontWeight = FontWeight.W400,
+                                                    fontSize = 11.sp,
+                                                    color = MaterialTheme.colorScheme.tertiary,
+                                                )
+                                            )
+
+                                        } else {
+                                            ChatCard(
+                                                chatMessage,
+                                                chatViewModel,
+                                                modifier = if (messageContainsLinks) {
+                                                    Modifier.width(350.dp)
+                                                } else {
+                                                    null
+                                                },
+                                            )
+                                        }
                                     }
-                                    if (chatMessage.isReceived && chatMessage.isDeleted.not()) {
+                                    if (chatMessage.isReceived && chatMessage.isDeleted.not() && !isPaymentConfirmed && !isPaidInvoice) {
                                         ChatOptionMenu(chatMessage, chatViewModel)
                                     }
-                                    if (chatMessage.isSent) {
-                                        BubbleArrow(true, bubbleColor, chatMessage)
+
+                                    if (chatMessage.isSent && !isPaymentConfirmed && !isPaidInvoice) {
+                                        BubbleArrow(true, arrowColor, chatMessage)
                                     }
                                 }
                             }

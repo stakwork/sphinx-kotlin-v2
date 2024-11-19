@@ -315,6 +315,7 @@ fun DashboardSidebarUI(
             JoinTribeWindow(dashboardViewModel)
             WebAppWindow(dashboardViewModel, webAppViewModel)
             AuthorizeWindow(webAppViewModel)
+            PayInvoiceConfirmationWindow(dashboardViewModel)
         }
 
         if (isMenuExpanded) {
@@ -571,6 +572,18 @@ fun PayInvoiceWindow(
     val payInvoiceWindowState by dashboardViewModel.payInvoiceWindowStateFlow.collectAsState()
     if (payInvoiceWindowState) {
         PayInvoiceWindowUI(dashboardViewModel)
+    }
+}
+
+@Composable
+fun PayInvoiceConfirmationWindow(
+    dashboardViewModel: DashboardViewModel
+) {
+    val payInvoiceConfirmationWindowState by dashboardViewModel.payInvoiceConfirmationStateFlow.collectAsState()
+    if (payInvoiceConfirmationWindowState.first) {
+        payInvoiceConfirmationWindowState.second?.let { message ->
+            PayInvoiceConfirmationUI(dashboardViewModel)
+        }
     }
 }
 

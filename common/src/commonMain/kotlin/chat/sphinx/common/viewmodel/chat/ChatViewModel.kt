@@ -127,11 +127,6 @@ abstract class ChatViewModel(
         mode: ChatActionsMode,
         data: PaymentViewModel.PaymentData? = null
     ) {
-        if (mode == ChatActionsMode.REQUEST) {
-            toast("Request amount not implemented yet")
-            return
-        }
-
         _chatActionsStateFlow.value = Pair(mode, data)
     }
 
@@ -486,6 +481,11 @@ abstract class ChatViewModel(
             }
         }
     }
+
+    fun payContactInvoice(message: Message) {
+        dashboardViewModel.togglePayInvoiceConfirmationWindow(true, message)
+    }
+
 
     private fun flagMessage(chat: Chat, message: Message) {
         scope.launch(dispatchers.mainImmediate) {
