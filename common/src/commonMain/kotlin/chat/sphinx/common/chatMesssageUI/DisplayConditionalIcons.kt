@@ -18,12 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.BubbleBackground
+import chat.sphinx.wrapper.*
 import chat.sphinx.wrapper.chat.isTribe
-import chat.sphinx.wrapper.chatTimeFormat
-import chat.sphinx.wrapper.invoiceExpirationTimeFormat
 import chat.sphinx.wrapper.message.*
-import chat.sphinx.wrapper.time
-import chat.sphinx.wrapper.toDateTime
 
 @Composable
 fun DisplayConditionalIcons(
@@ -53,7 +50,7 @@ fun DisplayConditionalIcons(
             .padding(bottom = 2.dp, end = if (chatMessage.isSent) 5.dp else 0.dp, start = if (chatMessage.isSent) 0.dp else 5.dp)
     ) {
         if (chatMessage.isSent && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
-            val expirationDate = chatMessage.message.expirationDate?.time?.let { it * 1000 }?.toDateTime()?.invoiceExpirationTimeFormat()
+            val expirationDate = chatMessage.message.expirationDate?.time?.let { it * 1000 }?.toDateTimeUTC()?.invoiceExpirationTimeFormat()
             val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
 
             if (!chatMessage.message.isPaidInvoice) {
@@ -136,7 +133,7 @@ fun DisplayConditionalIcons(
         }
 
         if (chatMessage.isReceived && chatMessage.message.type.isInvoice() && !chatMessage.message.status.isDeleted()) {
-            val expirationDate = chatMessage.message.expirationDate?.invoiceExpirationTimeFormat()
+            val expirationDate = chatMessage.message.expirationDate?.time?.let { it * 1000 }?.toDateTimeUTC()?.invoiceExpirationTimeFormat()
             val text = if (chatMessage.message.isExpiredInvoice()) "Expired Invoice" else "EXPIRES AT: $expirationDate"
 
             if (!chatMessage.message.isPaidInvoice) {

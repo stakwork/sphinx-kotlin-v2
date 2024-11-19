@@ -102,7 +102,7 @@ fun ChatCard(
                 BotResponse(chatMessage, chatViewModel)
             }
             chatMessage.message.type == MessageType.Invoice -> {
-                InvoiceUI(chatMessage, chatViewModel, backgroundColor)
+                InvoiceMessage(chatMessage, chatViewModel, backgroundColor)
             }
             else -> {
                 Column(modifier = Modifier.onSizeChanged {
@@ -400,22 +400,22 @@ fun getBubbleShape(chatMessage: ChatMessage): RoundedCornerShape {
 }
 
 @Composable
-fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel, columnBackground: Color) {
+fun InvoiceMessage(chatMessage: ChatMessage, chatViewModel: ChatViewModel, columnBackground: Color) {
     val isInvoiceExpired = chatMessage.message.isExpiredInvoice()
     val borderColor = if (chatMessage.isSent) MaterialTheme.colorScheme.onBackground else primary_green
-    val cornerRadius = 16.dp
-    val dashWidth = 10.dp
-    val dashGap = 6.dp
+    val cornerRadius = 14.dp
+    val dashWidth = 8.dp
+    val dashGap = 4.dp
     val alphaValue = if (isInvoiceExpired && !chatMessage.message.isPaidInvoice) 0.5f else 1.0f
 
     Box(
         modifier = Modifier
-            .padding(8.dp)
-            .width(300.dp)
+            .padding(6.dp)
+            .width(260.dp)
             .wrapContentHeight()
             .then(
                 if (!isInvoiceExpired && (!chatMessage.message.isPaidInvoice)) Modifier.drawBehind {
-                    val strokeWidth = 2.dp.toPx()
+                    val strokeWidth = 1.5.dp.toPx()
                     val cornerRadiusPx = cornerRadius.toPx()
                     val dashWidthPx = dashWidth.toPx()
                     val dashGapPx = dashGap.toPx()
@@ -435,13 +435,13 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel, columnBack
     ) {
         Column(
             modifier = Modifier
-                .padding(8.dp)
-                .background(columnBackground, shape = RoundedCornerShape(12.dp))
+                .padding(6.dp)
+                .background(columnBackground, shape = RoundedCornerShape(10.dp))
                 .padding(
-                    start = 8.dp,
-                    top = 6.dp,
-                    end = 6.dp,
-                    bottom = 6.dp
+                    start = 6.dp,
+                    top = 4.dp,
+                    end = 4.dp,
+                    bottom = 4.dp
                 )
         ) {
             Row(
@@ -454,7 +454,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel, columnBack
                     Image(
                         painter = imageResource(icon),
                         contentDescription = "Icon",
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(28.dp),
                         colorFilter = ColorFilter.tint(color.copy(alpha = alphaValue))
                     )
                 } else {
@@ -462,33 +462,33 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel, columnBack
                         imageVector = Icons.Default.QrCode,
                         contentDescription = "Invoice Icon",
                         tint = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue),
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
                 Text(
                     text = chatMessage.message.amount.value.toString() ?: "",
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue)
                     )
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "sat",
                     style = TextStyle(
                         fontWeight = FontWeight.Light,
-                        fontSize = 14.sp,
+                        fontSize = 12.sp,
                         color = if (chatMessage.message.isPaidInvoice) wash_out_send else MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue)
                     )
                 )
             }
 
             if (chatMessage.isReceived && !chatMessage.message.isPaidInvoice) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -508,7 +508,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel, columnBack
                             Text(
                                 text = "PAY",
                                 modifier = Modifier.align(Alignment.Center),
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue),
                                 fontWeight = FontWeight.W600,
                                 fontFamily = Roboto,
@@ -520,7 +520,7 @@ fun InvoiceUI(chatMessage: ChatMessage, chatViewModel: ChatViewModel, columnBack
                                 contentDescription = "Sent Icon",
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
-                                    .size(26.dp),
+                                    .size(22.dp),
                                 colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.tertiary.copy(alpha = alphaValue))
                             )
                         }
