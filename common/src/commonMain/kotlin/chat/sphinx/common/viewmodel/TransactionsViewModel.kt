@@ -31,6 +31,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.LinkedHashMap
@@ -183,37 +186,54 @@ class TransactionsViewModel {
             val failedTransaction = transaction.error_message
 
 
-            if (!failedTransaction.isNullOrBlank()) {
+            if (transaction.isBountyPayment()) {
                 transactionsList.add(
                     TransactionState(
                         amount = transactionAmount,
                         date = dateString ?: "",
-                        senderReceiverName = senderAlias ?: "-",
-                        transactionType = TransactionType.Failed,
-                        failedTransactionMessage = failedTransaction
-                    )
-                )
-            } else if (transaction.sender == owner.id.value) transactionsList.add(
-                TransactionState(
-                    amount = transactionAmount,
-                    date = dateString ?: "",
-                    senderReceiverName = senderAlias ?: "-",
-                    transactionType = TransactionType.Outgoing,
-                    failedTransactionMessage = null
-
-                )
-            ) else {
-                transactionsList.add(
-                    TransactionState(
-                        amount = transactionAmount,
-                        date = dateString ?: "",
-                        senderReceiverName = senderAlias ?: "-",
+                        senderReceiverName = withContext(dispatchers.io) {
+                            URLDecoder.decode(
+                                transaction.message_content,
+                                StandardCharsets.UTF_8.toString()
+                            )
+                        } ?: "-",
                         transactionType = TransactionType.Incoming,
                         failedTransactionMessage = null
                     )
                 )
+            } else {
+                if (!failedTransaction.isNullOrBlank()) {
+                    transactionsList.add(
+                        TransactionState(
+                            amount = transactionAmount,
+                            date = dateString ?: "",
+                            senderReceiverName = senderAlias ?: "-",
+                            transactionType = TransactionType.Failed,
+                            failedTransactionMessage = failedTransaction
+                        )
+                    )
+                } else if (transaction.sender == owner.id.value) transactionsList.add(
+                    TransactionState(
+                        amount = transactionAmount,
+                        date = dateString ?: "",
+                        senderReceiverName = senderAlias ?: "-",
+                        transactionType = TransactionType.Outgoing,
+                        failedTransactionMessage = null
 
-            }
+                    )
+                ) else {
+                    transactionsList.add(
+                        TransactionState(
+                            amount = transactionAmount,
+                            date = dateString ?: "",
+                            senderReceiverName = senderAlias ?: "-",
+                            transactionType = TransactionType.Incoming,
+                            failedTransactionMessage = null
+                        )
+                    )
+
+                }
+        }
         } catch (_: Exception){
         }
     }

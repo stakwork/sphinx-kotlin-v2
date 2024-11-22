@@ -53,6 +53,7 @@ class WebAppViewModel {
         const val TYPE_PAYMENT = "PAYMENT"
         const val TYPE_UPDATED = "UPDATED"
         const val TYPE_GETPERSONDATA = "GETPERSONDATA"
+        const val TYPE_GET_SECOND_BRAIN_LIST = "GETSECONDBRAINLIST"
     }
 
     private val sendPaymentBuilder = SendPayment.Builder()
@@ -219,6 +220,11 @@ class WebAppViewModel {
             message.params.toBridgeGetPersonDataMessageOrNull()?.let {
                 if (it.type == TYPE_GETPERSONDATA) {
                     getPersonData()
+                }
+            }
+            message.params.toSendSecondBrainListDataOrNull()?.let {
+                if (it.type == TYPE_GET_SECOND_BRAIN_LIST) {
+                    processGetSecondBrainList(it)
                 }
             }
         }
@@ -717,6 +723,31 @@ class WebAppViewModel {
             }
         }
     }
+
+    private fun processGetSecondBrainList(sendSecondBrainListData: SendSecondBrainListData) {
+        viewModelScope.launch {
+            contactRepository.accountOwner.value?.nodePubKey?.let { pubKey ->
+
+                val type = sendSecondBrainListData.type
+                val application = sendSecondBrainListData.application
+                password = generatePassword()
+
+                val message = SendAuthMessage(
+                    type = type,
+                    application = application,
+                    password = password,
+                    pubkey = pubKey.value
+                ).toJson()
+
+                callback?.let {
+                    it(message)
+                }
+
+                callback = null
+            }
+        }
+    }
+
 
     private fun sendPersonDataMessage(personData: PersonDataDto?, success: Boolean) {
         this.password = generatePassword()

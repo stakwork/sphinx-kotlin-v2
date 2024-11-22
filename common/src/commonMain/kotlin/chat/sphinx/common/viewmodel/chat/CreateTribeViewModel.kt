@@ -16,11 +16,8 @@ import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedType
-import chat.sphinx.wrapper.feed.toFeedType
 import chat.sphinx.wrapper.feed.toFeedTypeString
-import chat.sphinx.wrapper.toPhotoUrl
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -276,6 +273,14 @@ class CreateTribeViewModel(
             copy(appUrl = text)
         }
         createTribeBuilder.setAppUrl(text)
+        checkValidInput()
+    }
+
+    fun onSecondBrainUrlChanged(text: String) {
+        setCreateTribeState {
+            copy(secondBrainUrl = text)
+        }
+        createTribeBuilder.setSecondBrainUrl(text)
         checkValidInput()
     }
 
