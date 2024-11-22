@@ -284,7 +284,7 @@ fun DashboardSidebarUI(
                 ) {
                     IconButton(
                         onClick = {
-                            // Handle the click event
+                            dashboardViewModel.toggleContactWindow(true, ContactScreenState.Choose)
                         },
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
