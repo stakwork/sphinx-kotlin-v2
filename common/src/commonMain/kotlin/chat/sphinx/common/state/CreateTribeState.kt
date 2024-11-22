@@ -17,6 +17,7 @@ data class CreateTribeState(
     val escrowAmount: Long? = null,
     val escrowHours: Long? = null,
     val appUrl: String = "",
+    val secondBrainUrl: String = "",
     val feedUrl: String = "",
     val feedType: String = "",
     val unlisted: Boolean = false,

@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -17,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -35,7 +32,6 @@ import chat.sphinx.common.viewmodel.chat.CreateTribeViewModel
 import chat.sphinx.platform.imageResource
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.utils.getPreferredWindowSize
-import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedType
 import chat.sphinx.wrapper.message.media.isImage
@@ -181,6 +177,10 @@ fun CreateTribeView(dashboardViewModel: DashboardViewModel, chatId: ChatId?) {
                     Spacer(modifier = Modifier.height(16.dp))
                     TribeTextField("App Url", viewModel.createTribeState.appUrl) {
                         viewModel.onAppUrlChanged(it)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TribeTextField("Second Brain Url", viewModel.createTribeState.secondBrainUrl) {
+                        viewModel.onSecondBrainUrlChanged(it)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     TribeTextField("Feed URL", viewModel.createTribeState.feedUrl) {
