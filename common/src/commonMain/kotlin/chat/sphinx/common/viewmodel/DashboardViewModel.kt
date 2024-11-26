@@ -15,7 +15,6 @@ import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.eeemmddhmma
-import chat.sphinx.wrapper.hhmmElseDate
 import chat.sphinx.wrapper.lightning.*
 import chat.sphinx.wrapper.message.Message
 import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
@@ -399,7 +398,9 @@ class DashboardViewModel(): WindowFocusListener {
             val bolt11 = invoice?.value?.let { connectManagerRepository.getInvoiceInfo(it)?.toInvoiceBolt11() }
 
             if (invoice != null && bolt11 != null) {
-                lightningRepository.processLightningPaymentRequest(invoice, bolt11)
+                lightningRepository.processLightningPaymentRequest(invoice, bolt11, callback = {
+                    toast(it)
+                })
                 togglePayInvoiceWindow(false)
                 clearInvoice()
             } else {

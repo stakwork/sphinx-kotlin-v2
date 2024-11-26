@@ -175,7 +175,7 @@ class TransactionsViewModel {
         }
 
         for (transaction in transactions) {
-        try {
+            try {
             val senderId = contactIdsMap[transaction.id]
             val senderAlias: String? =
                 contactAliasMap[transaction.id]?.value ?: contactsMap[senderId?.value]?.alias?.value
@@ -234,8 +234,7 @@ class TransactionsViewModel {
 
                 }
         }
-        } catch (_: Exception){
-        }
+        } catch (_: Exception){ }
     }
 
         val list = transactionViewState.transactionsList.toMutableList()
@@ -250,7 +249,7 @@ class TransactionsViewModel {
         }
     }
 
-    private fun collectTransactions(){
+    private fun collectTransactions() {
         scope.launch(dispatchers.mainImmediate) {
             connectManagerRepository.transactionDtoState.collect { transactionsDto ->
                 if (!transactionsDto.isNullOrEmpty()) {
