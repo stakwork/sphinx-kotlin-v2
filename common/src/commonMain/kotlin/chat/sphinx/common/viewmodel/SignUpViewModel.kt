@@ -66,6 +66,8 @@ class SignUpViewModel : PinAuthenticationViewModel() {
         signupCodeState = signupCodeState.update()
     }
 
+    var isRestore: Boolean by mutableStateOf(false)
+
     fun onInvitationCodeTextChanged(text: String) {
         setSignupCodeState {
             copy(
@@ -157,7 +159,7 @@ class SignUpViewModel : PinAuthenticationViewModel() {
 
     private fun checkValidInput() {
         signupBasicInfoState.apply {
-            if (nickname.isNotEmpty() && newPin.length == 6 && confirmedPin.length == 6) {
+            if (newPin.length == 6 && confirmedPin.length == 6) {
                 if (newPin == confirmedPin) {
                     setSignupBasicInfoState {
                         copy(
@@ -218,6 +220,7 @@ class SignUpViewModel : PinAuthenticationViewModel() {
 
             if (redemptionCode is RedemptionCode.MnemonicRestoration) {
                 connectManagerRepository.setMnemonicWords(redemptionCode.mnemonic)
+                isRestore = true
                 showSelectNetworkDialog.value = true
             } else {
                 setState {
@@ -374,7 +377,7 @@ class SignUpViewModel : PinAuthenticationViewModel() {
                     showMnemonicDialog.value = true
                 }
                 else {
-                    LandingScreenState.screenState(LandingScreenType.OnBoardLightningProfilePicture)
+                    continueToDashboard()
                 }
             }
         }
@@ -383,10 +386,14 @@ class SignUpViewModel : PinAuthenticationViewModel() {
     fun closeMnemonicDialog() {
         showMnemonicDialog.value = false
         connectManagerRepository.cleanMnemonic()
-        LandingScreenState.screenState(LandingScreenType.OnBoardLightningProfilePicture)
+        if (isRestore) {
+            continueToEndScreen()
+        } else {
+            LandingScreenState.screenState(LandingScreenType.OnBoardLightningProfilePicture)
+        }
     }
 
-    private suspend fun continueToEndScreen() {
+    private fun continueToEndScreen() {
         setSignupBasicInfoState {
             copy(
                 showLoading = false
