@@ -1,5 +1,6 @@
 package chat.sphinx.common.viewmodel
 
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -101,6 +102,8 @@ class DashboardViewModel(): WindowFocusListener {
     val createInvoiceWindowStateFlow: StateFlow<Boolean>
         get() = _createInvoiceWindowStateFlow.asStateFlow()
 
+    val profileSetInfoRestoreStateFlow: StateFlow<Boolean?>
+        get() = connectManagerRepository.profileSetInfoRestore.asStateFlow()
 
     fun togglePayInvoiceWindow(open: Boolean) {
         _payInvoiceWindowStateFlow.value = open
@@ -311,6 +314,7 @@ class DashboardViewModel(): WindowFocusListener {
             screenInit = true
         }
         connectManagerRepository.connectAndSubscribeToMqtt()
+        triggerSetProfileInfoRestore()
         networkRefresh()
         getPackageVersion()
         // TODO V2 getAccountBalanceStateFlow
@@ -447,7 +451,6 @@ class DashboardViewModel(): WindowFocusListener {
     val restoreProgressStateFlow: StateFlow<RestoreProgress?>
         get() = connectManagerRepository.restoreProgress.asStateFlow()
 
-
     var isRestoreCancelledState: Boolean by mutableStateOf(initialRestoreCancelledState())
 
     private fun initialRestoreCancelledState(): Boolean = false
@@ -495,6 +498,18 @@ class DashboardViewModel(): WindowFocusListener {
         }
     }
 
+    fun triggerSetProfileInfoRestore() {
+        viewModelScope.launch(dispatchers.mainImmediate) {
+            profileSetInfoRestoreStateFlow.collect { setProfileRestore ->
+                if (setProfileRestore == true) {
+                    toast("Please enter your alias and an optional profile picture to finish setting up your Profile")
+                    delay(2000L)
+                    toggleProfileWindow(open = true)
+                }
+            }
+        }
+    }
+
     private var jobNetworkRefresh: Job? = null
 
     fun triggerNetworkRefresh() {
@@ -512,6 +527,7 @@ class DashboardViewModel(): WindowFocusListener {
         jobRestore?.cancel()
         _restoreStateFlow.value = null
         isRestoreCancelledState = true
+        connectManagerRepository.cancelRestore()
     }
 
     fun clearDatabase() {
