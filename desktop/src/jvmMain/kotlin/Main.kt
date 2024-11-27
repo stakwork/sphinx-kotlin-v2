@@ -252,7 +252,6 @@ fun WebViewInitializing(
                 onRestartRequired = {
                     restartRequired = true
                     dashboardViewModel.setWebViewState(DashboardViewModel.WebViewState.RestartRequired)
-                    toast("Restart Required")
                 }
             )
         }

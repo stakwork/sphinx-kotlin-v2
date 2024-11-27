@@ -105,14 +105,16 @@ fun BasicInfoScreen(viewModel: SignUpViewModel) {
                 .padding(start = 77.dp, top = 62.dp, end = 77.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(modifier = Modifier.height(34.dp))
-            TextField(
-                value = viewModel.signupBasicInfoState.nickname,
-                textLabel = "Nickname",
-                modifier = Modifier.fillMaxWidth(),
-                isPin = false
-            ) {
-                viewModel.onNicknameChanged(it)
+            if (!viewModel.isRestore) {
+                Spacer(modifier = Modifier.height(34.dp))
+                TextField(
+                    value = viewModel.signupBasicInfoState.nickname,
+                    textLabel = "Nickname",
+                    modifier = Modifier.fillMaxWidth(),
+                    isPin = false
+                ) {
+                    viewModel.onNicknameChanged(it)
+                }
             }
             Spacer(modifier = Modifier.height(40.dp))
             TextField(
