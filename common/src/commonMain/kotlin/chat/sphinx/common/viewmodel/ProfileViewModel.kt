@@ -162,22 +162,19 @@ class ProfileViewModel {
         }
     }
 
-    fun updateOwnerDetails(){
+    fun updateOwnerDetails() {
         scope.launch(dispatchers.mainImmediate) {
-            updateRelayUrlIfChanged {
-                scope.launch(dispatchers.mainImmediate) {
-                    contactRepository.updateOwner(
-                        alias = profileState.alias,
-                        privatePhoto = profileState.privatePhoto.toNotNullPrivatePhoto(),
-                        tipAmount = profileState.defaultTipAmount.toLongOrNull()?.toSat() ?: Sat(0)
-                    ).let { loadResponse ->
-                        setStatus(loadResponse)
-                    }
-
-                    serversUrls.setMeetingServer(profileState.meetingServerUrl)
-                }
+            contactRepository.updateOwner(
+                alias = profileState.alias,
+                privatePhoto = profileState.privatePhoto.toNotNullPrivatePhoto(),
+                tipAmount = profileState.defaultTipAmount.toLongOrNull()?.toSat() ?: Sat(0)
+            ).let { loadResponse ->
+                setStatus(loadResponse)
             }
+
+            serversUrls.setMeetingServer(profileState.meetingServerUrl)
         }
+
     }
 
     private fun loadServerUrls(){
@@ -226,42 +223,6 @@ class ProfileViewModel {
                         )
                     }
                 }
-            }
-        }
-    }
-
-    private suspend fun updateRelayUrlIfChanged(callback: () -> Unit)  {
-        val oldRelayUrl = ""
-        val newRelayUrl = profileState.serverUrl
-
-        if (newRelayUrl.isEmpty() || oldRelayUrl == newRelayUrl) {
-            callback.invoke()
-            return
-        }
-
-        if (newRelayUrl.isOnionAddress && !networkClient.isTorRequired()) {
-            setProfileState {
-                copy(
-                    serverUrl = oldRelayUrl
-                )
-            }
-            toast("Updating to an onion address is currently not supported")
-            return
-        }
-
-        newRelayUrl.toRelayUrl()?.let { relayUrl ->
-            relayDataHandler.retrieveAuthorizationToken()?.let { authorizationToken ->
-                if (relayUrl.value.startsWith("http://") && !relayUrl.isOnionAddress) {
-                    confirm(
-                        title = relayUrl.value,
-                        message = "The Relay URL to be saved is using \'http\'. Network traffic will not be encrypted. Https is strongly recommended. Please confirm the URL Scheme to use.",
-                        confirmButton = "https",
-                        cancelButton = "http",
-                        callback = {},
-                        cancelCallback = {}
-                    )
-                }
-                return
             }
         }
     }
