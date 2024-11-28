@@ -11,7 +11,6 @@ import chat.sphinx.concepts.network.query.chat.NetworkQueryChat
 import chat.sphinx.concepts.repository.chat.model.CreateTribe
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.response.LoadResponse
-import chat.sphinx.response.Response
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
@@ -169,39 +168,44 @@ class CreateTribeViewModel(
         if (createTribeBuilder.hasRequiredFields) {
             createTribeBuilder.build()?.let {
                 saveTribeJob = scope.launch(dispatchers.mainImmediate) {
-                    if (chatId == null) {
-                        when (chatRepository.createTribe(it)) {
-                            is Response.Error -> {
-                                toast("There was an error, please try later")
+                    chatRepository.storeTribe(it,chatId)
+                    dashboardViewModel.toggleCreateTribeWindow(false, null)
 
-                                setCreateTribeState {
-                                    copy(
-                                        saveTribeResponse = null
-                                    )
-                                }
-                            }
-                            is Response.Success -> {
-                                dashboardViewModel.toggleCreateTribeWindow(false, null)
-                            }
-                        }
-                    } else {
-                        when (chatRepository.updateTribe(chatId, it)) {
-                            is Response.Error -> {
-                                toast("There was an error, please try later")
-
-                                setCreateTribeState {
-                                    copy(
-                                        saveTribeResponse = null
-                                    )
-                                }
-                            }
-                            is Response.Success -> {
-                                dashboardViewModel.toggleCreateTribeWindow(false, null)
-                            }
-                        }
-                    }
+//                    if (chatId == null) {
+//                        when (chatRepository.createTribe(it)) {
+//                            is Response.Error -> {
+//                                toast("There was an error, please try later")
+//
+//                                setCreateTribeState {
+//                                    copy(
+//                                        saveTribeResponse = null
+//                                    )
+//                                }
+//                            }
+//                            is Response.Success -> {
+//                                dashboardViewModel.toggleCreateTribeWindow(false, null)
+//                            }
+//                        }
+//                    } else {
+//                        when (chatRepository.updateTribe(chatId, it)) {
+//                            is Response.Error -> {
+//                                toast("There was an error, please try later")
+//
+//                                setCreateTribeState {
+//                                    copy(
+//                                        saveTribeResponse = null
+//                                    )
+//                                }
+//                            }
+//                            is Response.Success -> {
+//                                dashboardViewModel.toggleCreateTribeWindow(false, null)
+//                            }
+//                        }
+//                    }
                 }
             }
+        } else {
+            toast("Name and description required")
         }
     }
 
