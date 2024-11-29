@@ -10,15 +10,20 @@ import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.response.ResponseError
+import chat.sphinx.utils.ServersUrlsHelper
 import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.ContactId
+import chat.sphinx.wrapper.feed.FeedType
+import chat.sphinx.wrapper.feed.toFeedType
+import chat.sphinx.wrapper.feed.toFeedUrl
 import chat.sphinx.wrapper.message.MessageId
 import chat.sphinx.wrapper.message.MessageType
 import chat.sphinx.wrapper.message.isMemberApprove
 import chat.sphinx.wrapper.message.isMemberReject
+import chat.sphinx.wrapper.toSecondBrainUrl
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import theme.primary_red
@@ -46,27 +51,24 @@ class ChatTribeViewModel(
         replay = 1,
     )
 
+    private val isProductionEnvironment = ServersUrlsHelper().getEnvironmentType()
+
     init {
         scope.launch(dispatchers.mainImmediate) {
-            chatRepository.getChatById(chatId)?.let { chat : Chat ->
-                // TODO V2 updateTribeInfo
+            chatRepository.getChatById(chatId)?.let { chat ->
 
-//                chatRepository.updateTribeInfo(chat,)?.let { tribeData : TribeData ->
-//
-//                    _tribeDataStateFlow.value = TribeData(
-//                        tribeData.host,
-//                        tribeData.chatUUID,
-//                        tribeData.appUrl,
-//                        tribeData.feedUrl,
-//                        tribeData.feedType,
-//                    )
-//
-//                } ?: run {
-//                    _tribeDataStateFlow.value = null
-//                }
+                chatRepository.updateTribeInfo(chat, isProductionEnvironment)?.let { tribeData ->
 
-            } ?: run {
-                _tribeDataStateFlow.value = null
+                    _tribeDataStateFlow.value = TribeData(
+                        chat.host ?: return@launch,
+                        chat.uuid,
+                        tribeData.app_url?.toAppUrl(),
+                        tribeData.feed_url?.toFeedUrl(),
+                        tribeData.feed_type?.toFeedType() ?: FeedType.Podcast,
+                        tribeData.second_brain_url?.toSecondBrainUrl(),
+                    )
+
+                }
             }
         }
     }
