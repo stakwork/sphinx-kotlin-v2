@@ -219,8 +219,8 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
         Column {
             Spacer(modifier = Modifier.height(5.dp))
             PhotoUrlImage(photoUrl = viewModel.tribeDetailState.tribePhotoUrl, modifier = Modifier
-                    .size(55.dp)
-                    .clip(CircleShape)
+                .size(55.dp)
+                .clip(CircleShape)
             )
         }
         Spacer(modifier = Modifier.width(16.dp))
@@ -255,7 +255,7 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                     RoundedCornerShape(16.dp)
                 )
             ) {
-                if (viewModel.tribeDetailState.tribeOwner) {
+                if (viewModel.tribeDetailState.showQrCode) {
                     Spacer(modifier = Modifier.height(2.dp))
                     DropdownMenuItem(
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
@@ -275,6 +275,8 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         }
                     }
                     Divider(color = MaterialTheme.colorScheme.onBackground)
+                }
+                if (viewModel.tribeDetailState.tribeOwner) {
                     DropdownMenuItem(
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
                         onClick = {
