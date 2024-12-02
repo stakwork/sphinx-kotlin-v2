@@ -12,11 +12,15 @@ import chat.sphinx.concepts.repository.chat.model.CreateTribe
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
+import chat.sphinx.utils.ServersUrlsHelper
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedType
+import chat.sphinx.wrapper.feed.toFeedType
 import chat.sphinx.wrapper.feed.toFeedTypeString
+import chat.sphinx.wrapper.lightning.toLightningNodePubKey
+import chat.sphinx.wrapper.toPhotoUrl
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,6 +54,8 @@ class CreateTribeViewModel(
     private inline fun setCreateTribeState(update: CreateTribeState.() -> CreateTribeState) {
         createTribeState = createTribeState.update()
     }
+
+    private val isProductionEnvironment = ServersUrlsHelper().getEnvironmentType()
 
     private val _tribeTagListStateFlow: MutableStateFlow<Array<CreateTribe.Builder.Tag>> by lazy {
         MutableStateFlow(
@@ -106,41 +112,41 @@ class CreateTribeViewModel(
                 val host = chat.host
 
                 if (host != null) {
-                    // TODO V2 getTribeInfo
+                    val tribePubKey = chat.uuid.value.toLightningNodePubKey() ?: return@launch
 
-//                    networkQueryChat.getTribeInfo(host, chat.uuid).collect { loadResponse ->
-//                        when (loadResponse) {
-//                            is LoadResponse.Loading -> {}
-//
-//                            is Response.Error -> {
-//                                toast("There was an error, please try later")
-//                            }
-//
-//                            is Response.Success -> {
-//                                createTribeBuilder.load(loadResponse.value)
-//
-//                                setTagListState()
-//
-//                                setCreateTribeState {
-//                                    copy(
-//                                        name = loadResponse.value.name,
-//                                        img = loadResponse.value.img?.toPhotoUrl(),
-//                                        imgUrl = loadResponse.value.img ?: "",
-//                                        description = loadResponse.value.description,
-//                                        priceToJoin = loadResponse.value.price_to_join,
-//                                        pricePerMessage = loadResponse.value.price_per_message,
-//                                        escrowAmount = loadResponse.value.escrow_amount,
-//                                        escrowHours = loadResponse.value.escrow_millis / MILLISECONDS_IN_AN_HOUR,
-//                                        appUrl = loadResponse.value.app_url ?: "",
-//                                        feedUrl = loadResponse.value.feed_url ?: "",
-//                                        feedType = loadResponse.value.feed_type?.toFeedType()?.toFeedTypeString() ?: "",
-//                                        private = loadResponse.value.private.value,
-//                                        unlisted = loadResponse.value.unlisted.value
-//                                    )
-//                                }
-//                            }
-//                        }
-//                    }
+                    networkQueryChat.getTribeInfo(host, tribePubKey, isProductionEnvironment).collect { loadResponse ->
+                        when (loadResponse) {
+                            is LoadResponse.Loading -> {}
+
+                            is Response.Error -> {
+                                toast("There was an error, please try later")
+                            }
+
+                            is Response.Success -> {
+                                createTribeBuilder.newLoad(loadResponse.value)
+
+                                setTagListState()
+
+                                setCreateTribeState {
+                                    copy(
+                                        name = loadResponse.value.name,
+                                        img = loadResponse.value.img?.toPhotoUrl(),
+                                        imgUrl = loadResponse.value.img ?: "",
+                                        description = loadResponse.value.description ?: "",
+                                        priceToJoin = loadResponse.value.getPriceToJoinInSats(),
+                                        pricePerMessage = loadResponse.value.getPricePerMessageInSats(),
+                                        escrowAmount = loadResponse.value.getEscrowAmountInSats(),
+                                        escrowHours = convertMilliToHour(loadResponse.value.escrow_millis) ?: 0,
+                                        appUrl = loadResponse.value.app_url ?: "",
+                                        feedUrl = loadResponse.value.feed_url ?: "",
+                                        feedType = loadResponse.value.feed_type?.toFeedType()?.toFeedTypeString() ?: "",
+                                        private = loadResponse.value.private ?: false,
+                                        unlisted = loadResponse.value.unlisted ?: false
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -169,39 +175,44 @@ class CreateTribeViewModel(
         if (createTribeBuilder.hasRequiredFields) {
             createTribeBuilder.build()?.let {
                 saveTribeJob = scope.launch(dispatchers.mainImmediate) {
-                    if (chatId == null) {
-                        when (chatRepository.createTribe(it)) {
-                            is Response.Error -> {
-                                toast("There was an error, please try later")
+                    chatRepository.storeTribe(it,chatId)
+                    dashboardViewModel.toggleCreateTribeWindow(false, null)
 
-                                setCreateTribeState {
-                                    copy(
-                                        saveTribeResponse = null
-                                    )
-                                }
-                            }
-                            is Response.Success -> {
-                                dashboardViewModel.toggleCreateTribeWindow(false, null)
-                            }
-                        }
-                    } else {
-                        when (chatRepository.updateTribe(chatId, it)) {
-                            is Response.Error -> {
-                                toast("There was an error, please try later")
-
-                                setCreateTribeState {
-                                    copy(
-                                        saveTribeResponse = null
-                                    )
-                                }
-                            }
-                            is Response.Success -> {
-                                dashboardViewModel.toggleCreateTribeWindow(false, null)
-                            }
-                        }
-                    }
+//                    if (chatId == null) {
+//                        when (chatRepository.createTribe(it)) {
+//                            is Response.Error -> {
+//                                toast("There was an error, please try later")
+//
+//                                setCreateTribeState {
+//                                    copy(
+//                                        saveTribeResponse = null
+//                                    )
+//                                }
+//                            }
+//                            is Response.Success -> {
+//                                dashboardViewModel.toggleCreateTribeWindow(false, null)
+//                            }
+//                        }
+//                    } else {
+//                        when (chatRepository.updateTribe(chatId, it)) {
+//                            is Response.Error -> {
+//                                toast("There was an error, please try later")
+//
+//                                setCreateTribeState {
+//                                    copy(
+//                                        saveTribeResponse = null
+//                                    )
+//                                }
+//                            }
+//                            is Response.Success -> {
+//                                dashboardViewModel.toggleCreateTribeWindow(false, null)
+//                            }
+//                        }
+//                    }
                 }
             }
+        } else {
+            toast("Name and description required")
         }
     }
 
@@ -335,6 +346,14 @@ class CreateTribeViewModel(
             0
         }
         return amount
+    }
+
+    private fun convertMilliToHour(millisecond: Long): Long? {
+        return try {
+            if (millisecond < 0) null else (millisecond / 3_600_000)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun toast(

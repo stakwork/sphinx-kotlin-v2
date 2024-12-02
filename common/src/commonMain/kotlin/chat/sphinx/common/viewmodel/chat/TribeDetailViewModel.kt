@@ -47,6 +47,13 @@ class TribeDetailViewModel(
 
     private var currentChat: Chat? = null
 
+    var tribeDetailState: TribeDetailState by mutableStateOf(initialTribeDetailState())
+
+    private fun initialTribeDetailState(): TribeDetailState = TribeDetailState()
+
+    private inline fun setTribeDetailState(update: TribeDetailState.() -> TribeDetailState) {
+        tribeDetailState = tribeDetailState.update()
+    }
 
     private val accountOwnerStateFlow: StateFlow<Contact?>
         get() = contactRepository.accountOwner
@@ -55,12 +62,12 @@ class TribeDetailViewModel(
         loadTribeDetail()
     }
 
-    private fun loadTribeDetail(){
-        scope.launch(dispatchers.mainImmediate){
+    private fun loadTribeDetail() {
+        scope.launch(dispatchers.mainImmediate) {
             accountOwnerStateFlow.collect { contactOwner ->
                 contactOwner?.let { owner ->
-                    chatRepository.getChatById(detailChatId)?.let { chat ->
-
+                    val chat = chatRepository.getChatById(detailChatId)
+                    chat?.let {
                         currentChat = chat
                         val tribeOwner = chat.isTribeOwnedByAccount(owner.nodePubKey)
                         val shareTribeUrl = "sphinx.chat://?action=tribe&uuid=${chat.uuid.value}&host=${chat.host?.value}"
@@ -68,7 +75,7 @@ class TribeDetailViewModel(
 
                         setTribeDetailState {
                             copy(
-                                tribeName = chat.name?.value ?: "",
+                                tribeName = chat.name?.value ?: "ESTO ES UNA PRUEBA",
                                 tribePhotoUrl = chat.photoUrl,
                                 createDate = "Created on $createdAtDate",
                                 tribeConfigurations = "Price per message: ${chat.pricePerMessage?.value ?: 0L} sat" + " - Amount to stake: ${chat.escrowAmount?.value ?: 0L} sat ",
@@ -86,6 +93,7 @@ class TribeDetailViewModel(
             }
         }
     }
+
 
     fun onAliasTextChanged(text: String){
         val fixedAlias = text.fixedAlias()
@@ -189,15 +197,6 @@ class TribeDetailViewModel(
             }
 
         }
-    }
-
-
-    var tribeDetailState: TribeDetailState by mutableStateOf(initialTribeDetailState())
-
-    private fun initialTribeDetailState(): TribeDetailState = TribeDetailState()
-
-    private inline fun setTribeDetailState(update: TribeDetailState.() -> TribeDetailState) {
-        tribeDetailState = tribeDetailState.update()
     }
 
     private fun toast(

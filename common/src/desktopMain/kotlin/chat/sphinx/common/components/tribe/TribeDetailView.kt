@@ -279,6 +279,7 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
                         onClick = {
                             showOptionMenu.value = false
+                            dashboardViewModel.toggleTribeDetailWindow(false, null)
                             dashboardViewModel.toggleCreateTribeWindow(true, chatId)
                         }
                     ) {
