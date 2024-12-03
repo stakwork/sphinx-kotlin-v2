@@ -394,9 +394,10 @@ abstract class ChatViewModel(
     }
 
     open suspend fun processMemberRequest(
-        contactId: ContactId,
-        messageId: MessageId,
-        type: MessageType,
+        chatId: ChatId,
+        messageUuid: MessageUUID,
+        type: MessageType.GroupAction,
+        senderAlias: SenderAlias?
     ) {
     }
 

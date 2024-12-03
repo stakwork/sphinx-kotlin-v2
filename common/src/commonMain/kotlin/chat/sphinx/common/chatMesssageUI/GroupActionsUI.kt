@@ -142,11 +142,14 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
                         onClick = {
                             scope.launch(dispatchers.mainImmediate) {
                                 isLoading.value = true
-                                viewModel.processMemberRequest(
-                                    chatMessage.message.sender,
-                                    chatMessage.message.id,
-                                    MessageType.GroupAction.MemberApprove
-                                )
+                                chatMessage.message.uuid?.let { messageUuid ->
+                                    viewModel.processMemberRequest(
+                                        chatMessage.message.chatId,
+                                        messageUuid,
+                                        MessageType.GroupAction.MemberApprove,
+                                        chatMessage.message.senderAlias
+                                    )
+                                }
                                 isLoading.value = false
                             }
                         },
@@ -175,11 +178,14 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
                         onClick = {
                             scope.launch(dispatchers.mainImmediate) {
                                 isLoading.value = true
-                                viewModel.processMemberRequest(
-                                    chatMessage.message.sender,
-                                    chatMessage.message.id,
-                                    MessageType.GroupAction.MemberReject
-                                )
+                                chatMessage.message.uuid?.let { messageUuid ->
+                                    viewModel.processMemberRequest(
+                                        chatMessage.message.chatId,
+                                        messageUuid,
+                                        MessageType.GroupAction.MemberReject,
+                                        chatMessage.message.senderAlias
+                                    )
+                                }
                                 isLoading.value = false
                             }
                         },

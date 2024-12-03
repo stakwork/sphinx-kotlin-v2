@@ -19,10 +19,7 @@ import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.feed.FeedType
 import chat.sphinx.wrapper.feed.toFeedType
 import chat.sphinx.wrapper.feed.toFeedUrl
-import chat.sphinx.wrapper.message.MessageId
-import chat.sphinx.wrapper.message.MessageType
-import chat.sphinx.wrapper.message.isMemberApprove
-import chat.sphinx.wrapper.message.isMemberReject
+import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.toSecondBrainUrl
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -97,24 +94,21 @@ class ChatTribeViewModel(
 //        }
     }
 
-    override suspend fun processMemberRequest(contactId: ContactId, messageId: MessageId, type: MessageType) {
-        scope.launch(dispatchers.mainImmediate) {
-            val errorMessage = if (type.isMemberApprove()){
-                "Failed to approve member"
-            } else {
-                "Failed to reject member"
-            }
+    override suspend fun processMemberRequest(
+        chatId: ChatId,
+        messageUuid: MessageUUID,
+        type: MessageType.GroupAction,
+        senderAlias: SenderAlias?,
+    ) {
+        val errorMessage = if (type.isMemberApprove()) {
+            "Failed to approve member"
+        } else {
+            "Failed to reject member"
+        }
 
-            if (type.isMemberApprove() || type.isMemberReject()) {
-                when(messageRepository.processMemberRequest(contactId, messageId, type)) {
-                    is LoadResponse.Loading -> {}
-                    is Response.Success -> {}
-                    is Response.Error -> {
-                        toast(errorMessage, primary_red)
-                    }
-                }
-            }
-        }.join()
+        if (type.isMemberApprove() || type.isMemberReject()) {
+            messageRepository.processMemberRequest(chatId, messageUuid, null, type, senderAlias)
+        }
     }
 
     override suspend fun deleteTribe() {
