@@ -20,7 +20,6 @@ import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
-import chat.sphinx.wrapper.eeemmddhmma
 import chat.sphinx.wrapper.localDateTimeString
 import chat.sphinx.wrapper.meme_server.PublicAttachmentInfo
 import chat.sphinx.wrapper.message.media.MediaType
@@ -28,7 +27,6 @@ import chat.sphinx.wrapper.message.media.toFileName
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collect
 import okio.Path
 import theme.primary_green
 
@@ -187,16 +185,11 @@ class TribeDetailViewModel(
                     )
                 }
 
-                chatRepository.exitAndDeleteTribe(chat).let { response ->
-                    if (response == Response.Success( true)) {
-                        dashboardViewModel.toggleTribeDetailWindow(false, null)
-                        ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
-                    } else {
-                        loadTribeDetail()
-                    }
-                }
-            }
+                chatRepository.exitAndDeleteTribe(chat)
+                dashboardViewModel.toggleTribeDetailWindow(false, null)
 
+                ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
+            }
         }
     }
 

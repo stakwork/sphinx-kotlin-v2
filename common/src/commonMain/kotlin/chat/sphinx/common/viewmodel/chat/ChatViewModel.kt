@@ -22,6 +22,7 @@ import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.response.ResponseError
+import chat.sphinx.utils.ServersUrlsHelper
 import chat.sphinx.utils.UserColorsHelper
 import chat.sphinx.utils.linkify.LinkSpec
 import chat.sphinx.utils.linkify.LinkTag
@@ -32,7 +33,6 @@ import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.contact.getColorKey
 import chat.sphinx.wrapper.dashboard.ChatId
-import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.getMinutesDifferenceWithDateTime
 import chat.sphinx.wrapper.isDifferentDayThan
 import chat.sphinx.wrapper.lightning.*
@@ -105,7 +105,7 @@ abstract class ChatViewModel(
 //        }
 //
 //    }
-
+    private val isProductionEnvironment = ServersUrlsHelper().getEnvironmentType()
     val audioPlayer = AudioPlayer()
 
     enum class ChatActionsMode {
@@ -825,7 +825,7 @@ abstract class ChatViewModel(
                 LinkTag.JoinTribeLink.name -> {
                     link.url.toTribeJoinLink()?.let { tribeJoinLink ->
                         try {
-                            val uuid = ChatUUID(tribeJoinLink.tribeUUID)
+                            val uuid = ChatUUID(tribeJoinLink.tribePubkey)
 
                             val thisChat = getChat()
                             if (thisChat?.uuid == uuid) {
@@ -851,8 +851,7 @@ abstract class ChatViewModel(
                                     )
 
                                 } else {
-
-                                    val tribePreview = linkPreviewHandler.retrieveTribeLinkPreview(tribeJoinLink)
+                                    val tribePreview = linkPreviewHandler.retrieveTribeLinkPreview(tribeJoinLink, isProductionEnvironment)
 
                                     if (tribePreview != null) {
                                         preview = ChatMessage.LinkPreview.TribeLinkPreview(
@@ -893,7 +892,7 @@ abstract class ChatViewModel(
     fun tribeLinkClicked(link: TribeJoinLink?) {
         scope.launch(dispatchers.mainImmediate) {
             link?.let {
-                it.tribeUUID?.toChatUUID()?.let { chatUUID ->
+                it.tribePubkey.toChatUUID()?.let { chatUUID ->
                     chatRepository.getChatByUUID(chatUUID).firstOrNull()?.let { chat ->
                         getDashboardChatFor(null, chat)?.let { dashboardChat ->
                             ChatDetailState.screenState(
