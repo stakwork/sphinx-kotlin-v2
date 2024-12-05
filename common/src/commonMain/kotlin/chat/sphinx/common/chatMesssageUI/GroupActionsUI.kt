@@ -1,6 +1,5 @@
 package chat.sphinx.common.chatMesssageUI
 
-import Roboto
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -52,7 +51,7 @@ fun GroupActionsUI(
             requestType is MessageType.GroupAction.Kick ||
             requestType is MessageType.GroupAction.TribeDelete
         ) {
-            KickDeclinedOrTribeDeleted(chatViewModel, requestType)
+            KickDeclinedOrTribeDeleted(chatMessage.message.senderAlias?.value ?: "", requestType)
         } else {
             GroupActionAnnouncement(chatMessage)
         }
@@ -76,8 +75,8 @@ fun GroupActionAnnouncement(chatMessage: ChatMessage) {
                     text = groupActionLabelText,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.W300,
-                    fontFamily = Roboto,
-                    textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.tertiary
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
         }
@@ -96,10 +95,10 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
             "$subjectName wants to\njoin the tribe"
         }
         is MessageType.GroupAction.MemberApprove -> {
-            "  You have approved\nthe request from $subjectName"
+            "You have approved\nthe request from $subjectName"
         }
         is MessageType.GroupAction.MemberReject -> {
-            "  You have declined\nthe request from $subjectName"
+            "You have declined\nthe request from $subjectName"
         }
         else -> {
             ""
@@ -123,12 +122,14 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
                 Text(
                     text = requestText,
                     fontSize = 10.sp,
-                    fontFamily = Roboto,
-                    textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.tertiary
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.tertiary
                 )
                 if (isLoading.value) {
                     Box(
-                        modifier = Modifier.width(80.dp).background(color = MaterialTheme.colorScheme.onSecondaryContainer),
+                        modifier = Modifier
+                            .width(80.dp)
+                            .background(color = MaterialTheme.colorScheme.onSecondaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
@@ -165,14 +166,7 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
                             contentDescription = "Accept",
                             tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.padding(4.dp)
-
                         )
-                        if (requestType is MessageType.GroupAction.MemberReject) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
-                                modifier = Modifier.fillMaxSize()
-                            ) {}
-                        }
                     }
                     IconButton(
                         onClick = {
@@ -202,12 +196,6 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
                             tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.padding(4.dp)
                         )
-                        if (requestType is MessageType.GroupAction.MemberApprove) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
-                                modifier = Modifier.fillMaxSize()
-                            ) {}
-                        }
                     }
                 }
             }
@@ -217,25 +205,20 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
 
 @Composable
 fun KickDeclinedOrTribeDeleted(
-    viewModel: ChatViewModel,
+    alias: String,
     requestType: MessageType
 ) {
-    val scope = SphinxContainer.appModule.applicationScope
-    val dispatchers = SphinxContainer.appModule.dispatchers
-
     val requestText = when (requestType) {
         is MessageType.GroupAction.MemberReject -> {
             "The admin\ndeclined your request"
         }
         is MessageType.GroupAction.Kick -> {
-            "The admin has\nremoved you from this tribe"
+            "$alias just left the tribe"
         }
         else -> {
             "The admin has\ndeleted this tribe"
         }
     }
-
-    val isLoading = remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Card(
@@ -251,46 +234,9 @@ fun KickDeclinedOrTribeDeleted(
                 Text(
                     text = requestText,
                     fontSize = 10.sp,
-                    fontFamily = Roboto,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.tertiary
                 )
-                if (isLoading.value) {
-                    Box(
-                        modifier = Modifier.width(78.dp).background(color = MaterialTheme.colorScheme.onSecondaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.tertiary,
-                            strokeWidth = 2.dp
-                        )
-                    }
-                } else {
-                    IconButton(
-                        onClick = {
-                            scope.launch(dispatchers.mainImmediate) {
-                                isLoading.value = true
-                                viewModel.deleteTribe()
-                                isLoading.value = false
-                            }
-                        },
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(badge_red)
-                            .width(78.dp)
-                            .height(24.dp)
-                    ) {
-                        Text(
-                            text = "Delete Tribe",
-                            fontSize = 11.sp,
-                            fontFamily = Roboto,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                }
             }
         }
     }
