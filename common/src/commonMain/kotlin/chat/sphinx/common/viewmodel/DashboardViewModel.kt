@@ -1,6 +1,5 @@
 package chat.sphinx.common.viewmodel
 
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -18,6 +17,8 @@ import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.eeemmddhmma
 import chat.sphinx.wrapper.lightning.*
 import chat.sphinx.wrapper.message.Message
+import chat.sphinx.wrapper.message.MessageType
+import chat.sphinx.wrapper.message.SenderAlias
 import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
 import chat.sphinx.wrapper.toDateTime
 import chat.sphinx.wrapper.tribe.TribeJoinLink
@@ -231,15 +232,15 @@ class DashboardViewModel(): WindowFocusListener {
         _joinTribeStateFlow.value = Pair(open, tribeJoinLink)
     }
 
-    private val _payInvoiceConfirmationStateFlow: MutableStateFlow<Pair<Boolean, Message?>> by lazy {
+    private val _confirmationStateFlow: MutableStateFlow<Pair<Boolean, ConfirmationType?>> by lazy {
         MutableStateFlow(Pair(false, null))
     }
 
-    val payInvoiceConfirmationStateFlow: StateFlow<Pair<Boolean, Message?>>
-        get() = _payInvoiceConfirmationStateFlow.asStateFlow()
+    val confirmationStateFlow: StateFlow<Pair<Boolean, ConfirmationType?>>
+        get() = _confirmationStateFlow.asStateFlow()
 
-    fun togglePayInvoiceConfirmationWindow(open: Boolean, message: Message? = null) {
-        _payInvoiceConfirmationStateFlow.value = Pair(open, message)
+    fun toggleConfirmationWindow(open: Boolean, confirmationType: ConfirmationType? = null) {
+        _confirmationStateFlow.value = Pair(open, confirmationType)
     }
 
     private val _backUpWindowStateFlow: MutableStateFlow<Boolean> by lazy {
@@ -316,6 +317,18 @@ class DashboardViewModel(): WindowFocusListener {
         }
     }
 
+
+    fun kickMemberFromTribe(memberPubKey: LightningNodePubKey, alias: SenderAlias?, chatId: ChatId) {
+        scope.launch(dispatchers.mainImmediate) {
+            messageRepository.processMemberRequest(
+                chatId,
+                null,
+                memberPubKey,
+                MessageType.GroupAction.Kick,
+                alias
+            )
+        }
+    }
 
     private var screenInit: Boolean = false
     fun screenInit() {

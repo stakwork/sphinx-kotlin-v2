@@ -318,7 +318,7 @@ fun DashboardSidebarUI(
             JoinTribeWindow(dashboardViewModel)
             WebAppWindow(dashboardViewModel, webAppViewModel)
             AuthorizeWindow(webAppViewModel)
-            PayInvoiceConfirmationWindow(dashboardViewModel)
+            ConfirmationWindow(dashboardViewModel)
         }
 
         if (isMenuExpanded) {
@@ -579,13 +579,13 @@ fun PayInvoiceWindow(
 }
 
 @Composable
-fun PayInvoiceConfirmationWindow(
+fun ConfirmationWindow(
     dashboardViewModel: DashboardViewModel
 ) {
-    val payInvoiceConfirmationWindowState by dashboardViewModel.payInvoiceConfirmationStateFlow.collectAsState()
-    if (payInvoiceConfirmationWindowState.first) {
-        payInvoiceConfirmationWindowState.second?.let { message ->
-            PayInvoiceConfirmationUI(dashboardViewModel)
+    val confirmationState by dashboardViewModel.confirmationStateFlow.collectAsState()
+    if (confirmationState.first) {
+        confirmationState.second?.let { confirmationType ->
+            ConfirmationUI(dashboardViewModel, confirmationType)
         }
     }
 }
@@ -623,7 +623,7 @@ fun TribeMembersWindow(
     val tribeMembersWindowState by dashboardViewModel.tribeMembersStateFlow.collectAsState()
     if (tribeMembersWindowState.first) {
         tribeMembersWindowState.second?.let { chatId ->
-            TribeMembersView(TribeMembersViewModel(chatId))
+            TribeMembersView(TribeMembersViewModel(chatId), dashboardViewModel)
         }
     }
 }

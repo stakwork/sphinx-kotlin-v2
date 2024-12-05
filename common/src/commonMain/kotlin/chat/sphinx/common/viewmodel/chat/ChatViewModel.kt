@@ -484,7 +484,7 @@ abstract class ChatViewModel(
     }
 
     fun payContactInvoice(message: Message) {
-        dashboardViewModel.togglePayInvoiceConfirmationWindow(true, message)
+        dashboardViewModel.toggleConfirmationWindow(true, ConfirmationType.PayInvoice(message))
     }
 
 
