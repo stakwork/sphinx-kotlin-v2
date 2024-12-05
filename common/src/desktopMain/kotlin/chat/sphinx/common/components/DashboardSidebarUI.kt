@@ -31,10 +31,12 @@ import chat.sphinx.common.components.profile.Profile
 import chat.sphinx.common.components.tribe.CreateTribeView
 import chat.sphinx.common.components.tribe.JoinTribeView
 import chat.sphinx.common.components.tribe.TribeDetailView
+import chat.sphinx.common.components.tribe.TribeMembersView
 import chat.sphinx.common.state.AuthorizeViewState
 import chat.sphinx.common.state.ContactScreenState
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.WebAppViewModel
+import chat.sphinx.common.viewmodel.chat.TribeMembersViewModel
 import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.common.viewmodel.dashboard.ChatListViewModel
 import chat.sphinx.concepts.repository.connect_manager.model.NetworkStatus
@@ -312,6 +314,7 @@ fun DashboardSidebarUI(
             TribeDetailWindow(dashboardViewModel)
             CreateTribeWindow(dashboardViewModel)
             QRWindow(dashboardViewModel)
+            TribeMembersWindow(dashboardViewModel)
             JoinTribeWindow(dashboardViewModel)
             WebAppWindow(dashboardViewModel, webAppViewModel)
             AuthorizeWindow(webAppViewModel)
@@ -612,6 +615,19 @@ fun CreateTribeWindow(
         }
     }
 }
+
+@Composable
+fun TribeMembersWindow(
+    dashboardViewModel: DashboardViewModel
+) {
+    val tribeMembersWindowState by dashboardViewModel.tribeMembersStateFlow.collectAsState()
+    if (tribeMembersWindowState.first) {
+        tribeMembersWindowState.second?.let { chatId ->
+            TribeMembersView(TribeMembersViewModel(chatId))
+        }
+    }
+}
+
 
 @Composable
 fun QRWindow(
