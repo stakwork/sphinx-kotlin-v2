@@ -47,15 +47,7 @@ fun TribeMembersView(
     var isOpen by remember { mutableStateOf(true) }
     val tribeMembersListState = rememberLazyListState()
     val pendingTribeMembersListState = rememberLazyListState()
-
     val viewState = tribeMembersViewModel.tribeMembersViewState
-
-
-    val endOfPendingListReached by remember {
-        derivedStateOf {
-            pendingTribeMembersListState.isScrolledToEnd()
-        }
-    }
 
     if (isOpen) {
         Window(
@@ -80,38 +72,72 @@ fun TribeMembersView(
                     }
                 } else {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            text = "PENDING TRIBE MEMBERS",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.W600,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.padding(8.dp)
-                        )
-
-                        LazyColumn(
-                            state = pendingTribeMembersListState,
-                            contentPadding = PaddingValues(vertical = 8.dp)
-                        ) {
-                            items(viewState.pendingTribeMembersList.size) { index ->
-                                viewState.pendingTribeMembersList[index].let { pendingMember ->
-                                    PendingMemberRow(pendingMember, tribeMembersViewModel)
+                        if (viewState.pendingTribeMembersList.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "PENDING TRIBE MEMBERS",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.W500,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                    Text(
+                                        text = "${viewState.pendingTribeMembersList.size}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.W500,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
                                 }
                             }
+
+                            LazyColumn(
+                                state = pendingTribeMembersListState,
+                                contentPadding = PaddingValues(vertical = 8.dp)
+                            ) {
+                                items(viewState.pendingTribeMembersList.size) { index ->
+                                    viewState.pendingTribeMembersList[index].let { pendingMember ->
+                                        PendingMemberRow(pendingMember, tribeMembersViewModel)
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
 
-                        if (endOfPendingListReached) {
-                            // tribeMembersViewModel.loadMorePendingMembers()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(horizontal = 24.dp, vertical = 12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "TRIBE MEMBERS",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Text(
+                                    text = "${viewState.tribeMembersList.size}",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                            }
                         }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "TRIBE MEMBERS",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.W600,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.padding(8.dp)
-                        )
 
                         LazyColumn(
                             state = tribeMembersListState,
@@ -132,7 +158,6 @@ fun TribeMembersView(
         }
     }
 }
-
 @Composable
 fun TribeMemberRow(
     tribeMember: TribeMember,
@@ -140,6 +165,9 @@ fun TribeMemberRow(
     tribeMembersViewModel: TribeMembersViewModel
 ) {
     val dividerColor = light_divider
+    val ownerPubKey = tribeMembersViewModel.ownerState
+
+    val isOwner = tribeMember.pubkey == ownerPubKey
 
     Box(
         modifier = Modifier
@@ -176,8 +204,14 @@ fun TribeMemberRow(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                val displayName = if (isOwner) {
+                    "${tribeMember.alias ?: "Unknown Member"} (You)"
+                } else {
+                    tribeMember.alias ?: "Unknown Member"
+                }
+
                 Text(
-                    text = tribeMember.alias ?: "Unknown Member",
+                    text = displayName,
                     maxLines = 1,
                     fontSize = 14.sp,
                     fontFamily = Roboto,
@@ -185,23 +219,25 @@ fun TribeMemberRow(
                 )
             }
 
-            IconButton(
-                onClick = {
-                    dashboardViewModel.toggleConfirmationWindow(true, tribeMember.pubkey?.toLightningNodePubKey()?.let {
-                        ConfirmationType.TribeDeleteMember(
-                            alias = tribeMember.alias?.toSenderAlias(),
-                            memberPubKey = it,
-                            chatId = tribeMembersViewModel.chatId
-                        )
-                    })
-                },
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    Icons.Outlined.Delete,
-                    contentDescription = "Remove Member",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
+            if (!isOwner) {
+                IconButton(
+                    onClick = {
+                        dashboardViewModel.toggleConfirmationWindow(true, tribeMember.pubkey?.toLightningNodePubKey()?.let {
+                            ConfirmationType.TribeDeleteMember(
+                                alias = tribeMember.alias?.toSenderAlias(),
+                                memberPubKey = it,
+                                chatId = tribeMembersViewModel.chatId
+                            )
+                        })
+                    },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Delete,
+                        contentDescription = "Remove Member",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
             }
         }
         Divider(color = dividerColor, modifier = Modifier.padding(start = 96.dp, end = 16.dp))
@@ -256,7 +292,6 @@ fun PendingMemberRow(tribeMember: TribeMember, tribeMembersViewModel: TribeMembe
                     color = MaterialTheme.colorScheme.tertiary,
                 )
             }
-            // Accept Button
             IconButton(
                 onClick = {
                     buttonsEnabled.value = false
@@ -264,6 +299,7 @@ fun PendingMemberRow(tribeMember: TribeMember, tribeMembersViewModel: TribeMembe
                         SenderAlias(tribeMember.alias ?: "Unknown"),
                         MessageType.GroupAction.MemberApprove
                     )
+                    tribeMembersViewModel.removePendingMember(tribeMember.pubkey ?: "")
                 },
                 modifier = Modifier
                     .padding(start = 8.dp)
@@ -279,8 +315,6 @@ fun PendingMemberRow(tribeMember: TribeMember, tribeMembersViewModel: TribeMembe
                     modifier = Modifier.padding(4.dp)
                 )
             }
-
-            // Decline Button
             IconButton(
                 onClick = {
                     buttonsEnabled.value = false
@@ -288,6 +322,7 @@ fun PendingMemberRow(tribeMember: TribeMember, tribeMembersViewModel: TribeMembe
                         SenderAlias(tribeMember.alias ?: "Unknown"),
                         MessageType.GroupAction.MemberReject
                     )
+                    tribeMembersViewModel.removePendingMember(tribeMember.pubkey ?: "")
                 },
                 modifier = Modifier
                     .padding(start = 6.dp)

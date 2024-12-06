@@ -113,6 +113,7 @@ fun ConfirmationUI(
                                         confirmationType.alias,
                                         confirmationType.chatId
                                     )
+                                    dashboardViewModel.toggleTribeMembersWindow(false, null)
                                 }
                             }
                             isOpen = false

@@ -178,8 +178,11 @@ sealed class DashboardChat {
                     }
                 }
                 message.type.isGroupKick() -> {
-                    "The admin has removed you from this group"
-                }
+                    if (message.sender.value == 0L) {
+                        "${getMessageSender(message, false)} just left the tribe"
+                    } else {
+                        "The admin has removed you from this group"
+                    }                }
                 message.type.isTribeDelete() -> {
                     "The admin deleted this tribe"
                 }
