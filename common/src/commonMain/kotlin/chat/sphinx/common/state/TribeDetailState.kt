@@ -16,6 +16,7 @@ data class TribeDetailState(
     val userPicture: AttachmentInfo? = null,
     val myPhotoUrl: PhotoUrl? = null,
     val tribeOwner: Boolean = false,
+    val showQrCode: Boolean = false,
     val shareTribeUrl: String = "",
     val saveButtonEnable: Boolean = false,
     val updateResponse: LoadResponse<Any, ResponseError>? = null

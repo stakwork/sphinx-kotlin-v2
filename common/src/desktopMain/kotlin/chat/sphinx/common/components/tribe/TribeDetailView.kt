@@ -11,10 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -219,8 +216,8 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
         Column {
             Spacer(modifier = Modifier.height(5.dp))
             PhotoUrlImage(photoUrl = viewModel.tribeDetailState.tribePhotoUrl, modifier = Modifier
-                    .size(55.dp)
-                    .clip(CircleShape)
+                .size(55.dp)
+                .clip(CircleShape)
             )
         }
         Spacer(modifier = Modifier.width(16.dp))
@@ -255,7 +252,7 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                     RoundedCornerShape(16.dp)
                 )
             ) {
-                if (viewModel.tribeDetailState.tribeOwner) {
+                if (viewModel.tribeDetailState.showQrCode) {
                     Spacer(modifier = Modifier.height(2.dp))
                     DropdownMenuItem(
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
@@ -275,6 +272,8 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         }
                     }
                     Divider(color = MaterialTheme.colorScheme.onBackground)
+                }
+                if (viewModel.tribeDetailState.tribeOwner) {
                     DropdownMenuItem(
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
                         onClick = {
@@ -291,6 +290,26 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Edit Tribe", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
+                        }
+                    }
+                    Divider(color = MaterialTheme.colorScheme.onBackground)
+                    DropdownMenuItem(
+                        modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
+                        onClick = {
+                            // TODO members V2
+                            showOptionMenu.value = false
+                            dashboardViewModel.toggleTribeDetailWindow(false, null)
+                            dashboardViewModel.toggleTribeMembersWindow(true, chatId)
+                        }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Group,
+                                contentDescription = "",
+                                tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Tribe Members", color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp)
                         }
                     }
                     Divider(color = MaterialTheme.colorScheme.onBackground)

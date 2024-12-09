@@ -14,15 +14,12 @@ import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.response.ResponseError
+import chat.sphinx.utils.ServersUrlsHelper
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.DateTime
-import chat.sphinx.wrapper.chat.Chat
-import chat.sphinx.wrapper.chat.ChatAlias
-import chat.sphinx.wrapper.chat.fixedAlias
-import chat.sphinx.wrapper.chat.isTribeOwnedByAccount
+import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
-import chat.sphinx.wrapper.eeemmddhmma
 import chat.sphinx.wrapper.localDateTimeString
 import chat.sphinx.wrapper.meme_server.PublicAttachmentInfo
 import chat.sphinx.wrapper.message.media.MediaType
@@ -30,7 +27,6 @@ import chat.sphinx.wrapper.message.media.toFileName
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collect
 import okio.Path
 import theme.primary_green
 
@@ -44,6 +40,7 @@ class TribeDetailViewModel(
     private val sphinxNotificationManager = createSphinxNotificationManager()
     private val chatRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).chatRepository
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
+    private val tribeDefaultServerUrl = ServersUrlsHelper().getTribeServerIp()
 
     private var currentChat: Chat? = null
 
@@ -70,12 +67,13 @@ class TribeDetailViewModel(
                     chat?.let {
                         currentChat = chat
                         val tribeOwner = chat.isTribeOwnedByAccount(owner.nodePubKey)
-                        val shareTribeUrl = "sphinx.chat://?action=tribe&uuid=${chat.uuid.value}&host=${chat.host?.value}"
+                        val showTribeQrCode = chat.isTribeOwnedByAccount(owner.nodePubKey) || !chat.privateTribe.isTrue()
+                        val shareTribeUrl = "sphinx.chat://?action=tribeV2&pubkey=${chat.uuid.value}&host=${tribeDefaultServerUrl}"
                         val createdAtDate = chat.createdAt.localDateTimeString(DateTime.getFormateeemmddhmma())
 
                         setTribeDetailState {
                             copy(
-                                tribeName = chat.name?.value ?: "ESTO ES UNA PRUEBA",
+                                tribeName = chat.name?.value ?: "",
                                 tribePhotoUrl = chat.photoUrl,
                                 createDate = "Created on $createdAtDate",
                                 tribeConfigurations = "Price per message: ${chat.pricePerMessage?.value ?: 0L} sat" + " - Amount to stake: ${chat.escrowAmount?.value ?: 0L} sat ",
@@ -83,6 +81,7 @@ class TribeDetailViewModel(
                                 userPicture = null,
                                 myPhotoUrl = chat.myPhotoUrl ?: owner.photoUrl,
                                 tribeOwner = tribeOwner,
+                                showQrCode = showTribeQrCode,
                                 shareTribeUrl = shareTribeUrl,
                                 saveButtonEnable = false,
                                 updateResponse = null
@@ -186,16 +185,11 @@ class TribeDetailViewModel(
                     )
                 }
 
-                chatRepository.exitAndDeleteTribe(chat).let { response ->
-                    if (response == Response.Success( true)) {
-                        dashboardViewModel.toggleTribeDetailWindow(false, null)
-                        ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
-                    } else {
-                        loadTribeDetail()
-                    }
-                }
-            }
+                chatRepository.exitAndDeleteTribe(chat)
+                dashboardViewModel.toggleTribeDetailWindow(false, null)
 
+                ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
+            }
         }
     }
 

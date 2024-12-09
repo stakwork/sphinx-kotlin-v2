@@ -8,25 +8,19 @@ import androidx.compose.ui.text.input.TextFieldValue
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.response.LoadResponse
-import chat.sphinx.response.Response
 import chat.sphinx.response.ResponseError
 import chat.sphinx.utils.ServersUrlsHelper
 import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
-import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.feed.FeedType
 import chat.sphinx.wrapper.feed.toFeedType
 import chat.sphinx.wrapper.feed.toFeedUrl
-import chat.sphinx.wrapper.message.MessageId
-import chat.sphinx.wrapper.message.MessageType
-import chat.sphinx.wrapper.message.isMemberApprove
-import chat.sphinx.wrapper.message.isMemberReject
+import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.toSecondBrainUrl
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import theme.primary_red
 
 class ChatTribeViewModel(
     chatId: ChatId,
@@ -97,36 +91,30 @@ class ChatTribeViewModel(
 //        }
     }
 
-    override suspend fun processMemberRequest(contactId: ContactId, messageId: MessageId, type: MessageType) {
-        scope.launch(dispatchers.mainImmediate) {
-            val errorMessage = if (type.isMemberApprove()){
-                "Failed to approve member"
-            } else {
-                "Failed to reject member"
-            }
+    override suspend fun processMemberRequest(
+        chatId: ChatId,
+        messageUuid: MessageUUID,
+        type: MessageType.GroupAction,
+        senderAlias: SenderAlias?,
+    ) {
+        val errorMessage = if (type.isMemberApprove()) {
+            "Failed to approve member"
+        } else {
+            "Failed to reject member"
+        }
 
-            if (type.isMemberApprove() || type.isMemberReject()) {
-                when(messageRepository.processMemberRequest(contactId, messageId, type)) {
-                    is LoadResponse.Loading -> {}
-                    is Response.Success -> {}
-                    is Response.Error -> {
-                        toast(errorMessage, primary_red)
-                    }
-                }
-            }
-        }.join()
+        if (type.isMemberApprove() || type.isMemberReject()) {
+            messageRepository.processMemberRequest(chatId, messageUuid, null, type, senderAlias)
+        }
     }
 
     override suspend fun deleteTribe() {
         scope.launch(dispatchers.mainImmediate){
-            getChat()?.let { chat ->
-                when (chatRepository.exitAndDeleteTribe(chat)) {
-                    is Response.Success -> {}
-                    is Response.Error -> {
-                        toast("Failed to delete tribe", primary_red)
-                    }
-                }
+            val chat = getChat()
+            if (chat != null) {
+                chatRepository.exitAndDeleteTribe(chat)
             }
+
             ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
         }.join()
     }

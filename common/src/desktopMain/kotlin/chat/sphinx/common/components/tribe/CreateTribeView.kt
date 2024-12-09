@@ -259,14 +259,14 @@ fun CreateTribeView(dashboardViewModel: DashboardViewModel, chatId: ChatId?) {
                                 color = Color.White,
                             )
                             Text(
-                                text = "tribes.sphinx.chat?",
+                                text = "tribes.v2.sphinx.chat?",
                                 fontSize = 15.sp,
                                 fontFamily = Roboto,
                                 fontWeight = FontWeight.W400,
                                 color = tribe_hyperlink,
                                 textDecoration = TextDecoration.Underline,
                                 modifier = Modifier.clickable {
-                                    openWebpage(URL(" https://tribes.sphinx.chat"))
+                                    openWebpage(URL(" https://tribes.v2.sphinx.chat"))
                                 }
                             )
                         }
