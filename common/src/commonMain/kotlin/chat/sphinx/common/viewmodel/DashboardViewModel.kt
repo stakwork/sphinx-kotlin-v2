@@ -89,6 +89,11 @@ class DashboardViewModel(): WindowFocusListener {
     val contactWindowStateFlow: StateFlow<Pair<Boolean, ContactScreenState?>>
         get() = _contactWindowStateFlow.asStateFlow()
 
+
+    fun toggleContactWindow(open: Boolean, screen: ContactScreenState?) {
+        _contactWindowStateFlow.value = Pair(open, screen)
+    }
+
     private val _payInvoiceWindowStateFlow: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(false)
     }
@@ -128,10 +133,6 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun getWebViewState() : WebViewState {
         return webViewState.value
-    }
-
-    fun toggleContactWindow(open: Boolean, screen: ContactScreenState?) {
-        _contactWindowStateFlow.value = Pair(open, screen)
     }
 
     private val _aboutSphinxStateFlow: MutableStateFlow<Boolean> by lazy {

@@ -22,13 +22,13 @@ abstract class ContactViewModel {
     abstract fun onAddressTextChanged(text: String)
     abstract fun onRouteHintTextChanged(text: String)
 
-    fun getNodeDescriptor(): LightningNodeDescriptor? {
-        contactState.lightningRouteHint?.let {
-            if (it.isNotEmpty()) {
-                return VirtualLightningNodeAddress("${contactState.lightningNodePubKey}:${it}")
+    fun getNodeDescriptor(): String? {
+        contactState.lightningRouteHint?.let { routeHint ->
+            if (routeHint.isNotEmpty()) {
+                return "${contactState.lightningNodePubKey}_${routeHint}"
             }
         }
-        return contactState.lightningNodePubKey.toLightningNodePubKey()
+        return null
     }
 
 }
