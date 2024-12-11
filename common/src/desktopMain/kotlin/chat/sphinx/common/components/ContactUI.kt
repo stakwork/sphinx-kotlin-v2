@@ -41,19 +41,18 @@ import theme.light_divider
 @Composable
 fun AddContactWindowUI(dashboardViewModel: DashboardViewModel) {
     var isOpen by remember { mutableStateOf(true) }
+    var screenState: ContactScreenState? = dashboardViewModel.contactWindowStateFlow.value.second
     if (isOpen) {
         Window(
             onCloseRequest = {
                 dashboardViewModel.toggleContactWindow(false, null)
             },
-            title = "Add New Friend",
+            title = if (screenState is ContactScreenState.EditContact) "Contact Info" else "Add New Friend",
             state = WindowState(
                 position = WindowPosition.Aligned(Alignment.Center),
                 size = getPreferredWindowSize(420, 620)
             )
         ) {
-            var screenState: ContactScreenState? = dashboardViewModel.contactWindowStateFlow.value.second
-
             when (screenState) {
                 is ContactScreenState.Choose -> AddContact(dashboardViewModel)
                 is ContactScreenState.NewToSphinx -> AddNewContactOnSphinx(dashboardViewModel)
@@ -372,7 +371,7 @@ fun ContactForm(
                     )
                     if(editMode) {
                         IconButton(onClick = {
-                            dashboardViewModel.toggleQRWindow(true, "PUBLIC KEY", viewModel.getNodeDescriptor()?.value ?: "")
+                            dashboardViewModel.toggleQRWindow(true, "PUBLIC KEY", viewModel.getNodeDescriptor() ?: "")
                         }
                         ) {
                             Icon(
