@@ -1,5 +1,7 @@
 package chat.sphinx.common.chatMesssageUI
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -8,11 +10,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import chat.sphinx.common.components.toast
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.utils.SphinxFonts
+import chat.sphinx.utils.toAnnotatedString
 import chat.sphinx.wrapper.message.retrieveSphinxCallLink
 import theme.primary_green
 import chat.sphinx.wrapper.message.toSphinxCallLink
@@ -23,6 +29,7 @@ fun JitsiAudioVideoCall(
 ) {
     val uriHandler = LocalUriHandler.current
     val sphinxCallLink = chatMessage.message.retrieveSphinxCallLink()
+    val clipboardManager = LocalClipboardManager.current
 
     Column(
         verticalArrangement = Arrangement.Center,
@@ -96,7 +103,17 @@ fun JitsiAudioVideoCall(
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp).pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    sphinxCallLink?.value?.toAnnotatedString()?.let {
+                        clipboardManager.setText(it)
+                        toast("Call Link copied to clipboard")
+                    }
+                })
+            }
+        ) {
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 "COPY LINK",

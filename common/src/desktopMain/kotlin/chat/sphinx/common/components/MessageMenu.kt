@@ -72,7 +72,7 @@ actual fun MessageMenu(
 
         if (chatMessage.message.isCopyLinkAllowed) {
             DropdownMenuItem(onClick = {
-                clipboardManager.setText(messageText.toAnnotatedString())
+                chatMessage.message.retrieveSphinxCallLink()?.value?.toAnnotatedString()?.let { clipboardManager.setText(it) }
                 chatViewModel.toast("Call Link copied to clipboard")
                 dismissKebab()
             }) {
