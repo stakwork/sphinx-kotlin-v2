@@ -6,16 +6,17 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -24,6 +25,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,7 +36,10 @@ import androidx.compose.ui.unit.sp
 import chat.sphinx.common.models.DashboardChat
 import chat.sphinx.wrapper.DateTime
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
 import chat.sphinx.common.Res
+import chat.sphinx.common.state.ConfirmationType
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.SignUpViewModel
 import chat.sphinx.common.viewmodel.dashboard.ChatListViewModel
@@ -60,33 +67,48 @@ fun ChatRow(
     chatListViewModel: ChatListViewModel,
     dashboardViewModel: DashboardViewModel
 ) {
-    val today00: DateTime by lazy {
-        DateTime.getToday00()
-    }
+    val today00: DateTime by lazy { DateTime.getToday00() }
+    val isInvite: Boolean by lazy { (dashboardChat is DashboardChat.Inactive.Invite) }
 
-    val isInvite: Boolean by lazy {
-        (dashboardChat is DashboardChat.Inactive.Invite)
-    }
+    var showContextMenu by remember { mutableStateOf(false) }
+    var contextMenuPosition by remember { mutableStateOf(Offset.Zero) }
 
-    Row(
+    Box(
         modifier = Modifier
-            .clickable {
-                if (dashboardChat is DashboardChat.Inactive.Invite) {
-                    dashboardChat.invite.let { invite ->
-                        dashboardViewModel.toggleQRWindow(true, "INVITE CODE", invite.inviteString.value)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { offset ->
+                        contextMenuPosition = offset
+                        showContextMenu = true
+                    },
+                    onTap = {
+                        if (dashboardChat is DashboardChat.Inactive.Invite) {
+                            dashboardChat.invite.let { invite ->
+                                dashboardViewModel.toggleQRWindow(true, "INVITE CODE", invite.inviteString.value)
+                            }
+                        } else {
+                            chatListViewModel.chatRowSelected(dashboardChat)
+                        }
                     }
-                    return@clickable
+                )
+            }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.type == PointerEventType.Press && event.buttons.isSecondaryPressed) {
+                            val offset = event.changes.firstOrNull()?.position
+                            if (offset != null) {
+                                contextMenuPosition = offset
+                                showContextMenu = true
+                            }
+                        }
+                    }
                 }
-
-                chatListViewModel.chatRowSelected(dashboardChat)
             }
             .height(62.dp)
             .background(
-                if (selected) {
-                    selected_chat
-                } else {
-                    androidx.compose.material3.MaterialTheme.colorScheme.background
-                }
+                if (selected) selected_chat else androidx.compose.material3.MaterialTheme.colorScheme.background
             )
     ) {
         Row(modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 12.dp)) {
@@ -327,6 +349,26 @@ fun ChatRow(
                             }
                         }
                     }
+                }
+            }
+        }
+        // Check that tribe tab is not selected
+        if (showContextMenu && dashboardViewModel.selectedTabStateFlow.value != 1) {
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(contextMenuPosition.x.toInt(), contextMenuPosition.y.toInt()),
+                onDismissRequest = { showContextMenu = false }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(MaterialTheme.colors.onSurface)
+                        .padding(8.dp)
+                        .clickable {
+                            dashboardViewModel.toggleConfirmationWindow(true, ConfirmationType.ContactDelete)
+                            showContextMenu = false
+                        }
+                ) {
+                    Text("Delete Contact", color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,)
                 }
             }
         }

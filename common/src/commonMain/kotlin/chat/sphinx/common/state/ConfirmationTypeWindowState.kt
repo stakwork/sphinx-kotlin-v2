@@ -13,4 +13,6 @@ sealed class ConfirmationType {
         val memberPubKey: LightningNodePubKey,
         val chatId: ChatId
     ) : ConfirmationType()
+
+    data object ContactDelete: ConfirmationType()
 }
