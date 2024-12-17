@@ -536,8 +536,14 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun deleteSelectedContact() {
         viewModelScope.launch(dispatchers.mainImmediate) {
-            val contactId = (ChatListState.screenState() as? ChatListData.PopulatedChatListData)?.selectedDashboardId?.toLong()?.toContactId()
-            val om = contactId
+            val populatedData = ChatListState.screenState() as? ChatListData.PopulatedChatListData
+            val contactId = populatedData?.getIdAsLong()?.toContactId()
+
+            if (contactId != null) {
+                contactRepository.deleteContactById(contactId)
+            } else {
+                toast("Failed to delete contact, please try later", primary_red)
+            }
         }
     }
 

@@ -13,6 +13,14 @@ abstract class ChatListData {
         val selectedDashboardId: String?,
     ) : ChatListData() {
 
+        fun getIdAsLong(): Long? {
+            val regex = """chat-ChatId\(value=(\d+)\)""".toRegex()
+            return selectedDashboardId
+                ?.let { idString ->
+                    regex.find(idString)?.groupValues?.get(1)?.toLongOrNull()
+                }
+        }
+
         override fun hashCode(): Int {
             return dashboardChats.hashCode()
         }
