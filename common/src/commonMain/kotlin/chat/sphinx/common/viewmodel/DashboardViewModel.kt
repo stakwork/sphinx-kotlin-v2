@@ -14,6 +14,7 @@ import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
+import chat.sphinx.wrapper.dashboard.toContactId
 import chat.sphinx.wrapper.eeemmddhmma
 import chat.sphinx.wrapper.lightning.*
 import chat.sphinx.wrapper.message.Message
@@ -60,6 +61,16 @@ class DashboardViewModel(): WindowFocusListener {
     val balanceStateFlow: StateFlow<NodeBalance?>
         get() = _balanceStateFlow.asStateFlow()
 
+    private val _selectedTabStateFlow: MutableStateFlow<Int> by lazy {
+        MutableStateFlow(0)
+    }
+
+    val selectedTabStateFlow: StateFlow<Int>
+        get() = _selectedTabStateFlow.asStateFlow()
+
+    fun setSelectedTab(tab: Int) {
+        _selectedTabStateFlow.value = tab
+    }
 
     val accountOwnerStateFlow: StateFlow<Contact?>
         get() = contactRepository.accountOwner
@@ -520,6 +531,19 @@ class DashboardViewModel(): WindowFocusListener {
 //            if (_networkStateFlow.value is Response.Error) {
 //                jobNetworkRefresh?.cancel()
 //            }
+        }
+    }
+
+    fun deleteSelectedContact() {
+        viewModelScope.launch(dispatchers.mainImmediate) {
+            val populatedData = ChatListState.screenState() as? ChatListData.PopulatedChatListData
+            val contactId = populatedData?.getIdAsLong()?.toContactId()
+
+            if (contactId != null) {
+                contactRepository.deleteContactById(contactId)
+            } else {
+                toast("Failed to delete contact, please try later", primary_red)
+            }
         }
     }
 

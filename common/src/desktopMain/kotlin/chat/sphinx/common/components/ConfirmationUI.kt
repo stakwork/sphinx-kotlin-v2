@@ -44,6 +44,7 @@ fun ConfirmationUI(
             title = when (confirmationType) {
                 is ConfirmationType.PayInvoice -> "Confirm Payment"
                 is ConfirmationType.TribeDeleteMember -> "Confirm Delete Member"
+                is ConfirmationType.ContactDelete -> "Confirm Delete Contact"
             },
             state = WindowState(
                 position = WindowPosition.Aligned(Alignment.Center),
@@ -71,6 +72,7 @@ fun ConfirmationUI(
                     text = when (confirmationType) {
                         is ConfirmationType.PayInvoice -> "Are you sure you want to pay this invoice?"
                         is ConfirmationType.TribeDeleteMember -> "Are you sure you want to remove ${confirmationType.alias?.value}?"
+                        is ConfirmationType.ContactDelete -> "Are you sure you want to delete this contact?"
                     },
                     color = MaterialTheme.colorScheme.tertiary,
                     fontFamily = Roboto,
@@ -114,6 +116,9 @@ fun ConfirmationUI(
                                         confirmationType.chatId
                                     )
                                     dashboardViewModel.toggleTribeMembersWindow(false, null)
+                                }
+                                is ConfirmationType.ContactDelete -> {
+                                    dashboardViewModel.deleteSelectedContact()
                                 }
                             }
                             isOpen = false

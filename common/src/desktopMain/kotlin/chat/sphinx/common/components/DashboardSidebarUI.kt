@@ -51,7 +51,7 @@ fun DashboardSidebarUI(
 ) {
     val chatListViewModel = remember { ChatListViewModel() }
     val uriHandler = LocalUriHandler.current
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    var selectedTabIndex = dashboardViewModel.selectedTabStateFlow.collectAsState().value
     var isMenuExpanded by remember { mutableStateOf(false) }
     val unseenTribeMessagesCount by dashboardViewModel.unseenTribeMessagesCount.collectAsState()
 
@@ -255,7 +255,7 @@ fun DashboardSidebarUI(
                         tabs.forEachIndexed { index, title ->
                             Tab(
                                 selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
+                                onClick = { dashboardViewModel.setSelectedTab(index)},
                                 text = {
                                     Text(
                                         text = title,
