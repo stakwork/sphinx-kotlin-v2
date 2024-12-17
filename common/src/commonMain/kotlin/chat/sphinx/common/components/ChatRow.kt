@@ -67,48 +67,33 @@ fun ChatRow(
     chatListViewModel: ChatListViewModel,
     dashboardViewModel: DashboardViewModel
 ) {
-    val today00: DateTime by lazy { DateTime.getToday00() }
-    val isInvite: Boolean by lazy { (dashboardChat is DashboardChat.Inactive.Invite) }
+    val today00: DateTime by lazy {
+        DateTime.getToday00()
+    }
 
-    var showContextMenu by remember { mutableStateOf(false) }
-    var contextMenuPosition by remember { mutableStateOf(Offset.Zero) }
+    val isInvite: Boolean by lazy {
+        (dashboardChat is DashboardChat.Inactive.Invite)
+    }
 
-    Box(
+    Row(
         modifier = Modifier
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onLongPress = { offset ->
-                        contextMenuPosition = offset
-                        showContextMenu = true
-                    },
-                    onTap = {
-                        if (dashboardChat is DashboardChat.Inactive.Invite) {
-                            dashboardChat.invite.let { invite ->
-                                dashboardViewModel.toggleQRWindow(true, "INVITE CODE", invite.inviteString.value)
-                            }
-                        } else {
-                            chatListViewModel.chatRowSelected(dashboardChat)
-                        }
+            .clickable {
+                if (dashboardChat is DashboardChat.Inactive.Invite) {
+                    dashboardChat.invite.let { invite ->
+                        dashboardViewModel.toggleQRWindow(true, "INVITE CODE", invite.inviteString.value)
                     }
-                )
-            }
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (event.type == PointerEventType.Press && event.buttons.isSecondaryPressed) {
-                            val offset = event.changes.firstOrNull()?.position
-                            if (offset != null) {
-                                contextMenuPosition = offset
-                                showContextMenu = true
-                            }
-                        }
-                    }
+                    return@clickable
                 }
+
+                chatListViewModel.chatRowSelected(dashboardChat)
             }
             .height(62.dp)
             .background(
-                if (selected) selected_chat else androidx.compose.material3.MaterialTheme.colorScheme.background
+                if (selected) {
+                    selected_chat
+                } else {
+                    androidx.compose.material3.MaterialTheme.colorScheme.background
+                }
             )
     ) {
         Row(modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 12.dp)) {
@@ -352,29 +337,8 @@ fun ChatRow(
                 }
             }
         }
-        // Check that tribe tab is not selected
-        if (showContextMenu && dashboardViewModel.selectedTabStateFlow.value != 1) {
-            Popup(
-                alignment = Alignment.TopStart,
-                offset = IntOffset(contextMenuPosition.x.toInt(), contextMenuPosition.y.toInt()),
-                onDismissRequest = { showContextMenu = false }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(MaterialTheme.colors.onSurface)
-                        .padding(8.dp)
-                        .clickable {
-                            dashboardViewModel.toggleConfirmationWindow(true, ConfirmationType.ContactDelete)
-                            showContextMenu = false
-                        }
-                ) {
-                    Text("Delete Contact", color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,)
-                }
-            }
-        }
     }
 }
-
 
 @Composable
 fun MessageCount(

@@ -353,7 +353,6 @@ class DashboardViewModel(): WindowFocusListener {
         triggerSetProfileInfoRestore()
         networkRefresh()
         getPackageVersion()
-        isRestoreFinished()
         // TODO V2 getAccountBalanceStateFlow
 
         viewModelScope.launch(dispatchers.mainImmediate) {
@@ -572,32 +571,11 @@ class DashboardViewModel(): WindowFocusListener {
         }
     }
 
-    fun isRestoreFinished() {
-        viewModelScope.launch(dispatchers.mainImmediate) {
-            connectManagerRepository.restoreProgress.collect { restoreProgress ->
-                if (restoreProgress?.restoring == false && restoreProgress.progress == 100) {
-                    reloadFriendTab()
-                }
-            }
-        }
-    }
-
-
     fun cancelRestore() {
         jobRestore?.cancel()
         _restoreStateFlow.value = null
         isRestoreCancelledState = true
         connectManagerRepository.cancelRestore()
-
-        reloadFriendTab()
-    }
-
-    fun reloadFriendTab() {
-        viewModelScope.launch {
-            setSelectedTab(1)
-            delay(50L)
-            setSelectedTab(0)
-        }
     }
 
     fun clearDatabase() {
