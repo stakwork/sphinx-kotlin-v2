@@ -247,7 +247,6 @@ fun WebViewInitializing(
                 onError = {
                     error = it?.localizedMessage ?: ""
                     dashboardViewModel.setWebViewState(DashboardViewModel.WebViewState.Error)
-                    toast(error)
                 },
                 onRestartRequired = {
                     restartRequired = true
