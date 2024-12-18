@@ -292,8 +292,10 @@ fun CreateTribeView(dashboardViewModel: DashboardViewModel, chatId: ChatId?) {
                             color = Color.White,
                         )
                         Switch(
-                            checked = viewModel.createTribeState.private,
-                            onCheckedChange = { viewModel.onPrivateChanged(it) },
+                            checked = !viewModel.createTribeState.private,
+                            onCheckedChange = { isChecked ->
+                                viewModel.onPrivateChanged(!isChecked)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedTrackColor = MaterialTheme.colorScheme.secondary,
                                 checkedThumbColor = MaterialTheme.colorScheme.secondary
