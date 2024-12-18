@@ -18,22 +18,23 @@ fun CommonButton(
     enabled: Boolean? = true,
     customColor: Color? = null,
     endIcon: ImageVector? = null,
-    textButtonSize:TextUnit = 16.sp,
+    textButtonSize: TextUnit = 16.sp,
     backgroundColor: Color? = null,
     fontWeight: FontWeight = FontWeight.W400,
-    callback:()->Unit
+    modifier: Modifier = Modifier,
+    callback: () -> Unit
 ) {
-    val color= if (enabled == true) {
+    val color = if (enabled == true) {
         backgroundColor ?: androidx.compose.material3.MaterialTheme.colorScheme.secondary
     } else {
-        backgroundColor?.copy(alpha = 0.7f) ?: androidx.compose.material3.MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+        backgroundColor?.copy(alpha = 0.7f)
+            ?: androidx.compose.material3.MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
     }
 
-    val textColor= if (enabled == true) {
-        if (backgroundColor == Color.White){
+    val textColor = if (enabled == true) {
+        if (backgroundColor == Color.White) {
             androidx.compose.material3.MaterialTheme.colorScheme.secondary
-        }
-        else {
+        } else {
             androidx.compose.material3.MaterialTheme.colorScheme.tertiary
         }
     } else {
@@ -42,11 +43,12 @@ fun CommonButton(
 
     Button(
         shape = RoundedCornerShape(23.dp),
-//        enabled = enabled?:true,
         colors = ButtonDefaults.buttonColors(backgroundColor = customColor ?: color),
-        modifier = Modifier.fillMaxWidth().height(48.dp),
+        modifier = modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .then(if (modifier == Modifier) Modifier.fillMaxWidth() else Modifier),
         onClick = {
-            if (enabled==true) callback()
+            if (enabled == true) callback()
         }
     ) {
         Box {
@@ -59,7 +61,7 @@ fun CommonButton(
                 modifier = Modifier.fillMaxWidth().align(Alignment.Center),
                 textAlign = TextAlign.Center
             )
-            if(endIcon != null) {
+            if (endIcon != null) {
                 Icon(
                     imageVector = endIcon,
                     contentDescription = "",
@@ -69,5 +71,4 @@ fun CommonButton(
             }
         }
     }
-
 }

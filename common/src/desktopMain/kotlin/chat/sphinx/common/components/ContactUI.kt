@@ -24,6 +24,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import chat.sphinx.common.components.notifications.DesktopSphinxToast
+import chat.sphinx.common.state.ConfirmationType
 import chat.sphinx.common.state.ContactScreenState
 import chat.sphinx.common.viewmodel.contact.AddContactViewModel
 import chat.sphinx.common.viewmodel.DashboardViewModel
@@ -37,6 +38,7 @@ import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.lightning.LightningNodeDescriptor
 import theme.badge_red
 import theme.light_divider
+import theme.primary_red
 
 @Composable
 fun AddContactWindowUI(dashboardViewModel: DashboardViewModel) {
@@ -310,6 +312,23 @@ fun ContactForm(
             horizontalAlignment = Alignment.Start
         ) {
             if (editMode) {
+                Box(modifier = Modifier.align(Alignment.Start).wrapContentSize()) {
+                    CommonButton(
+                        text = "DELETE CONTACT",
+                        enabled = true,
+                        customColor = primary_red,
+                        textButtonSize = 10.sp,
+                        fontWeight = FontWeight.W500,
+                        modifier = Modifier
+                            .width(110.dp)
+                            .height(42.dp),
+                        callback = {
+                            dashboardViewModel.toggleConfirmationWindow(open = true, ConfirmationType.ContactDelete)
+                            dashboardViewModel.toggleContactWindow(false, null)
+                        }
+                    )
+                }
+
                 Column(
                     modifier = Modifier.fillMaxWidth().height(112.dp),
                     verticalArrangement = Arrangement.Center,
