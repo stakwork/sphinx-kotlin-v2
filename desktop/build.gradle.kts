@@ -37,30 +37,20 @@ kotlin {
 
             // Set the resources srcDir based on the OS and architecture
             val nativeResourceDir = when {
-                // macOS
-                "mac" in osName && "aarch64" in osArch -> "src/jvmMain/resources/natives/macos/arm64-v8a"
+                "mac" in osName && "aarch64" in osArch -> "src/jvmMain/resources/natives/macos/aarch64"
                 "mac" in osName && "x86_64" in osArch -> "src/jvmMain/resources/natives/macos/x86_64"
-
-                // Windows
                 "win" in osName && "x86_64" in osArch -> "src/jvmMain/resources/natives/windows/x86_64"
-                "win" in osName && "x86" in osArch -> "src/jvmMain/resources/natives/windows/x86"
-
-                // Linux
-                "linux" in osName && "x86_64" in osArch -> "src/jvmMain/resources/natives/linux/x86_64"
-                "linux" in osName && "x86" in osArch -> "src/jvmMain/resources/natives/linux/x86"
-                "linux" in osName && "arm64" in osArch -> "src/jvmMain/resources/natives/linux/arm64-v8a"
-                "linux" in osName && "arm" in osArch -> "src/jvmMain/resources/natives/linux/armeabi-v7a"
-
+                "win" in osName && "amd64" in osArch -> "src/jvmMain/resources/natives/windows/x86_64" // sometimes Windows x86_64 arch is reported as amd64
                 else -> throw IllegalArgumentException("Unsupported OS/architecture combination: $osName, $osArch")
             }
-
             resources.srcDir(nativeResourceDir)
+
 
             dependencies {
                 implementation(project(":common"))
                 implementation(compose.desktop.currentOs)
                 api(compose.preview)
-                
+
                 implementation("dev.datlag:kcef:2023.10.13")
                 implementation("dev.datlag.tooling:tooling:1.1.0")
                 implementation("io.matthewnelson.kotlin-components:kmp-tor-binary-linuxx64:$kmpTorBinaryVersion")
