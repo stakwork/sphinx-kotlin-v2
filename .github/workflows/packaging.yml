@@ -17,7 +17,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout sphinx-kotlin-v2 code
+      - name: Checkout sphinx-kotlin-ui code
         uses: actions/checkout@v3
         with:
           submodules: "recursive"
