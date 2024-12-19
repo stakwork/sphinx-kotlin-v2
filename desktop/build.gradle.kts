@@ -37,13 +37,23 @@ kotlin {
 
             // Set the resources srcDir based on the OS and architecture
             val nativeResourceDir = when {
-                "mac" in osName && "aarch64" in osArch -> "src/jvmMain/resources/natives/macos/aarch64"
+                // macOS
+                "mac" in osName && "aarch64" in osArch -> "src/jvmMain/resources/natives/macos/arm64-v8a"
                 "mac" in osName && "x86_64" in osArch -> "src/jvmMain/resources/natives/macos/x86_64"
+
+                // Windows
                 "win" in osName && "x86_64" in osArch -> "src/jvmMain/resources/natives/windows/x86_64"
-                "win" in osName && "amd64" in osArch -> "src/jvmMain/resources/natives/windows/x86_64"
-                "linux" in osName && ("amd64" in osArch || "x86_64" in osArch) -> "src/jvmMain/resources/natives/linux/x86_64"
+                "win" in osName && "x86" in osArch -> "src/jvmMain/resources/natives/windows/x86"
+
+                // Linux
+                "linux" in osName && "x86_64" in osArch -> "src/jvmMain/resources/natives/linux/x86_64"
+                "linux" in osName && "x86" in osArch -> "src/jvmMain/resources/natives/linux/x86"
+                "linux" in osName && "arm64" in osArch -> "src/jvmMain/resources/natives/linux/arm64-v8a"
+                "linux" in osName && "arm" in osArch -> "src/jvmMain/resources/natives/linux/armeabi-v7a"
+
                 else -> throw IllegalArgumentException("Unsupported OS/architecture combination: $osName, $osArch")
             }
+
             resources.srcDir(nativeResourceDir)
 
             dependencies {
