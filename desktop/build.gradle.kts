@@ -1,4 +1,3 @@
-
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.io.FileInputStream
 import java.util.*
@@ -40,11 +39,14 @@ kotlin {
                 "mac" in osName && "aarch64" in osArch -> "src/jvmMain/resources/natives/macos/aarch64"
                 "mac" in osName && "x86_64" in osArch -> "src/jvmMain/resources/natives/macos/x86_64"
                 "win" in osName && "x86_64" in osArch -> "src/jvmMain/resources/natives/windows/x86_64"
-                "win" in osName && "amd64" in osArch -> "src/jvmMain/resources/natives/windows/x86_64" // sometimes Windows x86_64 arch is reported as amd64
+                "win" in osName && "i686" in osArch -> "src/jvmMain/resources/natives/windows/i686"
+                "linux" in osName && "x86_64" in osArch -> "src/jvmMain/resources/natives/linux/x86_64"
+                "linux" in osName && "x86" in osArch -> "src/jvmMain/resources/natives/linux/x86"
+                "linux" in osName && "arm64-v8a" in osArch -> "src/jvmMain/resources/natives/linux/arm64-v8a"
+                "linux" in osName && "armeabi-v7a" in osArch -> "src/jvmMain/resources/natives/linux/armeabi-v7a"
                 else -> throw IllegalArgumentException("Unsupported OS/architecture combination: $osName, $osArch")
             }
             resources.srcDir(nativeResourceDir)
-
 
             dependencies {
                 implementation(project(":common"))
@@ -61,7 +63,6 @@ kotlin {
                 implementation("org.jetbrains.compose.ui:ui-graphics:1.5.1")
                 implementation("uk.co.caprica:vlcj:4.7.1")
                 implementation("net.java.dev.jna:jna:5.13.0")
-
 
 //                implementation ("com.github.skydoves:landscapist-glide:1.3.6")
 //                implementation ("io.coil-kt:coil-compose:1.4.0")
