@@ -300,7 +300,7 @@ class DashboardViewModel(): WindowFocusListener {
     }
 
     private fun getPackageVersion(){
-        val currentAppVersion = "1.0.28"
+        val currentAppVersion = "1.0.0"
 
         viewModelScope.launch(dispatchers.mainImmediate) {
             // TODO V2 getAppVersions
