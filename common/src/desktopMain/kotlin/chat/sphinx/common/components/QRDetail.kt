@@ -1,5 +1,6 @@
 package chat.sphinx.common.components
 
+import CommonButton
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,19 +27,22 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import chat.sphinx.common.components.notifications.DesktopSphinxToast
+import chat.sphinx.common.state.ConfirmationType
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.utils.SphinxFonts
 import chat.sphinx.utils.getPreferredWindowSize
 import chat.sphinx.utils.toAnnotatedString
+import theme.primary_red
 
 @Composable
 fun QRDetail(
     dashboardViewModel: DashboardViewModel,
     viewModel: QRCodeViewModel
-){
+) {
     val density = LocalDensity.current
     val clipboardManager: ClipboardManager = LocalClipboardManager.current
+    val isInvite = viewModel.contactQRCodeState.viewTitle.uppercase() == "INVITE CODE"
 
     var isOpen by remember { mutableStateOf(true) }
     if (isOpen) {
@@ -56,11 +60,28 @@ fun QRDetail(
             Box(
                 modifier = Modifier.fillMaxSize()
                     .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
-                    .clickable {
-                        clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
-                        viewModel.toast("Code copied to clipboard")
-                    }
             ) {
+                if (isInvite) {
+                    Box(
+                        modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
+                    ) {
+                        CommonButton(
+                            text = "DELETE INVITE",
+                            enabled = true,
+                            customColor = primary_red,
+                            textButtonSize = 8.sp,
+                            fontWeight = FontWeight.W500,
+                            modifier = Modifier
+                                .width(84.dp)
+                                .height(36.dp),
+                            callback = {
+                            dashboardViewModel.deleteInvite(viewModel.contactQRCodeState.string)
+                            dashboardViewModel.toggleQRWindow(false)
+                            }
+                        )
+                    }
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()

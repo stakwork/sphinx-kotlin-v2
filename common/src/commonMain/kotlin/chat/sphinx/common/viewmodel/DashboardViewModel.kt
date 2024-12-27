@@ -534,6 +534,12 @@ class DashboardViewModel(): WindowFocusListener {
         }
     }
 
+    fun deleteInvite(inviteString: String) {
+        viewModelScope.launch(dispatchers.mainImmediate) {
+            repositoryDashboard.deleteInviteAndContact(inviteString)
+        }
+    }
+
     fun deleteSelectedContact() {
         viewModelScope.launch(dispatchers.mainImmediate) {
             val populatedData = ChatListState.screenState() as? ChatListData.PopulatedChatListData
