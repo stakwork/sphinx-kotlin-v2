@@ -186,9 +186,10 @@ fun MessageTextLabel(
 ) {
     val topPadding = if (chatMessage.message.isPaidTextMessage && chatMessage.isSent) 44.dp else 12.dp
 
-    if (chatMessage.message.retrieveTextToShow() != null) {
+    val messageText = chatMessage.message.retrieveTextToShow()?.trim() ?: ""
 
-        val messageText = chatMessage.message.retrieveTextToShow()?.trim() ?: ""
+    if (messageText.isNotEmpty()) {
+        val annotatedString = messageText.toAnnotatedString()
 
         Row(
             modifier = Modifier
@@ -196,9 +197,8 @@ fun MessageTextLabel(
                 .wrapContentWidth(if (chatMessage.isSent) Alignment.End else Alignment.Start),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val annotatedString = messageText.toAnnotatedString()
             ClickableText(
-                annotatedString,
+                text = annotatedString,
                 style = TextStyle(
                     fontWeight = FontWeight.W400,
                     color = MaterialTheme.colorScheme.tertiary,
@@ -206,40 +206,12 @@ fun MessageTextLabel(
                     fontFamily = Roboto,
                 ),
                 onClick = { offset ->
-                    annotatedString.getStringAnnotations(
-                        start = offset,
-                        end = offset
-                    ).firstOrNull()?.let { annotation ->
-                        when (annotation.tag) {
-                            LinkTag.WebURL.name -> {
-                                uriHandler.openUri(annotation.item)
-                            }
-                            LinkTag.BitcoinAddress.name -> {
-                                val bitcoinUriScheme = if (annotation.item.startsWith("bitcoin:")) "bitcoin:" else ""
-                                val bitcoinURI = "$bitcoinUriScheme${annotation.item}"
-
-                                uriHandler.openUri(bitcoinURI)
-                            }
-                            LinkTag.LightningNodePublicKey.name, LinkTag.VirtualNodePublicKey.name -> {
-                                chatViewModel.contactLinkClicked(
-                                    annotation.item.toLightningNodePubKey()
-                                        ?: annotation.item.toVirtualLightningNodeAddress()
-                                )
-                            }
-                            LinkTag.JoinTribeLink.name -> {
-                                chatViewModel.tribeLinkClicked(
-                                    annotation.item.toTribeJoinLink()
-                                )
-                            }
+                    annotatedString.getStringAnnotations("URL", start = offset, end = offset)
+                        .firstOrNull()?.let { annotation ->
+                            uriHandler.openUri(annotation.item)
                         }
-                    }
                 }
             )
-
-            // TODO: Make clickable text compatible with selectable text...
-            //                                SelectionContainer {
-            //
-            //                                }
         }
     } else if (chatMessage.message.messageDecryptionError) {
         Text(
@@ -250,32 +222,14 @@ fun MessageTextLabel(
             fontWeight = FontWeight.W300,
             fontFamily = Roboto,
             fontSize = 13.sp,
-            color = badge_red
+            color = Color.Red
         )
     } else if (chatMessage.message.isPaidTextMessage) {
-
-        if (!chatMessage.message.isPaidPendingMessage || chatMessage.isSent) {
-            val message = chatMessage.message
-            val messageMedia = message.messageMedia
-
-            LaunchedEffect(messageMedia?.url?.value ?: "") {
-                chatViewModel.downloadFileMedia(message, chatMessage.isSent)
-            }
-        }
-
-        val text = if (chatMessage.isReceived && chatMessage.message.isPaidPendingMessage) {
-            "PAY LO UNLOCK MESSAGE"
-        } else if (chatMessage.isReceived && !chatMessage.message.isPurchaseSucceeded) {
-            "ERROR LOADING MESSAGE"
-        } else {
-            "Loading message..."
-        }
-
         Text(
             modifier = Modifier
                 .wrapContentWidth(Alignment.Start)
                 .padding(12.dp, topPadding, 12.dp, 12.dp),
-            text = text,
+            text = "Loading message...",
             fontWeight = FontWeight.W300,
             fontFamily = Roboto,
             fontSize = 14.sp,
