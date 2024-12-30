@@ -60,6 +60,10 @@ fun QRDetail(
             Box(
                 modifier = Modifier.fillMaxSize()
                     .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+                    .clickable {
+                        clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
+                        viewModel.toast("Code copied to clipboard")
+                    }
             ) {
                 if (isInvite) {
                     Box(
