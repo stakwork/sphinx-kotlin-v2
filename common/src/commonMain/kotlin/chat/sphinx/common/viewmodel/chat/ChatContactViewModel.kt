@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import chat.sphinx.common.state.EditMessageState
+import chat.sphinx.common.state.PinMessageState
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.concepts.network.query.lightning.model.route.RouteSuccessProbabilityDto
 import chat.sphinx.concepts.network.query.lightning.model.route.isRouteAvailable
@@ -119,6 +120,13 @@ class ChatContactViewModel(
     }
 
     override var editMessageState: EditMessageState by mutableStateOf(initialState())
+
+    override var pinMessageState: PinMessageState by mutableStateOf(initialPinMessageState())
+
+    override fun initialPinMessageState(): PinMessageState = PinMessageState(
+        pinMessage = mutableStateOf(null),
+        isPinning = false,
+    )
 
     override fun initialState(): EditMessageState = EditMessageState(
         chatId = chatId,

@@ -26,6 +26,7 @@ import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.platform.imageResource
 import chat.sphinx.utils.saveFile
 import chat.sphinx.utils.toAnnotatedString
+import chat.sphinx.wrapper.chat.isTribeOwnedByAccount
 import theme.badge_red
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.message.media.FileName
@@ -86,6 +87,17 @@ actual fun MessageMenu(
                 dismissKebab()
             }) {
                 OptionItem("Reply", imageVector = Icons.Default.Reply)
+            }
+        }
+        if (chatMessage.chat.isTribeOwnedByAccount(chatMessage.accountOwner().nodePubKey)) {
+//            val isPinAllowed = if (chatMessage.message.isPinAllowed(chat.pinedMessage))
+//            val isUnPinAllowed = if (chatMessage.message.isUnPinAllowed(chat.pinedMessage))
+
+            DropdownMenuItem(onClick = {
+                chatViewModel.pinMessage(chatMessage)
+                dismissKebab()
+            }) {
+                OptionItem("Pin Message", imageVector = Icons.Default.PushPin)
             }
         }
         if (chatMessage.message.isSaveAllowed) {

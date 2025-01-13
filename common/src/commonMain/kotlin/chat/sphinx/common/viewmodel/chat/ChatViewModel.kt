@@ -553,10 +553,30 @@ abstract class ChatViewModel(
 
     abstract fun initialState(): EditMessageState
 
+    abstract var pinMessageState: PinMessageState
+        protected set
+
+    abstract fun initialPinMessageState(): PinMessageState
+
     abstract fun getUniqueKey(): String
 
     private inline fun setEditMessageState(update: EditMessageState.() -> EditMessageState) {
         editMessageState = editMessageState.update()
+    }
+
+    private inline fun setPinMessageState(update: PinMessageState.() -> PinMessageState) {
+        pinMessageState = pinMessageState.update()
+    }
+
+    fun dismissPinMessagePopUp() {
+        scope.launch {
+            delay(1000L)
+            setPinMessageState {
+                copy(
+                    isPinning = false
+                )
+            }
+        }
     }
 
     fun onMessageTextChanged(text: TextFieldValue) {
@@ -671,6 +691,15 @@ abstract class ChatViewModel(
             } else if (sendMessage.second != null) {
                 toast("Message Validation failed: ${sendMessage.second?.name}", primary_red)
             }
+        }
+    }
+
+    fun pinMessage(pinMessage: ChatMessage) {
+        setPinMessageState {
+            copy(
+                pinMessage = mutableStateOf(pinMessage),
+                isPinning = true
+            )
         }
     }
 

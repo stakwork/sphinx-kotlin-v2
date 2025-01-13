@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.Res
 import chat.sphinx.common.components.chat.AttachmentPreview
+import chat.sphinx.common.components.chat.MessagePinnedOverlay
 import chat.sphinx.common.components.menu.ChatAction
 import chat.sphinx.common.components.pin.PINScreen
 import chat.sphinx.common.components.tribe.NotificationLevel
@@ -132,6 +133,10 @@ actual fun Dashboard(
                             }
                         }
                         AttachmentPreview(
+                            chatViewModel,
+                            Modifier.padding(paddingValues)
+                        )
+                        MessagePinnedOverlay(
                             chatViewModel,
                             Modifier.padding(paddingValues)
                         )

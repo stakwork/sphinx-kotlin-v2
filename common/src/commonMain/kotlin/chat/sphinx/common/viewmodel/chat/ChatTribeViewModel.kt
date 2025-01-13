@@ -244,4 +244,12 @@ class ChatTribeViewModel(
     override fun getUniqueKey(): String {
         return "TRIBE-$chatId"
     }
+
+    override var pinMessageState: PinMessageState by mutableStateOf(initialPinMessageState())
+
+    // TODO V2 fetch pin message
+    override fun initialPinMessageState(): PinMessageState = PinMessageState(
+        pinMessage = mutableStateOf(null),
+        isPinning = false,
+    )
 }
