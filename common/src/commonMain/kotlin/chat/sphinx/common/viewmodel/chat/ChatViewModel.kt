@@ -403,6 +403,10 @@ abstract class ChatViewModel(
 
     open suspend fun deleteTribe() {}
 
+    open fun pinMessage(message: Message) {}
+
+    open fun unPinMessage(message: Message? = null) {}
+
     private suspend fun getColorsMapFor(
         message: Message,
         contactColor: Int?,
@@ -564,7 +568,7 @@ abstract class ChatViewModel(
         editMessageState = editMessageState.update()
     }
 
-    private inline fun setPinMessageState(update: PinMessageState.() -> PinMessageState) {
+    fun setPinMessageState(update: PinMessageState.() -> PinMessageState) {
         pinMessageState = pinMessageState.update()
     }
 
@@ -697,7 +701,7 @@ abstract class ChatViewModel(
     fun pinMessage(pinMessage: ChatMessage) {
         setPinMessageState {
             copy(
-                pinMessage = mutableStateOf(pinMessage),
+                pinMessage = mutableStateOf(pinMessage.message),
                 isPinning = true
             )
         }

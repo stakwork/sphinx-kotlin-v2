@@ -3,8 +3,10 @@ package chat.sphinx.common.viewmodel.chat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.response.LoadResponse
@@ -62,6 +64,28 @@ class ChatTribeViewModel(
                         tribeData.second_brain_url?.toSecondBrainUrl(),
                     )
 
+                    updatePinnedMessageState(tribeData.pin?.toMessageUUID())
+                }
+            }
+        }
+    }
+
+    private suspend fun updatePinnedMessageState(
+        messageUUID: MessageUUID?,
+    ) {
+//        if (isThreadChat()) {
+//            return
+//        }
+
+        messageUUID?.let { uuid ->
+            if (uuid.value.isNotEmpty()) {
+                messageRepository.getMessageByUUID(uuid).firstOrNull()?.let { message ->
+
+                    setPinMessageState {
+                        copy(
+                            pinMessage = mutableStateOf(message),
+                        )
+                    }
                 }
             }
         }
@@ -117,6 +141,34 @@ class ChatTribeViewModel(
 
             ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
         }.join()
+    }
+
+    override fun pinMessage(message: Message) {
+        scope.launch(dispatchers.mainImmediate) {
+            if (chatId != null) {
+                chatRepository.togglePinMessage(
+                    chatId,
+                    message,
+                    false,
+                    "Failed to pin message",
+                    isProductionEnvironment
+                )
+            }
+        }
+    }
+
+    override fun unPinMessage(message: Message?) {
+        scope.launch(dispatchers.mainImmediate) {
+            if (chatId != null && message != null) {
+                chatRepository.togglePinMessage(
+                    chatId,
+                    message,
+                    true,
+                    "Failed to unpin message",
+                    isProductionEnvironment
+                )
+            }
+        }
     }
 
     override var editMessageState: EditMessageState by mutableStateOf(initialState())
