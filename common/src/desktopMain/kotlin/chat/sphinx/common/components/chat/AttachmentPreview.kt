@@ -60,49 +60,89 @@ fun MessagePinnedOverlay(
     chatViewModel: ChatViewModel?,
     modifier: Modifier = Modifier
 ) {
-    chatViewModel?.pinMessageState?.isPinning?.let { isPinning ->
-        if (isPinning) {
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)),
-                contentAlignment = Alignment.Center
-            ) {
+    chatViewModel?.pinMessageState?.let { state ->
+        when {
+            state.isPinning -> {
                 Box(
-                    modifier = Modifier
-                        .padding(50.dp)
-                        .background(
-                            color = primary_blue,
-                            shape = RoundedCornerShape(8.dp)
-                        )
+                    modifier = modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                    Box(
+                        modifier = Modifier
+                            .padding(50.dp)
+                            .background(
+                                color = primary_blue,
+                                shape = RoundedCornerShape(8.dp)
+                            )
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.PushPin,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Message Pinned",
-                            fontWeight = FontWeight.W600,
-                            fontSize = 14.sp,
-                            fontFamily = Roboto,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
+                        Column(
+                            modifier = Modifier.padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PushPin,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Message Pinned",
+                                fontWeight = FontWeight.W600,
+                                fontSize = 14.sp,
+                                fontFamily = Roboto,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
                     }
                 }
+                chatViewModel.dismissPinMessagePopUp()
             }
-            chatViewModel.dismissPinMessagePopUp()
+            state.isUnpinning -> {
+                Box(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(50.dp)
+                            .background(
+                                color = primary_blue,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PushPin,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Message Unpinned",
+                                fontWeight = FontWeight.W600,
+                                fontSize = 14.sp,
+                                fontFamily = Roboto,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                    }
+                }
+                chatViewModel.dismissPinMessagePopUp()
+            }
         }
     }
 }
-
 @Composable
 fun FilePreview(
     path: Path? = null,

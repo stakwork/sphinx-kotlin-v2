@@ -8,4 +8,5 @@ import chat.sphinx.wrapper.message.Message
 data class PinMessageState(
     val pinMessage: MutableState<Message?> = mutableStateOf(null),
     val isPinning: Boolean = false,
+    val isUnpinning: Boolean = false
 )

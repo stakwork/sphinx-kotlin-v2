@@ -8,9 +8,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,11 +43,14 @@ actual fun MessageMenu(
         isVisible.value = false
     }
 
+    val isPinnedState = remember { mutableStateOf(chatMessage.chat.pinedMessage?.value == chatMessage.message.uuid?.value) }
+
     CursorDropdownMenu(
         expanded = isVisible.value,
-        onDismissRequest = dismissKebab, modifier = Modifier.background(MaterialTheme.colorScheme.onSecondaryContainer).clip(
-            RoundedCornerShape(16.dp)
-        )
+        onDismissRequest = dismissKebab,
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.onSecondaryContainer)
+            .clip(RoundedCornerShape(16.dp))
     ) {
         val messageText = chatMessage.message.messageContentDecrypted?.value ?: ""
 
@@ -58,7 +59,7 @@ actual fun MessageMenu(
                 chatMessage.boostMessage()
                 dismissKebab()
             }) {
-                OptionItem("Boost",Res.drawable.ic_boost_green)
+                OptionItem("Boost", Res.drawable.ic_boost_green)
             }
         }
         if (chatMessage.message.isCopyAllowed) {
@@ -90,14 +91,18 @@ actual fun MessageMenu(
             }
         }
         if (chatMessage.chat.isTribeOwnedByAccount(chatMessage.accountOwner().nodePubKey)) {
-//            val isPinAllowed = if (chatMessage.message.isPinAllowed(chat.pinedMessage))
-//            val isUnPinAllowed = if (chatMessage.message.isUnPinAllowed(chat.pinedMessage))
+            val pinText = if (isPinnedState.value) "Unpin Message" else "Pin Message"
 
             DropdownMenuItem(onClick = {
-                chatViewModel.pinMessage(chatMessage)
+                if (isPinnedState.value) {
+                    chatViewModel.onUnpinnedClicked(chatMessage)
+                } else {
+                    chatViewModel.onPinClicked(chatMessage)
+                }
+                isPinnedState.value = !isPinnedState.value
                 dismissKebab()
             }) {
-                OptionItem("Pin Message", imageVector = Icons.Default.PushPin)
+                OptionItem(pinText, imageVector = Icons.Default.PushPin)
             }
         }
         if (chatMessage.message.isSaveAllowed) {
@@ -117,9 +122,9 @@ actual fun MessageMenu(
         }
 
         if (chatMessage.message.isDeleteAllowed(
-            chatMessage.chat,
-            chatMessage.accountOwner().nodePubKey
-        )) {
+                chatMessage.chat,
+                chatMessage.accountOwner().nodePubKey
+            )) {
             DropdownMenuItem(onClick = {
                 // TODO: Confirm action...
                 chatMessage.deleteMessage()
@@ -130,6 +135,7 @@ actual fun MessageMenu(
         }
     }
 }
+
 @Composable
 fun OptionItem(
     optionText: String,

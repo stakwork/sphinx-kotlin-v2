@@ -577,7 +577,8 @@ abstract class ChatViewModel(
             delay(1000L)
             setPinMessageState {
                 copy(
-                    isPinning = false
+                    isPinning = false,
+                    isUnpinning = false
                 )
             }
         }
@@ -698,11 +699,25 @@ abstract class ChatViewModel(
         }
     }
 
-    fun pinMessage(pinMessage: ChatMessage) {
+    fun onPinClicked(pinMessage: ChatMessage) {
+        if (pinMessageState.pinMessage.value != null) {
+            unPinMessage(pinMessageState.pinMessage.value)
+        }
+        pinMessage(pinMessage.message)
         setPinMessageState {
             copy(
                 pinMessage = mutableStateOf(pinMessage.message),
                 isPinning = true
+            )
+        }
+    }
+
+    fun onUnpinnedClicked(pinMessage: ChatMessage) {
+        unPinMessage(pinMessage.message)
+        setPinMessageState {
+            copy(
+                pinMessage = mutableStateOf(null),
+                isUnpinning = true
             )
         }
     }
