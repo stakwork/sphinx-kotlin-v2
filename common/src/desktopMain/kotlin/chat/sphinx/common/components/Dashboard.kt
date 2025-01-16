@@ -33,7 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.Res
 import chat.sphinx.common.components.chat.AttachmentPreview
-import chat.sphinx.common.components.chat.MessagePinnedOverlay
+import chat.sphinx.common.components.chat.MessagePinnedFullContent
+import chat.sphinx.common.components.chat.MessagePinnedPopUp
 import chat.sphinx.common.components.menu.ChatAction
 import chat.sphinx.common.components.pin.PINScreen
 import chat.sphinx.common.components.tribe.NotificationLevel
@@ -137,7 +138,11 @@ actual fun Dashboard(
                             chatViewModel,
                             Modifier.padding(paddingValues)
                         )
-                        MessagePinnedOverlay(
+                        MessagePinnedPopUp(
+                            chatViewModel,
+                            Modifier.padding(paddingValues)
+                        )
+                        MessagePinnedFullContent(
                             chatViewModel,
                             Modifier.padding(paddingValues)
                         )
@@ -366,6 +371,9 @@ fun SphinxChatDetailTopAppBar(
                     .height(46.dp)
                     .fillMaxWidth()
                     .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+                    .clickable {
+                        chatViewModel.pinFullContentScreen()
+                    }
             ) {
                 Divider(modifier = Modifier.height(2.dp))
                 Row(

@@ -584,6 +584,12 @@ abstract class ChatViewModel(
         }
     }
 
+    fun dismissPinFullContentScreen() {
+        setPinMessageState {
+            copy(pinFullContentScreen = false)
+        }
+    }
+
     fun onMessageTextChanged(text: TextFieldValue) {
         if (
             editMessageState.messageText.value.text == text.text &&
@@ -595,6 +601,13 @@ abstract class ChatViewModel(
         editMessageState.messageText.value = text
         aliasMatcher(text.text)
     }
+
+    fun pinFullContentScreen() {
+        setPinMessageState {
+            copy(pinFullContentScreen = true)
+        }
+    }
+
 
     var aliasMatcherState: AliasMatcherState by mutableStateOf(initialAliasMatcherState())
 
