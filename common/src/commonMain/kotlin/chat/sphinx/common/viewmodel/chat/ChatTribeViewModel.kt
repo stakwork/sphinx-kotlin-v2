@@ -47,6 +47,14 @@ class ChatTribeViewModel(
         replay = 1,
     )
 
+    override var pinMessageState: PinMessageState by mutableStateOf(initialPinMessageState())
+
+    // TODO V2 fetch pin message
+    override fun initialPinMessageState(): PinMessageState = PinMessageState(
+        pinMessage = mutableStateOf(null),
+        isPinning = false,
+    )
+
     private val isProductionEnvironment = ServersUrlsHelper().getEnvironmentType()
 
     init {
@@ -64,14 +72,15 @@ class ChatTribeViewModel(
                         tribeData.second_brain_url?.toSecondBrainUrl(),
                     )
 
-                    updatePinnedMessageState(tribeData.pin?.toMessageUUID())
+                    updatePinnedMessageState(chat, tribeData.pin?.toMessageUUID())
                 }
             }
         }
     }
 
     private suspend fun updatePinnedMessageState(
-        messageUUID: MessageUUID?,
+        chat: Chat,
+        messageUUID: MessageUUID?
     ) {
 //        if (isThreadChat()) {
 //            return
@@ -80,10 +89,11 @@ class ChatTribeViewModel(
         messageUUID?.let { uuid ->
             if (uuid.value.isNotEmpty()) {
                 messageRepository.getMessageByUUID(uuid).firstOrNull()?.let { message ->
+                   val chatMessage = processSingleMessage(chat, message)
 
                     setPinMessageState {
                         copy(
-                            pinMessage = mutableStateOf(message),
+                            pinMessage = mutableStateOf(chatMessage),
                         )
                     }
                 }
@@ -296,12 +306,4 @@ class ChatTribeViewModel(
     override fun getUniqueKey(): String {
         return "TRIBE-$chatId"
     }
-
-    override var pinMessageState: PinMessageState by mutableStateOf(initialPinMessageState())
-
-    // TODO V2 fetch pin message
-    override fun initialPinMessageState(): PinMessageState = PinMessageState(
-        pinMessage = mutableStateOf(null),
-        isPinning = false,
-    )
 }

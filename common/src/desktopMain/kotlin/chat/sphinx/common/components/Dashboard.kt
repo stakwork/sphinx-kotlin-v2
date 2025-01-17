@@ -391,7 +391,7 @@ fun SphinxChatDetailTopAppBar(
                     )
 
                     Text(
-                        text = chatViewModel.pinMessageState.pinMessage.value?.retrieveTextToShow() ?: "",
+                        text = chatViewModel.pinMessageState.pinMessage.value?.message?.retrieveTextToShow() ?: "",
                         color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
                         fontSize = 12.sp,
                         fontFamily = Roboto,

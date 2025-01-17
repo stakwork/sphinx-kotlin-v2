@@ -466,13 +466,14 @@ fun CommonMenuButton(
     textButtonSize: TextUnit = 12.sp,
     textColor: Color,
     fontWeight: FontWeight = FontWeight.W500,
+    centerContent: Boolean = false,
     modifier: Modifier = Modifier,
     callback: () -> Unit
 ) {
     val color = if (enabled == true) {
         textColor
     } else {
-        textColor?.copy(alpha = 0.7f) ?: androidx.compose.material3.MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+        textColor.copy(alpha = 0.7f)
     }
 
     Button(
@@ -485,15 +486,21 @@ fun CommonMenuButton(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = if (centerContent) Arrangement.Center else Arrangement.Start, // Adjust arrangement
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (startIcon != null) {
                 Icon(
                     imageVector = startIcon,
-                    contentDescription = "",
+                    contentDescription = null,
                     tint = iconColor,
-                    modifier = Modifier.padding(end = 8.dp)
+                    modifier = Modifier
+                        .padding(end = if (centerContent) 0.dp else 8.dp)
+                        .size(20.dp)
                 )
+            }
+            if (centerContent) {
+                Spacer(modifier = Modifier.width(8.dp))
             }
             Text(
                 text = text,
@@ -501,8 +508,8 @@ fun CommonMenuButton(
                 color = textColor,
                 fontWeight = fontWeight,
                 fontFamily = Roboto,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.weight(1f)
+                textAlign = if (centerContent) TextAlign.Center else TextAlign.Start, // Adjust alignment
+                modifier = if (centerContent) Modifier else Modifier.weight(1f) // Preserve old behavior
             )
         }
     }

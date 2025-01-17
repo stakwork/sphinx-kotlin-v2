@@ -142,6 +142,15 @@ abstract class ChatViewModel(
         tribeProfileState = tribeProfileState.update()
     }
 
+    abstract var pinMessageState: PinMessageState
+        protected set
+
+    abstract fun initialPinMessageState(): PinMessageState
+
+    fun setPinMessageState(update: PinMessageState.() -> PinMessageState) {
+        pinMessageState = pinMessageState.update()
+    }
+
     fun loadPersonData(person: MessagePerson) {
         scope.launch(dispatchers.mainImmediate) {
             networkQueryPeople.getTribeMemberProfile(person).collect { loadResponse ->
@@ -346,6 +355,65 @@ abstract class ChatViewModel(
             delay(200L)
             onNewMessageCallback?.invoke()
         }
+    }
+
+    suspend fun processSingleMessage(chat: Chat, message: Message): ChatMessage {
+        val owner = getOwner()
+        val contact = getContact()
+
+        val tribeAdmin = if (chat.ownerPubKey != null) {
+            contactRepository.getContactByPubKey(chat.ownerPubKey!!).firstOrNull()
+        } else {
+            null
+        }
+
+        var contactColorInt: Int? = null
+
+        contact?.let { nnContact ->
+            val contactColorKey = nnContact.getColorKey()
+            contactColorInt = colorsHelper.getColorIntForKey(
+                contactColorKey,
+                Integer.toHexString(getRandomColorRes().hashCode())
+            )
+        }
+
+        val colors = getColorsMapFor(message, contactColorInt, tribeAdmin)
+
+        val background = getBubbleBackgroundForMessage(
+            message,
+            null,
+            null,
+            null
+        ).second
+
+        return ChatMessage(
+            chat = chat,
+            contact = contact,
+            message = message,
+            colors = colors,
+            accountOwner = { owner },
+            boostMessage = {
+                boostMessage(chat, message.uuid)
+            },
+            flagMessage = {
+                confirm(
+                    "Confirm Flagging message",
+                    "Are you sure you want to flag this message? This action can not be undone"
+                ) {
+                    flagMessage(chat, message)
+                }
+            },
+            deleteMessage = {
+                confirm(
+                    "Confirm Deleting message",
+                    "Are you sure you want to delete this message? This action can not be undone"
+                ) {
+                    deleteMessage(message)
+                }
+            },
+            previewProvider = { handleLinkPreview(it) },
+            background = background
+        )
     }
 
     private fun getBubbleBackgroundForMessage(
@@ -557,19 +625,10 @@ abstract class ChatViewModel(
 
     abstract fun initialState(): EditMessageState
 
-    abstract var pinMessageState: PinMessageState
-        protected set
-
-    abstract fun initialPinMessageState(): PinMessageState
-
     abstract fun getUniqueKey(): String
 
     private inline fun setEditMessageState(update: EditMessageState.() -> EditMessageState) {
         editMessageState = editMessageState.update()
-    }
-
-    fun setPinMessageState(update: PinMessageState.() -> PinMessageState) {
-        pinMessageState = pinMessageState.update()
     }
 
     fun dismissPinMessagePopUp() {
@@ -713,13 +772,13 @@ abstract class ChatViewModel(
     }
 
     fun onPinClicked(pinMessage: ChatMessage) {
-        if (pinMessageState.pinMessage.value != null) {
-            unPinMessage(pinMessageState.pinMessage.value)
+        if (pinMessageState.pinMessage.value?.message != null) {
+            unPinMessage(pinMessageState.pinMessage.value?.message)
         }
         pinMessage(pinMessage.message)
         setPinMessageState {
             copy(
-                pinMessage = mutableStateOf(pinMessage.message),
+                pinMessage = mutableStateOf(pinMessage),
                 isPinning = true
             )
         }

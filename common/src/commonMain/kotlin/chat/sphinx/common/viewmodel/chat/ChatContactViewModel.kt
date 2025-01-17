@@ -125,7 +125,7 @@ class ChatContactViewModel(
 
     override fun initialPinMessageState(): PinMessageState = PinMessageState(
         pinMessage = mutableStateOf(null),
-        isPinning = false,
+        isPinning = false
     )
 
     override fun initialState(): EditMessageState = EditMessageState(
