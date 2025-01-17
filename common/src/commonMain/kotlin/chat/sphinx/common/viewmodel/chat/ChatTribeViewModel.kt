@@ -3,8 +3,10 @@ package chat.sphinx.common.viewmodel.chat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.response.LoadResponse
@@ -45,6 +47,14 @@ class ChatTribeViewModel(
         replay = 1,
     )
 
+    override var pinMessageState: PinMessageState by mutableStateOf(initialPinMessageState())
+
+    // TODO V2 fetch pin message
+    override fun initialPinMessageState(): PinMessageState = PinMessageState(
+        pinMessage = mutableStateOf(null),
+        isPinning = false,
+    )
+
     private val isProductionEnvironment = ServersUrlsHelper().getEnvironmentType()
 
     init {
@@ -62,6 +72,30 @@ class ChatTribeViewModel(
                         tribeData.second_brain_url?.toSecondBrainUrl(),
                     )
 
+                    updatePinnedMessageState(chat, tribeData.pin?.toMessageUUID())
+                }
+            }
+        }
+    }
+
+    private suspend fun updatePinnedMessageState(
+        chat: Chat,
+        messageUUID: MessageUUID?
+    ) {
+//        if (isThreadChat()) {
+//            return
+//        }
+
+        messageUUID?.let { uuid ->
+            if (uuid.value.isNotEmpty()) {
+                messageRepository.getMessageByUUID(uuid).firstOrNull()?.let { message ->
+                   val chatMessage = processSingleMessage(chat, message)
+
+                    setPinMessageState {
+                        copy(
+                            pinMessage = mutableStateOf(chatMessage),
+                        )
+                    }
                 }
             }
         }
@@ -117,6 +151,34 @@ class ChatTribeViewModel(
 
             ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
         }.join()
+    }
+
+    override fun pinMessage(message: Message) {
+        scope.launch(dispatchers.mainImmediate) {
+            if (chatId != null) {
+                chatRepository.togglePinMessage(
+                    chatId,
+                    message,
+                    false,
+                    "Failed to pin message",
+                    isProductionEnvironment
+                )
+            }
+        }
+    }
+
+    override fun unPinMessage(message: Message?) {
+        scope.launch(dispatchers.mainImmediate) {
+            if (chatId != null && message != null) {
+                chatRepository.togglePinMessage(
+                    chatId,
+                    message,
+                    true,
+                    "Failed to unpin message",
+                    isProductionEnvironment
+                )
+            }
+        }
     }
 
     override var editMessageState: EditMessageState by mutableStateOf(initialState())

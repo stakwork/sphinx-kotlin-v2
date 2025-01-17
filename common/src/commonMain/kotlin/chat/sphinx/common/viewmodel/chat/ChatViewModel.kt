@@ -142,6 +142,15 @@ abstract class ChatViewModel(
         tribeProfileState = tribeProfileState.update()
     }
 
+    abstract var pinMessageState: PinMessageState
+        protected set
+
+    abstract fun initialPinMessageState(): PinMessageState
+
+    fun setPinMessageState(update: PinMessageState.() -> PinMessageState) {
+        pinMessageState = pinMessageState.update()
+    }
+
     fun loadPersonData(person: MessagePerson) {
         scope.launch(dispatchers.mainImmediate) {
             networkQueryPeople.getTribeMemberProfile(person).collect { loadResponse ->
@@ -348,6 +357,65 @@ abstract class ChatViewModel(
         }
     }
 
+    suspend fun processSingleMessage(chat: Chat, message: Message): ChatMessage {
+        val owner = getOwner()
+        val contact = getContact()
+
+        val tribeAdmin = if (chat.ownerPubKey != null) {
+            contactRepository.getContactByPubKey(chat.ownerPubKey!!).firstOrNull()
+        } else {
+            null
+        }
+
+        var contactColorInt: Int? = null
+
+        contact?.let { nnContact ->
+            val contactColorKey = nnContact.getColorKey()
+            contactColorInt = colorsHelper.getColorIntForKey(
+                contactColorKey,
+                Integer.toHexString(getRandomColorRes().hashCode())
+            )
+        }
+
+        val colors = getColorsMapFor(message, contactColorInt, tribeAdmin)
+
+        val background = getBubbleBackgroundForMessage(
+            message,
+            null,
+            null,
+            null
+        ).second
+
+        return ChatMessage(
+            chat = chat,
+            contact = contact,
+            message = message,
+            colors = colors,
+            accountOwner = { owner },
+            boostMessage = {
+                boostMessage(chat, message.uuid)
+            },
+            flagMessage = {
+                confirm(
+                    "Confirm Flagging message",
+                    "Are you sure you want to flag this message? This action can not be undone"
+                ) {
+                    flagMessage(chat, message)
+                }
+            },
+            deleteMessage = {
+                confirm(
+                    "Confirm Deleting message",
+                    "Are you sure you want to delete this message? This action can not be undone"
+                ) {
+                    deleteMessage(message)
+                }
+            },
+            previewProvider = { handleLinkPreview(it) },
+            background = background
+        )
+    }
+
     private fun getBubbleBackgroundForMessage(
         message: Message,
         previousMessage: Message?,
@@ -402,6 +470,10 @@ abstract class ChatViewModel(
     }
 
     open suspend fun deleteTribe() {}
+
+    open fun pinMessage(message: Message) {}
+
+    open fun unPinMessage(message: Message? = null) {}
 
     private suspend fun getColorsMapFor(
         message: Message,
@@ -559,6 +631,24 @@ abstract class ChatViewModel(
         editMessageState = editMessageState.update()
     }
 
+    fun dismissPinMessagePopUp() {
+        scope.launch {
+            delay(1000L)
+            setPinMessageState {
+                copy(
+                    isPinning = false,
+                    isUnpinning = false
+                )
+            }
+        }
+    }
+
+    fun dismissPinFullContentScreen() {
+        setPinMessageState {
+            copy(pinFullContentScreen = false)
+        }
+    }
+
     fun onMessageTextChanged(text: TextFieldValue) {
         if (
             editMessageState.messageText.value.text == text.text &&
@@ -570,6 +660,13 @@ abstract class ChatViewModel(
         editMessageState.messageText.value = text
         aliasMatcher(text.text)
     }
+
+    fun pinFullContentScreen() {
+        setPinMessageState {
+            copy(pinFullContentScreen = true)
+        }
+    }
+
 
     var aliasMatcherState: AliasMatcherState by mutableStateOf(initialAliasMatcherState())
 
@@ -671,6 +768,29 @@ abstract class ChatViewModel(
             } else if (sendMessage.second != null) {
                 toast("Message Validation failed: ${sendMessage.second?.name}", primary_red)
             }
+        }
+    }
+
+    fun onPinClicked(pinMessage: ChatMessage) {
+        if (pinMessageState.pinMessage.value?.message != null) {
+            unPinMessage(pinMessageState.pinMessage.value?.message)
+        }
+        pinMessage(pinMessage.message)
+        setPinMessageState {
+            copy(
+                pinMessage = mutableStateOf(pinMessage),
+                isPinning = true
+            )
+        }
+    }
+
+    fun onUnpinnedClicked(pinMessage: ChatMessage) {
+        unPinMessage(pinMessage.message)
+        setPinMessageState {
+            copy(
+                pinMessage = mutableStateOf(null),
+                isUnpinning = true
+            )
         }
     }
 

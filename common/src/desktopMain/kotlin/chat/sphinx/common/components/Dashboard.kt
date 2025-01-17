@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.Res
 import chat.sphinx.common.components.chat.AttachmentPreview
+import chat.sphinx.common.components.chat.MessagePinnedFullContent
+import chat.sphinx.common.components.chat.MessagePinnedPopUp
 import chat.sphinx.common.components.menu.ChatAction
 import chat.sphinx.common.components.pin.PINScreen
 import chat.sphinx.common.components.tribe.NotificationLevel
@@ -52,6 +54,7 @@ import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.lightning.asFormattedString
 import chat.sphinx.wrapper.message.media.isImage
+import chat.sphinx.wrapper.message.retrieveTextToShow
 import chat.sphinx.wrapper.util.getInitials
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -132,6 +135,14 @@ actual fun Dashboard(
                             }
                         }
                         AttachmentPreview(
+                            chatViewModel,
+                            Modifier.padding(paddingValues)
+                        )
+                        MessagePinnedPopUp(
+                            chatViewModel,
+                            Modifier.padding(paddingValues)
+                        )
+                        MessagePinnedFullContent(
                             chatViewModel,
                             Modifier.padding(paddingValues)
                         )
@@ -223,136 +234,175 @@ fun SphinxChatDetailTopAppBar(
         return
     }
 
-    val chatName = dashboardChat?.chatName ?: "Unknown Chat"
+    val chatName = dashboardChat.chatName ?: "Unknown Chat"
     val contactId = chatViewModel?.editMessageState?.contactId
 
-    TopAppBar(
-        modifier = Modifier.height(60.dp),
-        title = {
-            Column {
-                Row {
-                    Text(
-                        text = chatName, fontSize = 16.sp, fontWeight = FontWeight.W700,
-                        modifier = Modifier.clickable {
-                            if (dashboardChat.isTribe()) {
-                                chatViewModel?.chatId?.let { dashboardViewModel?.toggleTribeDetailWindow(true, it) }
-                            } else {
-                                dashboardViewModel?.toggleContactWindow(true, ContactScreenState.EditContact(contactId))
+    Column {
+        TopAppBar(
+            modifier = Modifier.height(60.dp),
+            title = {
+                Column {
+                    Row {
+                        Text(
+                            text = chatName, fontSize = 16.sp, fontWeight = FontWeight.W700,
+                            modifier = Modifier.clickable {
+                                if (dashboardChat.isTribe()) {
+                                    chatViewModel?.chatId?.let { dashboardViewModel?.toggleTribeDetailWindow(true, it) }
+                                } else {
+                                    dashboardViewModel?.toggleContactWindow(true, ContactScreenState.EditContact(contactId))
+                                }
                             }
-                        }
-                    )
-
-                    Icon(
-                        if (dashboardChat?.isEncrypted() == true) Icons.Default.Lock else Icons.Default.LockOpen,
-                        "Lock",
-                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.size(23.dp).padding(4.dp, 0.dp, 4.dp, 2.dp)
-                    )
-
-                    chatViewModel?.let {
-                        val checkChatStatus by chatViewModel.checkChatStatus.collectAsState(
-                            LoadResponse.Loading
                         )
-                        val color = when (checkChatStatus) {
-                            is LoadResponse.Loading -> {
-                                androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-                            }
-                            is Response.Error -> {
-                                sphinx_orange
-                            }
-                            is Response.Success -> {
-                                primary_green
-                            }
-                        }
 
                         Icon(
-                            Icons.Default.FlashOn,
-                            "Route",
-                            tint = color,
-                            modifier = Modifier.width(15.dp).height(23.dp).padding(0.dp, 0.dp, 0.dp, 2.dp)
+                            if (dashboardChat?.isEncrypted() == true) Icons.Default.Lock else Icons.Default.LockOpen,
+                            "Lock",
+                            tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(23.dp).padding(4.dp, 0.dp, 4.dp, 2.dp)
+                        )
+
+                        chatViewModel?.let {
+                            val checkChatStatus by chatViewModel.checkChatStatus.collectAsState(
+                                LoadResponse.Loading
+                            )
+                            val color = when (checkChatStatus) {
+                                is LoadResponse.Loading -> {
+                                    androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                                }
+                                is Response.Error -> {
+                                    sphinx_orange
+                                }
+                                is Response.Success -> {
+                                    primary_green
+                                }
+                            }
+
+                            Icon(
+                                Icons.Default.FlashOn,
+                                "Route",
+                                tint = color,
+                                modifier = Modifier.width(15.dp).height(23.dp).padding(0.dp, 0.dp, 0.dp, 2.dp)
+                            )
+                        }
+                    }
+
+                    chatViewModel?.let {
+                        val chat by chatViewModel.chatSharedFlow.collectAsState(
+                            (dashboardChat as? DashboardChat.Active)?.chat
+                        )
+
+                        chat?.let { nnChat ->
+                            if (nnChat.isTribe()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Price per message: ${nnChat.pricePerMessage?.asFormattedString(' ', false) ?: 0} - Amount to stake: ${nnChat.escrowAmount?.asFormattedString(' ', false) ?: 0}",
+                                    fontSize = 11.sp,
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                                )
+                            }
+                        }
+                    }
+                }
+                // TODO: Lighting Indicator...
+            },
+            backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
+            contentColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+            elevation = 8.dp,
+            navigationIcon = {
+                Spacer(modifier = Modifier.width(14.dp))
+                PhotoUrlImage(
+                    dashboardChat.photoUrl,
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape),
+                    firstNameLetter = (dashboardChat.chatName ?: "Unknown Chat").getInitials(),
+                    color = if (dashboardChat.color != null) Color(dashboardChat.color!!) else null,
+                    fontSize = 16
+                )
+            },
+            actions = {
+                chatViewModel?.let {
+                    val tribeData by chatViewModel.tribeDataStateFlow.collectAsState(null)
+
+                    tribeData?.let {
+                        if (it.appUrl != null) {
+                            IconButton(onClick = {
+                                webAppViewModel.toggleWebAppWindow(true, tribeData?.appUrl?.value)
+                            }) {
+                                Icon(
+                                    Icons.Default.Apps,
+                                    contentDescription = "WebApp",
+                                    tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                                )
+                            }
+                        }
+                    }
+                }
+                IconButton(onClick = {
+                    chatViewModel?.toggleChatMuted()
+                }) {
+                    chatViewModel?.let {
+                        val chat by chatViewModel.chatSharedFlow.collectAsState(
+                            (dashboardChat as? DashboardChat.Active)?.chat
+                        )
+                        Icon(
+                            if (chat?.isMuted() == true) Icons.Default.NotificationsOff else Icons.Default.Notifications,
+                            contentDescription = "Mute/Unmute",
+                            tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                         )
                     }
                 }
-
-                chatViewModel?.let {
-                    val chat by chatViewModel.chatSharedFlow.collectAsState(
-                        (dashboardChat as? DashboardChat.Active)?.chat
-                    )
-
-                    chat?.let { nnChat ->
-                        if (nnChat.isTribe()) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Price per message: ${nnChat.pricePerMessage?.asFormattedString(' ', false) ?: 0} - Amount to stake: ${nnChat.escrowAmount?.asFormattedString(' ', false) ?: 0}",
-                                fontSize = 11.sp,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-                            )
-                        }
+                IconButton(onClick = {
+                    chatViewModel?.sendCallInvite(false) { link ->
+                        uriHandler.openUri(link)
                     }
-                }
-            }
-            // TODO: Lighting Indicator...
-        },
-        backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
-        contentColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-        elevation = 8.dp,
-        navigationIcon = {
-            Spacer(modifier = Modifier.width(14.dp))
-            PhotoUrlImage(
-                dashboardChat.photoUrl,
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape),
-                firstNameLetter = (dashboardChat.chatName ?: "Unknown Chat").getInitials(),
-                color = if (dashboardChat.color != null) Color(dashboardChat.color!!) else null,
-                fontSize = 16
-            )
-        },
-        actions = {
-            chatViewModel?.let {
-                val tribeData by chatViewModel.tribeDataStateFlow.collectAsState(null)
-
-                tribeData?.let {
-                    if (it.appUrl != null) {
-                        IconButton(onClick = {
-                            webAppViewModel.toggleWebAppWindow(true, tribeData?.appUrl?.value)
-                        }) {
-                            Icon(
-                                Icons.Default.Apps,
-                                contentDescription = "WebApp",
-                                tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                    }
-                }
-            }
-            IconButton(onClick = {
-                chatViewModel?.toggleChatMuted()
-            }) {
-                chatViewModel?.let {
-                    val chat by chatViewModel.chatSharedFlow.collectAsState(
-                        (dashboardChat as? DashboardChat.Active)?.chat
-                    )
+                }) {
                     Icon(
-                        if (chat?.isMuted() == true) Icons.Default.NotificationsOff else Icons.Default.Notifications,
-                        contentDescription = "Mute/Unmute",
+                        Icons.Default.Phone,
+                        contentDescription = "Call",
                         tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                     )
                 }
             }
-            IconButton(onClick = {
-                chatViewModel?.sendCallInvite(false) { link ->
-                    uriHandler.openUri(link)
+        )
+        if (chatViewModel?.pinMessageState?.pinMessage?.value != null) {
+            Box(
+                modifier = Modifier
+                    .height(46.dp)
+                    .fillMaxWidth()
+                    .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+                    .clickable {
+                        chatViewModel.pinFullContentScreen()
+                    }
+            ) {
+                Divider(modifier = Modifier.height(2.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .fillMaxHeight(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PushPin,
+                        contentDescription = "Pin",
+                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+
+                    Text(
+                        text = chatViewModel.pinMessageState.pinMessage.value?.message?.retrieveTextToShow() ?: "",
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                        fontSize = 12.sp,
+                        fontFamily = Roboto,
+                        fontWeight = FontWeight.W500,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-            }) {
-                Icon(
-                    Icons.Default.Phone,
-                    contentDescription = "Call",
-                    tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-                )
             }
         }
-    )
+    }
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
