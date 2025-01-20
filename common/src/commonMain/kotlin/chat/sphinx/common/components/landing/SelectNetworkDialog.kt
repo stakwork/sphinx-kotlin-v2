@@ -26,7 +26,7 @@ fun SelectNetworkDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Transparent)  // Makes the background transparent
+                .background(Color.Transparent)
         ) {
             Column(
                 modifier = Modifier
@@ -37,7 +37,6 @@ fun SelectNetworkDialog(
                         shape = RoundedCornerShape(8.dp)
                     )
             ) {
-                // Adding padding top to the title "Network"
                 Text(
                     text = "Network",
                     textAlign = TextAlign.Center,
@@ -46,7 +45,7 @@ fun SelectNetworkDialog(
                     fontWeight = FontWeight.W500,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .padding(top = 8.dp),  // Adding a bit of top padding here
+                        .padding(top = 8.dp),
                     fontFamily = Roboto
                 )
                 Text(
@@ -72,11 +71,11 @@ fun SelectNetworkDialog(
                             backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary
                         )
                     ) {
-                        // Applying Roboto font to Button Text
+
                         Text(
                             "Regtest",
                             color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                            fontFamily = Roboto  // Set Roboto font here
+                            fontFamily = Roboto
                         )
                     }
                     Button(
@@ -88,11 +87,10 @@ fun SelectNetworkDialog(
                             backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary
                         )
                     ) {
-                        // Applying Roboto font to Button Text
                         Text(
                             "Bitcoin",
                             color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                            fontFamily = Roboto  // Set Roboto font here
+                            fontFamily = Roboto
                         )
                     }
                 }

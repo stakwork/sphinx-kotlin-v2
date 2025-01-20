@@ -221,7 +221,11 @@ class SignUpViewModel : PinAuthenticationViewModel() {
             if (redemptionCode is RedemptionCode.MnemonicRestoration) {
                 connectManagerRepository.setMnemonicWords(redemptionCode.mnemonic)
                 isRestore = true
-                showSelectNetworkDialog.value = true
+
+//              Bitcoin network selected by default
+                onNetworkTypeSelected(false)
+
+//               showSelectNetworkDialog.value = true
             } else {
                 setState {
                     copy(errorMessage = "Invalid Restore string")
