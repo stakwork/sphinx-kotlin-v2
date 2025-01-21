@@ -3,6 +3,7 @@ package chat.sphinx.common.state
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import chat.sphinx.common.models.ChatMessage
+import chat.sphinx.common.models.DashboardChat
 import chat.sphinx.wrapper.dashboard.ChatId
 
 abstract class MessageListData {
