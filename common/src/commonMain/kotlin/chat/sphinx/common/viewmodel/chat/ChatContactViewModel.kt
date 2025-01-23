@@ -22,6 +22,7 @@ import chat.sphinx.wrapper.contact.ContactAlias
 import chat.sphinx.wrapper.contact.getColorKey
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.ContactId
+import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 
@@ -135,6 +136,14 @@ class ChatContactViewModel(
 
     override fun getUniqueKey(): String {
         return "CONTACT-$contactId"
+    }
+
+    override fun getThreadUUID(): ThreadUUID? {
+        return null
+    }
+
+    override fun isThreadChat(): Boolean {
+        return false
     }
 
 }

@@ -45,6 +45,7 @@ import chat.sphinx.wrapper.tribe.TribeJoinLink
 import chat.sphinx.wrapper.tribe.toTribeJoinLink
 import chat.sphinx.wrapper_chat.NotificationLevel
 import chat.sphinx.wrapper_chat.isMuteChat
+import chat.sphinx.wrapper_message.ThreadUUID
 import chat.sphinx.wrapper_message.toThreadUUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -274,7 +275,9 @@ abstract class ChatViewModel(
         val chatMessages: MutableList<ChatMessage> = mutableListOf()
         var groupingDate: DateTime? = null
 
-        messages.withIndex().forEach { (index, message) ->
+        val messagesList = filterAndSortMessagesIfNecessary(chat, messages)
+
+        messagesList.withIndex().forEach { (index, message) ->
 
             val colors = getColorsMapFor(message, contactColorInt, tribeAdmin)
 
@@ -358,6 +361,41 @@ abstract class ChatViewModel(
         }
     }
 
+    private fun filterAndSortMessagesIfNecessary(
+        chat: Chat,
+        messages: List<Message>,
+    ): List<Message> {
+        val filteredMessages: MutableList<Message> = mutableListOf()
+        val threadMessageMap: MutableMap<String, Int> = mutableMapOf()
+
+        // Filter messages to do not show thread replies on chat
+        if (chat.isTribe() && !isThreadChat()) {
+            for (message in messages) {
+
+                if (message.thread?.isNotEmpty() == true) {
+                    message.uuid?.value?.let { uuid ->
+                        threadMessageMap[uuid] = message.thread?.count() ?: 0
+                    }
+                }
+
+                val shouldAddMessage = message.threadUUID?.let { threadUUID ->
+                    val count = threadMessageMap[threadUUID.value] ?: 0
+                    count <= 1
+                } ?: true
+
+                if (shouldAddMessage) {
+                    filteredMessages.add(message)
+                }
+            }
+        } else {
+            filteredMessages.addAll(messages)
+        }
+
+        // Sort messages list by the last thread message date if applicable
+
+        return filteredMessages.sortedBy { it.thread?.first()?.date?.value ?: it.date.value }
+    }
+
     suspend fun processSingleMessage(chat: Chat, message: Message): ChatMessage {
         val owner = getOwner()
         val contact = getContact()
@@ -427,22 +465,28 @@ abstract class ChatViewModel(
         val groupingMinutesLimit = 5.0
         var date = groupingDate ?: message.date
 
+        val isPreviousMessageThreadHeader = (previousMessage?.uuid?.value == getThreadUUID()?.value && previousMessage?.type?.isGroupAction() == false)
+
         val shouldAvoidGroupingWithPrevious =
             (previousMessage?.shouldAvoidGrouping() ?: true) || message.shouldAvoidGrouping()
-        val isGroupedBySenderWithPrevious = previousMessage?.hasSameSenderThanMessage(message) ?: false
-        val isGroupedByDateWithPrevious = message.date.getMinutesDifferenceWithDateTime(date) < groupingMinutesLimit
+        val isGroupedBySenderWithPrevious =
+            previousMessage?.hasSameSenderThanMessage(message) ?: false
+        val isGroupedByDateWithPrevious =
+            message.date.getMinutesDifferenceWithDateTime(date) < groupingMinutesLimit
 
         val groupedWithPrevious =
-            (!shouldAvoidGroupingWithPrevious && isGroupedBySenderWithPrevious && isGroupedByDateWithPrevious)
+            (!shouldAvoidGroupingWithPrevious && isGroupedBySenderWithPrevious && isGroupedByDateWithPrevious && !isPreviousMessageThreadHeader)
 
         date = if (groupedWithPrevious) date else message.date
 
-        val shouldAvoidGroupingWithNext = (nextMessage?.shouldAvoidGrouping() ?: true) || message.shouldAvoidGrouping()
+        val shouldAvoidGroupingWithNext =
+            (nextMessage?.shouldAvoidGrouping() ?: true) || message.shouldAvoidGrouping()
         val isGroupedBySenderWithNext = nextMessage?.hasSameSenderThanMessage(message) ?: false
         val isGroupedByDateWithNext =
             if (nextMessage != null) nextMessage.date.getMinutesDifferenceWithDateTime(date) < groupingMinutesLimit else false
 
-        val groupedWithNext = (!shouldAvoidGroupingWithNext && isGroupedBySenderWithNext && isGroupedByDateWithNext)
+        val groupedWithNext =
+            (!shouldAvoidGroupingWithNext && isGroupedBySenderWithNext && isGroupedByDateWithNext)
 
         when {
             (!groupedWithPrevious && !groupedWithNext) -> {
@@ -627,6 +671,10 @@ abstract class ChatViewModel(
     abstract fun initialState(): EditMessageState
 
     abstract fun getUniqueKey(): String
+
+    abstract fun getThreadUUID(): ThreadUUID?
+
+    abstract fun isThreadChat(): Boolean
 
     private inline fun setEditMessageState(update: EditMessageState.() -> EditMessageState) {
         editMessageState = editMessageState.update()

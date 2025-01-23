@@ -92,6 +92,9 @@ fun ChatCard(
         var rowWidth by remember { mutableStateOf(0.dp) }
 
         when {
+            chatMessage.threadState != null -> {
+                // Implement Thread Bubble UI
+            }
             chatMessage.message.isSphinxCallLink -> {
                 JitsiAudioVideoCall(chatMessage)
             }
