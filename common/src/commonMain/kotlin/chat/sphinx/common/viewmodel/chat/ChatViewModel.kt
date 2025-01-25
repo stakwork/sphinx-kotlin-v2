@@ -33,7 +33,6 @@ import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.contact.getColorKey
 import chat.sphinx.wrapper.dashboard.ChatId
-import chat.sphinx.wrapper.dashboard.toContactId
 import chat.sphinx.wrapper.getMinutesDifferenceWithDateTime
 import chat.sphinx.wrapper.isDifferentDayThan
 import chat.sphinx.wrapper.lightning.*
@@ -293,6 +292,26 @@ abstract class ChatViewModel(
 
             groupingDate = groupingDateAndBubbleBackground.first
 
+            val isThreadHeaderMessage = (message.uuid?.value == getThreadUUID()?.value && index == 0 && !message.type.isGroupAction())
+
+            if (isThreadHeaderMessage) {
+                chatMessages.add(
+                    ChatMessage(
+                        chat,
+                        contact,
+                        message,
+                        colors,
+                        accountOwner = { owner },
+                        boostMessage = {},
+                        flagMessage = {},
+                        deleteMessage = {},
+                        isSeparator = true,
+                        background = BubbleBackground.Gone,
+                        previewProvider = { handleLinkPreview(it) }
+                    )
+                )
+            }
+
             if (
                 previousMessage == null ||
                 message.date.isDifferentDayThan(previousMessage.date)
@@ -303,13 +322,13 @@ abstract class ChatViewModel(
                         contact,
                         message,
                         colors,
-                        isSeparator = true,
                         accountOwner = { owner },
                         boostMessage = {},
                         flagMessage = {},
                         deleteMessage = {},
-                        previewProvider = { handleLinkPreview(it) },
-                        background = BubbleBackground.Gone
+                        isSeparator = true,
+                        background = BubbleBackground.Gone,
+                        previewProvider = { handleLinkPreview(it) }
                     )
                 )
             }
@@ -340,8 +359,8 @@ abstract class ChatViewModel(
                             deleteMessage(message)
                         }
                     },
-                    previewProvider = { handleLinkPreview(it) },
-                    background = groupingDateAndBubbleBackground.second
+                    background = groupingDateAndBubbleBackground.second,
+                    previewProvider = { handleLinkPreview(it) }
                 )
             )
         }
@@ -450,8 +469,8 @@ abstract class ChatViewModel(
                     deleteMessage(message)
                 }
             },
-            previewProvider = { handleLinkPreview(it) },
-            background = background
+            background = background,
+            previewProvider = { handleLinkPreview(it) }
         )
     }
 

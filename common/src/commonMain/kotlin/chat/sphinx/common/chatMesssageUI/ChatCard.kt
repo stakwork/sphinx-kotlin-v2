@@ -39,17 +39,13 @@ import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.platform.imageResource
-import chat.sphinx.utils.linkify.LinkTag
 import chat.sphinx.utils.linkify.SphinxLinkify
 import chat.sphinx.utils.toAnnotatedString
-import chat.sphinx.wrapper.lightning.toLightningNodePubKey
-import chat.sphinx.wrapper.lightning.toVirtualLightningNodeAddress
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.message.MessageType
 import chat.sphinx.wrapper.message.isSphinxCallLink
 import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.message.retrieveTextToShow
-import chat.sphinx.wrapper.tribe.toTribeJoinLink
 import theme.*
 
 @Composable
@@ -92,9 +88,6 @@ fun ChatCard(
         var rowWidth by remember { mutableStateOf(0.dp) }
 
         when {
-            chatMessage.threadState != null -> {
-                // Implement Thread Bubble UI
-            }
             chatMessage.message.isSphinxCallLink -> {
                 JitsiAudioVideoCall(chatMessage)
             }
@@ -150,6 +143,14 @@ fun ChatCard(
                     Column {
                         MessageTextLabel(chatMessage, chatViewModel, uriHandler)
                         FailedContainer(chatMessage)
+
+                        if (chatMessage.threadState != null) {
+                            BubbleThreadLayout(
+                                thread = chatMessage.threadState,
+                                chatMessage = chatMessage,
+                                modifier = Modifier
+                            )
+                        }
 
                         BoostedFooter(
                             chatMessage,
@@ -485,5 +486,176 @@ fun InvoiceMessage(chatMessage: ChatMessage, chatViewModel: ChatViewModel, colum
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BubbleThreadLayout(
+    thread: ChatMessage.ThreadHolder?,
+    chatMessage: ChatMessage,
+    modifier: Modifier = Modifier
+) {
+    if (thread == null) return // Don't display anything if the thread is null
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        // Display the first three reply rows (or fewer if less than 3 replies)
+        thread.users.take(3).forEachIndexed { index, user ->
+            ReplyRow(
+                user = user,
+                isOverlapping = index < 2, // Only the first two rows are overlapped
+                isSentMessage = thread.isSentMessage,
+                chatMessage = chatMessage,
+                modifier = Modifier.padding(vertical = if (index == 0) 0.dp else 4.dp)
+            )
+        }
+
+        // Optional "more replies" row if reply count > 3
+        if (thread.replyCount > 3) {
+            MoreRepliesRow(
+                remainingCount = thread.replyCount - 3,
+                isSentMessage = thread.isSentMessage,
+                modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+            )
+        }
+
+        // Last Reply Section
+        LastReplyRow(
+            lastReplyUser = thread.lastReplyUser,
+            lastReplyMessage = thread.lastReplyMessage,
+            lastReplyDate = thread.lastReplyDate,
+            isSentMessage = thread.isSentMessage,
+            mediaAttachment = thread.isLastReplyAttachment,
+            chatMessage = chatMessage
+        )
+    }
+}
+
+@Composable
+fun ReplyRow(
+    user: ChatMessage.ReplyUserHolder,
+    isOverlapping: Boolean,
+    chatMessage: ChatMessage,
+    isSentMessage: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .offset(y = if (isOverlapping) (-8).dp else 0.dp) // Use offset for overlapping effect
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = if (isSentMessage) Color(0xFFE8F5E9) else Color(0xFFF5F5F5),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(8.dp)
+        ) {
+            // Profile Image or Initials
+            ImageProfile(
+                chatMessage = chatMessage,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+
+            // User Alias or Placeholder
+            Text(
+                text = user.alias?.value ?: "Unknown",
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isSentMessage) Color.Green else Color.Black
+            )
+        }
+    }
+}
+
+@Composable
+fun MoreRepliesRow(remainingCount: Int, isSentMessage: Boolean, modifier: Modifier = Modifier) {
+    Text(
+        text = "$remainingCount more replies",
+        color = if (isSentMessage) Color.Gray else Color.Black,
+        modifier = modifier,
+        style = MaterialTheme.typography.bodyLarge
+    )
+}
+
+@Composable
+fun LastReplyRow(
+    lastReplyUser: ChatMessage.ReplyUserHolder,
+    lastReplyMessage: String?,
+    lastReplyDate: String,
+    isSentMessage: Boolean,
+    mediaAttachment: Boolean,
+    chatMessage: ChatMessage,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                color = if (isSentMessage) Color(0xFFE8F5E9) else Color(0xFFF5F5F5),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Profile Image
+            ImageProfile(
+                chatMessage = chatMessage,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+
+            Column {
+                // User Name
+                Text(
+                    text = lastReplyUser.alias?.value ?: "Unknown",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSentMessage) Color.Green else Color.Black
+                )
+
+                // Reply Date
+                Text(
+                    text = lastReplyDate,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray
+                )
+            }
+        }
+
+        // Last Reply Message
+        if (!lastReplyMessage.isNullOrEmpty()) {
+            Text(
+                text = lastReplyMessage,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
+        // Media Attachment
+        if (mediaAttachment) {
+            MediaAttachment(type = "image") // Placeholder for media type
+        }
+    }
+}
+
+@Composable
+fun MediaAttachment(type: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
+    ) {
+        Text(
+            text = "Media ($type)",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.align(Alignment.Center)
+        )
     }
 }
