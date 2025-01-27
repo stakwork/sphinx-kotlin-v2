@@ -510,6 +510,7 @@ fun BubbleThreadLayout(
                 shape = RoundedCornerShape(10.dp)
             )
     ) {
+
         // Display reply rows with overlapping logic
         thread.users.take(2).forEachIndexed { index, user ->
             ReplyRow(
@@ -534,7 +535,6 @@ fun BubbleThreadLayout(
                     .offset(y = (-16).dp) // Vertical overlap
                     .zIndex(1f) // Stack correctly
             )
-
         }
 
         // Last reply row
@@ -669,9 +669,9 @@ fun LastReplyRow(
 ) {
     Column(
         modifier = modifier
-            .fillMaxWidth() // Ensure it takes up the fixed width
+            .fillMaxWidth()
             .background(
-                color = if (isSentMessage) Color(0xFFE8F5E9) else Color(0xFFF5F5F5),
+                color = if (isSentMessage) md_theme_dark_onSecondaryContainer else light_divider,
                 shape = RoundedCornerShape(8.dp)
             )
             .padding(8.dp)
@@ -685,19 +685,27 @@ fun LastReplyRow(
                 modifier = Modifier.padding(end = 8.dp)
             )
 
-            Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 // User Name
                 Text(
                     text = lastReplyUser.alias?.value ?: "Unknown",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isSentMessage) Color.Green else Color.Black
+                    fontFamily = Roboto,
+                    fontWeight = FontWeight.W500,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.tertiary
                 )
+
+                Spacer(Modifier.width(4.dp))
 
                 // Reply Date
                 Text(
                     text = lastReplyDate,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontFamily = Roboto,
+                    fontSize = 11.sp
                 )
             }
         }
@@ -706,8 +714,11 @@ fun LastReplyRow(
         if (!lastReplyMessage.isNullOrEmpty()) {
             Text(
                 text = lastReplyMessage,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 8.dp)
+                fontWeight = FontWeight.W400,
+                color = MaterialTheme.colorScheme.tertiary,
+                fontSize = 13.sp,
+                fontFamily = Roboto,
+                modifier = Modifier.padding(6.dp)
             )
         }
 
