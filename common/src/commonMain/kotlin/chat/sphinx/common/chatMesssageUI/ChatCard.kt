@@ -3,7 +3,9 @@ package chat.sphinx.common.chatMesssageUI
 import Roboto
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.*
@@ -17,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -33,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import chat.sphinx.common.Res
 import chat.sphinx.common.components.*
 import chat.sphinx.common.models.ChatMessage
@@ -189,16 +193,16 @@ fun MessageTextLabel(
     uriHandler: UriHandler
 ) {
     val topPadding = if (chatMessage.message.isPaidTextMessage && chatMessage.isSent) 44.dp else 12.dp
-
     val messageText = chatMessage.message.retrieveTextToShow()?.trim() ?: ""
+    val isThreadHeader = chatMessage.isThreadHeader
 
     if (messageText.isNotEmpty()) {
         val annotatedString = messageText.toAnnotatedString()
-
         Row(
             modifier = Modifier
                 .padding(12.dp, topPadding, 12.dp, 12.dp)
-                .wrapContentWidth(if (chatMessage.isSent) Alignment.End else Alignment.Start),
+                .wrapContentWidth(if (chatMessage.isSent) Alignment.End else Alignment.Start)
+                .then(if (isThreadHeader) Modifier.width(316.dp) else Modifier),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ClickableText(
@@ -493,43 +497,55 @@ fun InvoiceMessage(chatMessage: ChatMessage, chatViewModel: ChatViewModel, colum
 fun BubbleThreadLayout(
     thread: ChatMessage.ThreadHolder?,
     chatMessage: ChatMessage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fixedWidth: androidx.compose.ui.unit.Dp = 360.dp
 ) {
-    if (thread == null) return // Don't display anything if the thread is null
+    if (thread == null) return
 
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(8.dp)
+            .width(fixedWidth)
+            .background(
+                color = if (chatMessage.isSent) MaterialTheme.colorScheme.inversePrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = RoundedCornerShape(10.dp)
+            )
     ) {
-        // Display the first three reply rows (or fewer if less than 3 replies)
-        thread.users.take(3).forEachIndexed { index, user ->
+        // Display reply rows with overlapping logic
+        thread.users.take(2).forEachIndexed { index, user ->
             ReplyRow(
                 user = user,
-                isOverlapping = index < 2, // Only the first two rows are overlapped
+                isOverlapping = index == 1,
                 isSentMessage = thread.isSentMessage,
                 chatMessage = chatMessage,
-                modifier = Modifier.padding(vertical = if (index == 0) 0.dp else 4.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = if (index == 1) (-16).dp else 0.dp) // Vertical overlap
+                    .zIndex(if (index == 1) 1f else 0f) // Stack correctly
             )
         }
 
-        // Optional "more replies" row if reply count > 3
+        // Show "more replies" if there are additional replies
         if (thread.replyCount > 3) {
             MoreRepliesRow(
                 remainingCount = thread.replyCount - 3,
                 isSentMessage = thread.isSentMessage,
-                modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = (-16).dp) // Vertical overlap
+                    .zIndex(1f) // Stack correctly
             )
+
         }
 
-        // Last Reply Section
+        // Last reply row
         LastReplyRow(
             lastReplyUser = thread.lastReplyUser,
             lastReplyMessage = thread.lastReplyMessage,
             lastReplyDate = thread.lastReplyDate,
             isSentMessage = thread.isSentMessage,
             mediaAttachment = thread.isLastReplyAttachment,
-            chatMessage = chatMessage
+            chatMessage = chatMessage,
+            modifier = Modifier.width(fixedWidth) // Fixed width for the last reply
         )
     }
 }
@@ -545,42 +561,100 @@ fun ReplyRow(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .offset(y = if (isOverlapping) (-8).dp else 0.dp) // Use offset for overlapping effect
+            .offset(y = if (isOverlapping) (-4).dp else 0.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(42.dp)
+                .border(
+                    width = 1.dp,
+                    color = light_divider,
+                    shape = RoundedCornerShape(8.dp)
+                )
                 .background(
-                    color = if (isSentMessage) Color(0xFFE8F5E9) else Color(0xFFF5F5F5),
+                    color = md_theme_dark_onSurfaceVariant,
                     shape = RoundedCornerShape(8.dp)
                 )
                 .padding(8.dp)
         ) {
-            // Profile Image or Initials
-            ImageProfile(
-                chatMessage = chatMessage,
-                modifier = Modifier.padding(end = 8.dp)
-            )
-
-            // User Alias or Placeholder
-            Text(
-                text = user.alias?.value ?: "Unknown",
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (isSentMessage) Color.Green else Color.Black
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ImageProfile(
+                    chatMessage = chatMessage,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun MoreRepliesRow(remainingCount: Int, isSentMessage: Boolean, modifier: Modifier = Modifier) {
-    Text(
-        text = "$remainingCount more replies",
-        color = if (isSentMessage) Color.Gray else Color.Black,
-        modifier = modifier,
-        style = MaterialTheme.typography.bodyLarge
-    )
+fun MoreRepliesRow(
+    remainingCount: Int,
+    isSentMessage: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .offset(y = (-8).dp)
+    ) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .border(
+                    width = 1.dp,
+                    color = light_divider,
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .background(
+                    color = md_theme_dark_onSurfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // White circle with number
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.tertiary,
+                            shape = CircleShape
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Color.Gray,
+                            shape = CircleShape
+                        )
+                ) {
+                    Text(
+                        text = remainingCount.toString(),
+                        fontFamily = Roboto,
+                        fontWeight = FontWeight.W600,
+                        color = md_theme_dark_onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // "More Replies" text
+                Text(
+                    text = "more replies",
+                    fontFamily = Roboto,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.W500,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -595,7 +669,7 @@ fun LastReplyRow(
 ) {
     Column(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxWidth() // Ensure it takes up the fixed width
             .background(
                 color = if (isSentMessage) Color(0xFFE8F5E9) else Color(0xFFF5F5F5),
                 shape = RoundedCornerShape(8.dp)

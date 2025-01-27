@@ -31,7 +31,6 @@ class ChatMessage(
     val flagMessage: () -> Unit,
     val deleteMessage: () -> Unit,
     val isSeparator: Boolean = false,
-    val isThreadHeader: Boolean = false,
     val background: BubbleBackground,
     private val previewProvider: suspend (link: LinkSpec) -> LinkPreview?,
 ) {
@@ -51,6 +50,8 @@ class ChatMessage(
 
         senderAlias
     }
+
+    val isThreadHeader = message.thread?.isNotEmpty() ?: false
 
     val isAdmin: Boolean by lazy {
         chat.ownerPubKey == accountOwner().nodePubKey
