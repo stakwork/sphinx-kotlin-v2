@@ -34,6 +34,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -498,20 +499,34 @@ fun BubbleThreadLayout(
     thread: ChatMessage.ThreadHolder?,
     chatMessage: ChatMessage,
     modifier: Modifier = Modifier,
-    fixedWidth: androidx.compose.ui.unit.Dp = 360.dp
+    fixedWidth: Dp = 360.dp
 ) {
     if (thread == null) return
 
+    // Determine if "more replies" row should be shown
+    val hasMoreReplies = thread.replyCount > 3
+    // Determine if there is more than one reply (overlap condition)
+    val hasAtLeastTwoReplies = thread.users.size > 1
+
+    // Use a when statement to figure out the proper offset
+    val lastReplyOffset = when {
+        hasMoreReplies -> (-48).dp  // If "More Replies" row is shown
+        hasAtLeastTwoReplies -> (-40).dp  // If no "More Replies", but at least 2 replies
+        else -> 0.dp
+    }
     Column(
         modifier = modifier
             .width(fixedWidth)
+            .fillMaxHeight()
             .background(
-                color = if (chatMessage.isSent) MaterialTheme.colorScheme.inversePrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                color = if (chatMessage.isSent)
+                    MaterialTheme.colorScheme.inversePrimary
+                else
+                    MaterialTheme.colorScheme.onSecondaryContainer,
                 shape = RoundedCornerShape(10.dp)
             )
     ) {
-
-        // Display reply rows with overlapping logic
+        // Display up to two ReplyRows (overlapped)
         thread.users.take(2).forEachIndexed { index, user ->
             ReplyRow(
                 user = user,
@@ -525,19 +540,19 @@ fun BubbleThreadLayout(
             )
         }
 
-        // Show "more replies" if there are additional replies
-        if (thread.replyCount > 3) {
+        // Show "more replies" row if there are additional replies
+        if (hasMoreReplies) {
             MoreRepliesRow(
                 remainingCount = thread.replyCount - 3,
                 isSentMessage = thread.isSentMessage,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset(y = (-16).dp) // Vertical overlap
+                    .offset(y = (-32).dp) // Vertical overlap
                     .zIndex(1f) // Stack correctly
             )
         }
 
-        // Last reply row
+        // Last reply row: apply the conditional offset
         LastReplyRow(
             lastReplyUser = thread.lastReplyUser,
             lastReplyMessage = thread.lastReplyMessage,
@@ -545,7 +560,11 @@ fun BubbleThreadLayout(
             isSentMessage = thread.isSentMessage,
             mediaAttachment = thread.isLastReplyAttachment,
             chatMessage = chatMessage,
-            modifier = Modifier.width(fixedWidth) // Fixed width for the last reply
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(fixedWidth)
+                .offset(y = lastReplyOffset)
+                .zIndex(1f)
         )
     }
 }
@@ -578,13 +597,12 @@ fun ReplyRow(
                 )
                 .padding(8.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 ImageProfile(
                     chatMessage = chatMessage,
                     modifier = Modifier.size(28.dp)
                 )
+                // Add additional content here if needed
             }
         }
     }
@@ -602,7 +620,7 @@ fun MoreRepliesRow(
             .offset(y = (-8).dp)
     ) {
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .height(42.dp)
                 .border(
@@ -616,9 +634,7 @@ fun MoreRepliesRow(
                 )
                 .padding(8.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 // White circle with number
                 Box(
                     contentAlignment = Alignment.Center,
@@ -641,9 +657,7 @@ fun MoreRepliesRow(
                         color = md_theme_dark_onSurfaceVariant
                     )
                 }
-
                 Spacer(modifier = Modifier.width(8.dp))
-
                 // "More Replies" text
                 Text(
                     text = "more replies",
@@ -671,7 +685,10 @@ fun LastReplyRow(
         modifier = modifier
             .fillMaxWidth()
             .background(
-                color = if (isSentMessage) md_theme_dark_onSecondaryContainer else light_divider,
+                color = if (isSentMessage)
+                    md_theme_dark_onSecondaryContainer
+                else
+                    light_divider,
                 shape = RoundedCornerShape(8.dp)
             )
             .padding(8.dp)
@@ -697,9 +714,7 @@ fun LastReplyRow(
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.tertiary
                 )
-
                 Spacer(Modifier.width(4.dp))
-
                 // Reply Date
                 Text(
                     text = lastReplyDate,
@@ -728,6 +743,7 @@ fun LastReplyRow(
         }
     }
 }
+
 
 @Composable
 fun MediaAttachment(type: String) {
