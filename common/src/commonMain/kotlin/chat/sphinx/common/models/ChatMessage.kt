@@ -147,7 +147,8 @@ class ChatMessage(
     }
 
     val threadState: ThreadHolder? by lazy {
-        message.thread?.let { replies ->
+        message.thread?.let { nnThread ->
+            val replies = nnThread.reversed()
             if (replies.isEmpty() || chat.isConversation()){
                 null
             } else {
