@@ -52,6 +52,8 @@ import chat.sphinx.wrapper.message.MessageType
 import chat.sphinx.wrapper.message.isSphinxCallLink
 import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.message.retrieveTextToShow
+import chat.sphinx.wrapper.thumbnailUrl
+import chat.sphinx.wrapper.util.getInitials
 import theme.*
 
 @Composable
@@ -715,10 +717,16 @@ fun LastReplyRow(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile Image
-            ImageProfile(
-                chatMessage = chatMessage,
+            val color = lastReplyUser.colorKey ?: chatMessage.colors[chatMessage.message.id.value]
+
+            PhotoUrlImage(
+                lastReplyUser.photoUrl?.thumbnailUrl ?: chatMessage.message.senderPic?.thumbnailUrl,
                 modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
+                    .size(30.dp)
+                    .clip(CircleShape),
+                color = if (color != null) Color(color) else null,
+                firstNameLetter = lastReplyUser.alias?.value?.getInitials() ?: chatMessage.message.senderAlias?.value?.getInitials(),
+                fontSize = 12
             )
 
             Row(
