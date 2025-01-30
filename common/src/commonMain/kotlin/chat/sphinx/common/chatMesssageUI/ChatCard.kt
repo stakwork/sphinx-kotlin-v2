@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester.Companion.createRefs
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -496,7 +497,6 @@ fun InvoiceMessage(chatMessage: ChatMessage, chatViewModel: ChatViewModel, colum
         }
     }
 }
-
 @Composable
 fun BubbleThreadLayout(
     thread: ChatMessage.ThreadHolder?,
@@ -506,91 +506,78 @@ fun BubbleThreadLayout(
 ) {
     if (thread == null) return
 
-    // Determine if "more replies" row should be shown
     val hasMoreReplies = thread.replyCount > 3
-    // Determine if there is more than one reply (overlap condition)
     val hasAtLeastTwoReplies = thread.users.size > 1
 
-    // Use a when statement to figure out the proper offset
-    val lastReplyOffset = when {
-        hasMoreReplies -> (-48).dp  // If "More Replies" row is shown
-        hasAtLeastTwoReplies -> (-40).dp  // If no "More Replies", but at least 2 replies
-        else -> 0.dp
-    }
-    val columnOffsetCompensation = when {
-        hasMoreReplies -> 48.dp
-        hasAtLeastTwoReplies -> 40.dp
-        else -> 0.dp
-    }
-    Column(
+    Box(
         modifier = Modifier
             .width(fixedWidth)
-            .absoluteOffset (y = columnOffsetCompensation)
             .background(
                 color = if (chatMessage.isSent) MaterialTheme.colorScheme.inversePrimary
                 else MaterialTheme.colorScheme.onSecondaryContainer,
                 shape = RoundedCornerShape(10.dp)
             )
     ) {
-
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.BottomStart
-        ) {
-            // Display up to two ReplyRows (overlapped)
-            thread.users.take(2).forEachIndexed { index, user ->
-                ReplyRow(
-                    user = user,
-                    isOverlapping = index == 1,
-                    isSentMessage = thread.isSentMessage,
-                    chatMessage = chatMessage,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .absoluteOffset(y = if (index == 1) (-20).dp else 0.dp) // Vertical overlap
-                        .zIndex(if (index == 1) 1f else 0f) // Stack correctly
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.BottomStart
-        ) {
-            // Show "more replies" row if there are additional replies
-            if (hasMoreReplies) {
-                MoreRepliesRow(
-                    remainingCount = thread.replyCount - 3,
-                    isSentMessage = thread.isSentMessage,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .absoluteOffset (y = (-40).dp) // Vertical overlap
-                        .zIndex(1f) // Stack correctly
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.BottomStart
-        ) {
-            // Last reply row: apply the conditional offset
-            LastReplyRow(
-                lastReplyUser = thread.lastReplyUser,
-                lastReplyMessage = thread.lastReplyMessage,
-                lastReplyDate = thread.lastReplyDate,
+        // First Reply
+        if (thread.users.isNotEmpty()) {
+            ReplyRow(
+                user = thread.users[0],
+                isOverlapping = false,
                 isSentMessage = thread.isSentMessage,
-                mediaAttachment = thread.isLastReplyAttachment,
                 chatMessage = chatMessage,
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .width(fixedWidth)
-                    .absoluteOffset(y = lastReplyOffset)
-                    .zIndex(1f)
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+                    .zIndex(1f) // Highest layer
             )
         }
+
+        // Second Reply (if applicable)
+        if (hasAtLeastTwoReplies) {
+            ReplyRow(
+                user = thread.users[1],
+                isOverlapping = true,
+                isSentMessage = thread.isSentMessage,
+                chatMessage = chatMessage,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+                    .padding(top = 20.dp) // Overlapping without offset
+                    .zIndex(2f)
+            )
+        }
+
+        // "More Replies" Row
+        if (hasMoreReplies) {
+            MoreRepliesRow(
+                remainingCount = thread.replyCount - 3,
+                isSentMessage = thread.isSentMessage,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+                    .padding(top = 40.dp) // Further overlap
+                    .zIndex(3f)
+            )
+        }
+
+        val lastReplyPadding = if (hasMoreReplies) 80.dp else 40.dp
+
+        LastReplyRow(
+            lastReplyUser = thread.lastReplyUser,
+            lastReplyMessage = thread.lastReplyMessage,
+            lastReplyDate = thread.lastReplyDate,
+            isSentMessage = thread.isSentMessage,
+            mediaAttachment = thread.isLastReplyAttachment,
+            chatMessage = chatMessage,
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopStart)
+                .padding(top = lastReplyPadding)
+                .zIndex(4f)
+
+        )
     }
 }
-
 
 @Composable
 fun ReplyRow(
