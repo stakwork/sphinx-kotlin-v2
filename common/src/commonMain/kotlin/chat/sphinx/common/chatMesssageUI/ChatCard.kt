@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -514,60 +515,80 @@ fun BubbleThreadLayout(
         hasAtLeastTwoReplies -> (-40).dp  // If no "More Replies", but at least 2 replies
         else -> 0.dp
     }
+    val columnOffsetCompensation = when {
+        hasMoreReplies -> 48.dp
+        hasAtLeastTwoReplies -> 40.dp
+        else -> 0.dp
+    }
     Column(
-        modifier = modifier
+        modifier = Modifier
             .width(fixedWidth)
-            .fillMaxHeight()
+            .absoluteOffset (y = columnOffsetCompensation)
             .background(
-                color = if (chatMessage.isSent)
-                    MaterialTheme.colorScheme.inversePrimary
-                else
-                    MaterialTheme.colorScheme.onSecondaryContainer,
+                color = if (chatMessage.isSent) MaterialTheme.colorScheme.inversePrimary
+                else MaterialTheme.colorScheme.onSecondaryContainer,
                 shape = RoundedCornerShape(10.dp)
             )
     ) {
-        // Display up to two ReplyRows (overlapped)
-        thread.users.take(2).forEachIndexed { index, user ->
-            ReplyRow(
-                user = user,
-                isOverlapping = index == 1,
+
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.BottomStart
+        ) {
+            // Display up to two ReplyRows (overlapped)
+            thread.users.take(2).forEachIndexed { index, user ->
+                ReplyRow(
+                    user = user,
+                    isOverlapping = index == 1,
+                    isSentMessage = thread.isSentMessage,
+                    chatMessage = chatMessage,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .absoluteOffset(y = if (index == 1) (-20).dp else 0.dp) // Vertical overlap
+                        .zIndex(if (index == 1) 1f else 0f) // Stack correctly
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.BottomStart
+        ) {
+            // Show "more replies" row if there are additional replies
+            if (hasMoreReplies) {
+                MoreRepliesRow(
+                    remainingCount = thread.replyCount - 3,
+                    isSentMessage = thread.isSentMessage,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .absoluteOffset (y = (-40).dp) // Vertical overlap
+                        .zIndex(1f) // Stack correctly
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.BottomStart
+        ) {
+            // Last reply row: apply the conditional offset
+            LastReplyRow(
+                lastReplyUser = thread.lastReplyUser,
+                lastReplyMessage = thread.lastReplyMessage,
+                lastReplyDate = thread.lastReplyDate,
                 isSentMessage = thread.isSentMessage,
+                mediaAttachment = thread.isLastReplyAttachment,
                 chatMessage = chatMessage,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = if (index == 1) (-16).dp else 0.dp) // Vertical overlap
-                    .zIndex(if (index == 1) 1f else 0f) // Stack correctly
+                    .fillMaxHeight()
+                    .width(fixedWidth)
+                    .absoluteOffset(y = lastReplyOffset)
+                    .zIndex(1f)
             )
         }
-
-        // Show "more replies" row if there are additional replies
-        if (hasMoreReplies) {
-            MoreRepliesRow(
-                remainingCount = thread.replyCount - 3,
-                isSentMessage = thread.isSentMessage,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = (-32).dp) // Vertical overlap
-                    .zIndex(1f) // Stack correctly
-            )
-        }
-
-        // Last reply row: apply the conditional offset
-        LastReplyRow(
-            lastReplyUser = thread.lastReplyUser,
-            lastReplyMessage = thread.lastReplyMessage,
-            lastReplyDate = thread.lastReplyDate,
-            isSentMessage = thread.isSentMessage,
-            mediaAttachment = thread.isLastReplyAttachment,
-            chatMessage = chatMessage,
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(fixedWidth)
-                .offset(y = lastReplyOffset)
-                .zIndex(1f)
-        )
     }
 }
+
 
 @Composable
 fun ReplyRow(
@@ -580,7 +601,6 @@ fun ReplyRow(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .offset(y = if (isOverlapping) (-4).dp else 0.dp)
     ) {
         Box(
             modifier = Modifier
@@ -617,7 +637,6 @@ fun MoreRepliesRow(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .offset(y = (-8).dp)
     ) {
         Box(
             modifier = Modifier
@@ -663,7 +682,7 @@ fun MoreRepliesRow(
                     text = "more replies",
                     fontFamily = Roboto,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.W500,
+                    fontWeight = FontWeight.W400,
                     color = MaterialTheme.colorScheme.tertiary
                 )
             }
@@ -699,7 +718,7 @@ fun LastReplyRow(
             // Profile Image
             ImageProfile(
                 chatMessage = chatMessage,
-                modifier = Modifier.padding(end = 8.dp)
+                modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
             )
 
             Row(
@@ -743,7 +762,6 @@ fun LastReplyRow(
         }
     }
 }
-
 
 @Composable
 fun MediaAttachment(type: String) {
