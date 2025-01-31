@@ -191,14 +191,28 @@ class ChatMessage(
 
                 val lastReplyAttachment: Boolean = replies.first().messageMedia != null
 
+                val mediaChatMessage = ChatMessage(
+                    chat,
+                    contact,
+                    replies.first(),
+                    colors,
+                    accountOwner,
+                    boostMessage,
+                    flagMessage,
+                    deleteMessage,
+                    isSeparator,
+                    background,
+                    previewProvider
+                )
+
                 ThreadHolder(
                     replyCount = replies.size,
-                    users = users,
+                    users = users.reversed(),
                     lastReplyMessage = replies.first().retrieveTextToShow(),
                     lastReplyDate = replies.first().date.chatTimeFormat(),
                     lastReplyUser = lastReplyUser,
                     isSentMessage = sent,
-                    isLastReplyAttachment = lastReplyAttachment
+                    lastReplyAttachment = if (lastReplyAttachment) mediaChatMessage else null
                 )
             }
         }
@@ -295,7 +309,7 @@ class ChatMessage(
         val lastReplyDate: String,
         val lastReplyUser: ReplyUserHolder,
         val isSentMessage: Boolean,
-        val isLastReplyAttachment: Boolean
+        val lastReplyAttachment: ChatMessage?
     )
 
     data class ReplyUserHolder(

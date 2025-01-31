@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -156,7 +157,7 @@ fun ChatCard(
                             BubbleThreadLayout(
                                 thread = chatMessage.threadState,
                                 chatMessage = chatMessage,
-                                modifier = Modifier
+                                chatViewModel = chatViewModel,
                             )
                         }
 
@@ -502,13 +503,12 @@ fun InvoiceMessage(chatMessage: ChatMessage, chatViewModel: ChatViewModel, colum
 fun BubbleThreadLayout(
     thread: ChatMessage.ThreadHolder?,
     chatMessage: ChatMessage,
-    modifier: Modifier = Modifier,
+    chatViewModel: ChatViewModel,
     fixedWidth: Dp = 360.dp
 ) {
     if (thread == null) return
 
     val hasMoreReplies = thread.users.size > 3
-    val hasAtLeastTwoReplies = thread.users.size > 1
     val hasAtTwoReplies = thread.users.size == 2
     val hasMoreThanTwoReplies = thread.users.size > 2
 
@@ -525,8 +525,6 @@ fun BubbleThreadLayout(
         if (thread.users.isNotEmpty()) {
             ReplyRow(
                 user = thread.users[0],
-                isOverlapping = false,
-                isSentMessage = thread.isSentMessage,
                 chatMessage = chatMessage,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -539,8 +537,6 @@ fun BubbleThreadLayout(
         if (hasMoreThanTwoReplies) {
             ReplyRow(
                 user = thread.users[1],
-                isOverlapping = true,
-                isSentMessage = thread.isSentMessage,
                 chatMessage = chatMessage,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -570,8 +566,9 @@ fun BubbleThreadLayout(
             lastReplyMessage = thread.lastReplyMessage,
             lastReplyDate = thread.lastReplyDate,
             isSentMessage = thread.isSentMessage,
-            mediaAttachment = thread.isLastReplyAttachment,
+            mediaAttachment = thread.lastReplyAttachment,
             chatMessage = chatMessage,
+            chatViewModel = chatViewModel,
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.TopStart)
@@ -585,9 +582,7 @@ fun BubbleThreadLayout(
 @Composable
 fun ReplyRow(
     user: ChatMessage.ReplyUserHolder,
-    isOverlapping: Boolean,
     chatMessage: ChatMessage,
-    isSentMessage: Boolean,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -610,10 +605,27 @@ fun ReplyRow(
                 .padding(8.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ImageProfile(
-                    chatMessage = chatMessage,
-                    modifier = Modifier.size(28.dp)
+
+                val color = chatMessage.colors[chatMessage.message.id.value]
+
+                PhotoUrlImage(
+                    photoUrl = user.photoUrl?.thumbnailUrl,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .then( Modifier.drawWithContent {
+                                drawContent()
+                                drawRect(
+                                    color = Color.White.copy(alpha = 0.3f), // 30% white overlay
+                                    size = size
+                                )
+                            }
+                        ),
+                    color = if (color != null) Color(color) else null,
+                    firstNameLetter = user.alias?.value?.getInitials(),
+                    fontSize = 12
                 )
+
                 // Add additional content here if needed
             }
         }
@@ -650,14 +662,9 @@ fun MoreRepliesRow(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(26.dp)
                         .background(
                             color = MaterialTheme.colorScheme.tertiary,
-                            shape = CircleShape
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = Color.Gray,
                             shape = CircleShape
                         )
                 ) {
@@ -688,8 +695,9 @@ fun LastReplyRow(
     lastReplyMessage: String?,
     lastReplyDate: String,
     isSentMessage: Boolean,
-    mediaAttachment: Boolean,
+    mediaAttachment: ChatMessage?,
     chatMessage: ChatMessage,
+    chatViewModel: ChatViewModel,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -755,8 +763,33 @@ fun LastReplyRow(
         }
 
         // Media Attachment
-        if (mediaAttachment) {
-            MediaAttachment(type = "image") // Placeholder for media type
+        if (mediaAttachment != null) {
+            mediaAttachment.message.messageMedia?.let { media ->
+                if (media.mediaType.isImage) {
+                    MessageMediaImage(
+                        mediaAttachment,
+                        chatViewModel = chatViewModel,
+                        modifier = Modifier.wrapContentHeight().fillMaxWidth()
+                    )
+                } else if (media.mediaType.isUnknown || media.mediaType.isPdf) {
+                    MessageFile(
+                        chatMessage = mediaAttachment,
+                        chatViewModel = chatViewModel,
+                    )
+                } else if (media.mediaType.isVideo) {
+                    MessageVideo(
+                        chatMessage = mediaAttachment,
+                        chatViewModel = chatViewModel,
+                        modifier = Modifier.wrapContentHeight().fillMaxWidth()
+                    )
+                } else if (media.mediaType.isAudio) {
+                    MessageAudio(
+                        chatMessage = mediaAttachment,
+                        chatViewModel = chatViewModel,
+                    )
+                }
+            }
+
         }
     }
 }
