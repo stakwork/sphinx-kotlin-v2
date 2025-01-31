@@ -20,9 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.focus.FocusRequester.Companion.createRefs
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -150,10 +148,11 @@ fun ChatCard(
                         }
                     }
                     Column {
-                        MessageTextLabel(chatMessage, chatViewModel, uriHandler)
+                        val isThread = chatMessage.threadState != null
+                        MessageTextLabel(chatMessage, chatViewModel, uriHandler, isThread)
                         FailedContainer(chatMessage)
 
-                        if (chatMessage.threadState != null) {
+                        if (isThread) {
                             BubbleThreadLayout(
                                 thread = chatMessage.threadState,
                                 chatMessage = chatMessage,
@@ -195,7 +194,8 @@ fun ChatCard(
 fun MessageTextLabel(
     chatMessage: ChatMessage,
     chatViewModel: ChatViewModel,
-    uriHandler: UriHandler
+    uriHandler: UriHandler,
+    isThread: Boolean
 ) {
     val topPadding = if (chatMessage.message.isPaidTextMessage && chatMessage.isSent) 44.dp else 12.dp
     val messageText = chatMessage.message.retrieveTextToShow()?.trim() ?: ""
@@ -216,8 +216,9 @@ fun MessageTextLabel(
                     fontWeight = FontWeight.W400,
                     color = MaterialTheme.colorScheme.tertiary,
                     fontSize = 13.sp,
-                    fontFamily = Roboto,
+                    fontFamily = Roboto
                 ),
+                maxLines = if (isThread) 2 else Int.MAX_VALUE,
                 onClick = { offset ->
                     annotatedString.getStringAnnotations("URL", start = offset, end = offset)
                         .firstOrNull()?.let { annotation ->
@@ -506,8 +507,10 @@ fun BubbleThreadLayout(
 ) {
     if (thread == null) return
 
-    val hasMoreReplies = thread.replyCount > 3
+    val hasMoreReplies = thread.users.size > 3
     val hasAtLeastTwoReplies = thread.users.size > 1
+    val hasAtTwoReplies = thread.users.size == 2
+    val hasMoreThanTwoReplies = thread.users.size > 2
 
     Box(
         modifier = Modifier
@@ -533,7 +536,7 @@ fun BubbleThreadLayout(
         }
 
         // Second Reply (if applicable)
-        if (hasAtLeastTwoReplies) {
+        if (hasMoreThanTwoReplies) {
             ReplyRow(
                 user = thread.users[1],
                 isOverlapping = true,
@@ -560,7 +563,7 @@ fun BubbleThreadLayout(
             )
         }
 
-        val lastReplyPadding = if (hasMoreReplies) 80.dp else 40.dp
+        val lastReplyPadding = if (hasMoreReplies) 80.dp else if (hasAtTwoReplies) 20.dp else 40.dp
 
         LastReplyRow(
             lastReplyUser = thread.lastReplyUser,
