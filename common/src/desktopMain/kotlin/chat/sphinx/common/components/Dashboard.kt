@@ -113,7 +113,6 @@ actual fun Dashboard(
                 }
 
                 second(700.dp) {
-
                     if (splitScreenState.isOpen) {
                         HorizontalSplitPane {
 
@@ -172,7 +171,7 @@ actual fun Dashboard(
                                         }
                                     },
                                     bottomBar = {
-                                        SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                        SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel, true)
                                     }
                                 ) { innerPadding ->
                                     Box(
@@ -527,7 +526,8 @@ fun SphinxChatDetailTopAppBar(
 @Composable
 fun SphinxChatDetailBottomAppBar(
     dashboardChat: DashboardChat?,
-    chatViewModel: ChatViewModel?
+    chatViewModel: ChatViewModel?,
+    isThreadView: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
 
@@ -669,7 +669,10 @@ fun SphinxChatDetailBottomAppBar(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Spacer(modifier = Modifier.width(10.dp))
-                        PriceChip(chatViewModel)
+                        if (!isThreadView) {
+                            PriceChip(chatViewModel)
+                        }
+
                         Spacer(modifier = Modifier.width(10.dp))
                         IconButton(
                             onClick = {
