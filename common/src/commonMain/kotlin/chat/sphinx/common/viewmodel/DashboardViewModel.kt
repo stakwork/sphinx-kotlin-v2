@@ -50,6 +50,26 @@ class DashboardViewModel(): WindowFocusListener {
         RestartRequired
     }
 
+    enum class SplitContentType {
+        THREADS,
+    }
+
+    data class SplitScreenState(
+        val isOpen: Boolean,
+        val type: SplitContentType? = null
+    )
+
+    private val _splitScreenStateFlow: MutableStateFlow<SplitScreenState> by lazy {
+        MutableStateFlow(SplitScreenState(isOpen = false, type = null))
+    }
+
+    val splitScreenStateFlow: StateFlow<SplitScreenState>
+        get() = _splitScreenStateFlow.asStateFlow()
+
+    fun toggleSplitScreen(isOpen: Boolean, type: SplitContentType? = null) {
+        _splitScreenStateFlow.value = SplitScreenState(isOpen, type)
+    }
+
     private val webViewState: MutableStateFlow<WebViewState> by lazy {
         MutableStateFlow(WebViewState.NonInitialized)
     }

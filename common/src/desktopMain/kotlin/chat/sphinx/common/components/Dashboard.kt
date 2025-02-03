@@ -77,6 +77,7 @@ actual fun Dashboard(
     var chatViewModel: ChatViewModel? = null
 
     val webAppViewModel = remember { WebAppViewModel() }
+    val splitScreenState by dashboardViewModel.splitScreenStateFlow.collectAsState()
 
     when (DashboardScreenState.screenState()) {
         DashboardScreenType.Unlocked -> {
@@ -110,50 +111,153 @@ actual fun Dashboard(
                 first(300.dp) {
                     DashboardSidebarUI(dashboardViewModel, webAppViewModel)
                 }
-                second(700.dp) {
-                    val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
 
-                    Scaffold(
-                        scaffoldState = scaffoldState,
-                        topBar = {
-                            SphinxChatDetailTopAppBar(dashboardChat, chatViewModel, dashboardViewModel, webAppViewModel)
-                        },
-                        bottomBar = {
-                            SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
-                        }
-                    ) { paddingValues ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-                                .padding(paddingValues),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            chatViewModel?.let { chatViewModel ->
-                                MessageListUI(chatViewModel, dashboardViewModel, dashboardChat)
+                second(700.dp) {
+
+                    if (splitScreenState.isOpen) {
+                        HorizontalSplitPane {
+
+                            first(500.dp) {
+                                val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
+
+                                Scaffold(
+                                    scaffoldState = scaffoldState,
+                                    topBar = {
+                                        SphinxChatDetailTopAppBar(dashboardChat, chatViewModel, dashboardViewModel, webAppViewModel)
+                                    },
+                                    bottomBar = {
+                                        SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                    }
+                                ) { paddingValues ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                            .padding(paddingValues),
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        chatViewModel?.let { vm ->
+                                            MessageListUI(vm, dashboardViewModel, dashboardChat)
+                                        }
+                                    }
+
+                                    AttachmentPreview(chatViewModel, Modifier.padding(paddingValues))
+                                    MessagePinnedPopUp(chatViewModel, Modifier.padding(paddingValues))
+                                    MessagePinnedFullContent(chatViewModel, Modifier.padding(paddingValues))
+                                    ChatAction(chatViewModel, Modifier.padding(paddingValues))
+                                    NotificationLevel(chatViewModel, Modifier.padding(paddingValues))
+                                }
+                            }
+
+                            second(200.dp) {
+                                val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
+
+                                Scaffold(
+                                    scaffoldState = scaffoldState,
+                                    topBar = {
+                                        when (splitScreenState.type) {
+                                            DashboardViewModel.SplitContentType.THREADS -> {
+                                                ThreadTopBar(
+                                                    chatViewModel,
+                                                    dashboardViewModel
+                                                )
+                                            }
+                                            else -> {
+                                                TopAppBar(
+                                                    title = { Text("Details") },
+                                                    backgroundColor = Color.Gray
+                                                )
+                                            }
+                                        }
+                                    },
+                                    bottomBar = {
+                                        SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                    }
+                                ) { innerPadding ->
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(innerPadding)
+                                    ) {
+                                        // The reusable UI: switch on the type
+                                        when (splitScreenState.type) {
+                                            DashboardViewModel.SplitContentType.THREADS -> {
+                                                // Your Threads UI here
+                                                Text("Threads placeholder content")
+                                            }
+                                            else -> {
+                                                Text("No content type selected or not handled.")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            splitter {
+                                visiblePart {
+                                    Box(
+                                        Modifier.width(1.dp)
+                                            .fillMaxHeight()
+                                            .background(MaterialTheme.colors.background)
+                                    )
+                                }
+                                handle {
+                                    Box(
+                                        Modifier.markAsHandle()
+                                            .cursorForHorizontalResize()
+                                            .background(SolidColor(Color.Gray), alpha = 0.50f)
+                                            .width(9.dp)
+                                            .fillMaxHeight()
+                                    )
+                                }
                             }
                         }
-                        AttachmentPreview(
-                            chatViewModel,
-                            Modifier.padding(paddingValues)
-                        )
-                        MessagePinnedPopUp(
-                            chatViewModel,
-                            Modifier.padding(paddingValues)
-                        )
-                        MessagePinnedFullContent(
-                            chatViewModel,
-                            Modifier.padding(paddingValues)
-                        )
-                        ChatAction(
-                            chatViewModel,
-                            Modifier.padding(paddingValues)
-                        )
-                        NotificationLevel(
-                            chatViewModel,
-                            Modifier.padding(paddingValues)
-                        )
+                    } else {
+                        val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
+
+                        Scaffold(
+                            scaffoldState = scaffoldState,
+                            topBar = {
+                                SphinxChatDetailTopAppBar(dashboardChat, chatViewModel, dashboardViewModel, webAppViewModel)
+                            },
+                            bottomBar = {
+                                SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                            }
+                        ) { paddingValues ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                    .padding(paddingValues),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                chatViewModel?.let { chatViewModel ->
+                                    MessageListUI(chatViewModel, dashboardViewModel, dashboardChat)
+                                }
+                            }
+                            AttachmentPreview(
+                                chatViewModel,
+                                Modifier.padding(paddingValues)
+                            )
+                            MessagePinnedPopUp(
+                                chatViewModel,
+                                Modifier.padding(paddingValues)
+                            )
+                            MessagePinnedFullContent(
+                                chatViewModel,
+                                Modifier.padding(paddingValues)
+                            )
+                            ChatAction(
+                                chatViewModel,
+                                Modifier.padding(paddingValues)
+                            )
+                            NotificationLevel(
+                                chatViewModel,
+                                Modifier.padding(paddingValues)
+                            )
+                        }
                     }
                 }
                 splitter {
@@ -336,7 +440,9 @@ fun SphinxChatDetailTopAppBar(
                                 )
                             }
                         }
-                        IconButton(onClick = {}) {
+                        IconButton(onClick = {
+                            dashboardViewModel?.toggleSplitScreen(true, DashboardViewModel.SplitContentType.THREADS)
+                        }) {
                             chatViewModel.let {
 //                                val chat by chatViewModel.chatSharedFlow.collectAsState(
 //                                    (dashboardChat as? DashboardChat.Active)?.chat
@@ -602,6 +708,60 @@ fun SphinxChatDetailBottomAppBar(
         }
     }
 }
+
+@Composable
+fun ThreadTopBar(
+    chatViewModel: ChatViewModel?,
+    dashboardViewModel: DashboardViewModel?,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .height(60.dp)
+            .fillMaxWidth()
+            .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+    ) {
+        // Left Arrow Icon
+        IconButton(
+            onClick = {
+                 dashboardViewModel?.toggleSplitScreen(false, DashboardViewModel.SplitContentType.THREADS)
+            }
+        ) {
+            Icon(
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = "Back",
+                tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+            )
+        }
+
+
+        Text(
+            modifier = Modifier.padding(start = 8.dp),
+            text = "Thread",
+            fontFamily = Roboto,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.W700,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+        )
+
+        // Spacer to push the close icon to the far right
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Close Icon
+        IconButton(
+            onClick = {
+                dashboardViewModel?.toggleSplitScreen(false, DashboardViewModel.SplitContentType.THREADS)
+            }
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Close",
+                tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+            )
+        }
+    }
+}
+
 @Suppress("SuspiciousIndentation")
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
