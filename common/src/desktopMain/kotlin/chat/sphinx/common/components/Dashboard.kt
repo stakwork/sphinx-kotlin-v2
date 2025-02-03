@@ -336,6 +336,18 @@ fun SphinxChatDetailTopAppBar(
                                 )
                             }
                         }
+                        IconButton(onClick = {}) {
+                            chatViewModel.let {
+//                                val chat by chatViewModel.chatSharedFlow.collectAsState(
+//                                    (dashboardChat as? DashboardChat.Active)?.chat
+//                                )
+                                Icon(
+                                    Icons.Default.Forum,
+                                    contentDescription = "Thread",
+                                    tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                                )
+                            }
+                        }
                     }
                 }
                 IconButton(onClick = {
