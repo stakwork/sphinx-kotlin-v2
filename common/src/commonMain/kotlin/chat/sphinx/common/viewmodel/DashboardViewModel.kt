@@ -50,8 +50,9 @@ class DashboardViewModel(): WindowFocusListener {
         RestartRequired
     }
 
-    enum class SplitContentType {
-        THREADS,
+    sealed class SplitContentType {
+        object Default : SplitContentType()
+        data class Threads(val chatId: ChatId) : SplitContentType()
     }
 
     data class SplitScreenState(

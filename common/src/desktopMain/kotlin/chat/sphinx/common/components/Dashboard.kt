@@ -42,6 +42,7 @@ import chat.sphinx.common.models.DashboardChat
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.LockedDashboardViewModel
+import chat.sphinx.common.viewmodel.ThreadsViewModel
 import chat.sphinx.common.viewmodel.WebAppViewModel
 import chat.sphinx.common.viewmodel.chat.ChatContactViewModel
 import chat.sphinx.common.viewmodel.chat.ChatTribeViewModel
@@ -155,12 +156,13 @@ actual fun Dashboard(
                                 Scaffold(
                                     scaffoldState = scaffoldState,
                                     topBar = {
-                                        when (splitScreenState.type) {
-                                            DashboardViewModel.SplitContentType.THREADS -> {
+                                        when (val screen = splitScreenState.type) {
+                                            is DashboardViewModel.SplitContentType.Threads -> {
                                                 ThreadTopBar(
                                                     chatViewModel,
                                                     dashboardViewModel
                                                 )
+                                                ThreadsViewModel(screen.chatId, dashboardViewModel)
                                             }
                                             else -> {
                                                 TopAppBar(
@@ -179,10 +181,8 @@ actual fun Dashboard(
                                             .fillMaxSize()
                                             .padding(innerPadding)
                                     ) {
-                                        // The reusable UI: switch on the type
                                         when (splitScreenState.type) {
-                                            DashboardViewModel.SplitContentType.THREADS -> {
-                                                // Your Threads UI here
+                                            is DashboardViewModel.SplitContentType.Threads -> {
                                                 Text("Threads placeholder content")
                                             }
                                             else -> {
@@ -440,7 +440,8 @@ fun SphinxChatDetailTopAppBar(
                             }
                         }
                         IconButton(onClick = {
-                            dashboardViewModel?.toggleSplitScreen(true, DashboardViewModel.SplitContentType.THREADS)
+                            dashboardViewModel?.toggleSplitScreen(true,
+                                chatViewModel.chatId?.let { it1 -> DashboardViewModel.SplitContentType.Threads(it1) })
                         }) {
                             chatViewModel.let {
 //                                val chat by chatViewModel.chatSharedFlow.collectAsState(
@@ -727,7 +728,8 @@ fun ThreadTopBar(
         // Left Arrow Icon
         IconButton(
             onClick = {
-                 dashboardViewModel?.toggleSplitScreen(false, DashboardViewModel.SplitContentType.THREADS)
+                 dashboardViewModel?.toggleSplitScreen(false,
+                     chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
             }
         ) {
             Icon(
@@ -753,7 +755,8 @@ fun ThreadTopBar(
         // Close Icon
         IconButton(
             onClick = {
-                dashboardViewModel?.toggleSplitScreen(false, DashboardViewModel.SplitContentType.THREADS)
+                dashboardViewModel?.toggleSplitScreen(false,
+                    chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
             }
         ) {
             Icon(
