@@ -53,6 +53,7 @@ class DashboardViewModel(): WindowFocusListener {
     sealed class SplitContentType {
         object Default : SplitContentType()
         data class Threads(val chatId: ChatId) : SplitContentType()
+        data class Thread(val chatId: ChatId) : SplitContentType()
     }
 
     data class SplitScreenState(

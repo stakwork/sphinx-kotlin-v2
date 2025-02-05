@@ -156,24 +156,16 @@ actual fun Dashboard(
                                 Scaffold(
                                     scaffoldState = scaffoldState,
                                     topBar = {
-                                        when (val screen = splitScreenState.type) {
-                                            is DashboardViewModel.SplitContentType.Threads -> {
-                                                ThreadTopBar(
-                                                    chatViewModel,
-                                                    dashboardViewModel
-                                                )
-                                                ThreadsViewModel(screen.chatId, dashboardViewModel)
-                                            }
-                                            else -> {
-                                                TopAppBar(
-                                                    title = { Text("Details") },
-                                                    backgroundColor = Color.Gray
-                                                )
-                                            }
-                                        }
+                                        SplitTopBar(
+                                            chatViewModel,
+                                            dashboardViewModel,
+                                            splitScreenState.type
+                                        )
                                     },
                                     bottomBar = {
-                                        SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel, true)
+                                        if (splitScreenState.type is DashboardViewModel.SplitContentType.Thread) {
+                                            SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel, true)
+                                        }
                                     }
                                 ) { innerPadding ->
                                     Box(
@@ -181,9 +173,16 @@ actual fun Dashboard(
                                             .fillMaxSize()
                                             .padding(innerPadding)
                                     ) {
-                                        when (splitScreenState.type) {
+                                        when (val screen = splitScreenState.type) {
                                             is DashboardViewModel.SplitContentType.Threads -> {
-                                                Text("Threads placeholder content")
+
+                                                val threadsViewModel = remember { ThreadsViewModel(screen.chatId, dashboardViewModel) }
+
+                                                ThreadsListUI(
+                                                    threadsViewModel = threadsViewModel,
+                                                    dashboardViewModel = dashboardViewModel
+                                                )
+
                                             }
                                             else -> {
                                                 Text("No content type selected or not handled.")
@@ -714,9 +713,10 @@ fun SphinxChatDetailBottomAppBar(
 }
 
 @Composable
-fun ThreadTopBar(
+fun SplitTopBar(
     chatViewModel: ChatViewModel?,
     dashboardViewModel: DashboardViewModel?,
+    splitType: DashboardViewModel.SplitContentType?
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,

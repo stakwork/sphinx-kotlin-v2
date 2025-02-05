@@ -19,6 +19,8 @@ import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.message.media.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import okio.Path
 import utils.getRandomColorRes
@@ -34,6 +36,9 @@ class ThreadsViewModel(
     private val chatRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).chatRepository
     private val messageRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).messageRepository
     private val colorsHelper = UserColorsHelper(SphinxContainer.appModule.dispatchers)
+
+    private val _threadItems = MutableStateFlow<List<ThreadItem>>(emptyList())
+    val threadItems: StateFlow<List<ThreadItem>> get() = _threadItems
 
     init {
         updateThreads()
@@ -68,10 +73,12 @@ class ThreadsViewModel(
     private fun updateThreads() {
         scope.launch(dispatchers.mainImmediate) {
             messageRepository.getThreadUUIDMessagesByChatId(chatId).collect { messages ->
-                val threadItems = generateThreadItemsList(messages)
+                val items = generateThreadItemsList(messages)
+                _threadItems.value = items
             }
         }
     }
+
 
     private suspend fun generateThreadItemsList(messages: List<Message>): List<ThreadItem> {
         // Group messages by their ThreadUUID
