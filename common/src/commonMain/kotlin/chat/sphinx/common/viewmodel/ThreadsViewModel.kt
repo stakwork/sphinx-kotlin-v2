@@ -127,12 +127,15 @@ class ThreadsViewModel(
         isSenderOwner: Boolean
     ): ThreadItem {
 
+        val tribeAdmin = if (owner?.nodePubKey == chat?.ownerPubKey) owner else null
+        val color = originalMessage?.let { getColorsMapFor(it, null, tribeAdmin) }?.get(originalMessage.id.value)
+
         val senderInfo = if (isSenderOwner) {
-            Pair(owner?.alias, owner?.getColorKey())
+            Pair(owner?.alias, color)
         } else {
             Pair(
                 originalMessage?.senderAlias?.value?.toContactAlias(),
-                originalMessage?.getColorKey()
+                color
             )
         }
 
@@ -204,17 +207,77 @@ class ThreadsViewModel(
     ): List<ChatMessage.ReplyUserHolder>? {
         return repliesList?.take(6)?.map {
             val isSenderOwner: Boolean = it.sender == chat?.contactIds?.firstOrNull()
+            val tribeAdmin = if (owner?.nodePubKey == chat?.ownerPubKey) owner else null
 
-            val contactColorKey = owner?.getColorKey()?.let {
-                colorsHelper.getColorIntForKey(it, Integer.toHexString(getRandomColorRes().hashCode()))
-            }
+            val color = getColorsMapFor(it, null, tribeAdmin)[it.id.value]
 
             ChatMessage.ReplyUserHolder(
                 photoUrl = if (isSenderOwner) owner?.photoUrl else it.senderPic,
                 alias = if (isSenderOwner) owner?.alias else it.senderAlias?.value?.toContactAlias(),
-                colorKey = contactColorKey
+                colorKey = color
             )
         }
     }
+
+    suspend fun getColorsMapFor(
+        message: Message,
+        contactColor: Int?,
+        tribeAdmin: Contact?
+    ): Map<Long, Int> {
+        var colors: MutableMap<Long, Int> = mutableMapOf()
+
+        contactColor?.let {
+            colors[message.id.value] = contactColor
+        } ?: run {
+            val colorKey = message.getColorKey()
+            val colorInt = colorsHelper.getColorIntForKey(
+                colorKey,
+                Integer.toHexString(getRandomColorRes().hashCode())
+            )
+
+            colors[message.id.value] = colorInt
+
+            if (message.type.isDirectPayment() && tribeAdmin != null) {
+                val recipientColorKey = message.getRecipientColorKey(tribeAdmin.id)
+                val recipientColorInt = colorsHelper.getColorIntForKey(
+                    recipientColorKey,
+                    Integer.toHexString(getRandomColorRes().hashCode())
+                )
+
+                colors[-message.id.value] = recipientColorInt
+            }
+        }
+
+        for (m in message.reactions ?: listOf()) {
+            contactColor?.let {
+                colors[m.id.value] = contactColor
+            } ?: run {
+                val colorKey = m.getColorKey()
+                val colorInt = colorsHelper.getColorIntForKey(
+                    colorKey,
+                    Integer.toHexString(getRandomColorRes().hashCode())
+                )
+
+                colors[m.id.value] = colorInt
+            }
+        }
+
+        message.replyMessage?.let { replyMessage ->
+            contactColor?.let {
+                colors[replyMessage.id.value] = contactColor
+            } ?: run {
+                val colorKey = replyMessage.getColorKey()
+                val colorInt = colorsHelper.getColorIntForKey(
+                    colorKey,
+                    Integer.toHexString(getRandomColorRes().hashCode())
+                )
+
+                colors[replyMessage.id.value] = colorInt
+            }
+        }
+
+        return colors
+    }
+
 
 }

@@ -100,14 +100,13 @@ fun ThreadItemUI(
                 verticalAlignment = Alignment.Top
             ) {
                 // Avatar
+
                 PhotoUrlImage(
                     photoUrl = thread.photoUrl?.thumbnailUrl,
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape),
-                    color = thread.aliasAndColorKey.second?.let { colorString ->
-                        Color.Black
-                    },
+                    color = thread.aliasAndColorKey.second?.let { Color(it) },
                     firstNameLetter = thread.aliasAndColorKey.first?.value?.getInitials(),
                     fontSize = 12
                 )

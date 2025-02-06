@@ -7,7 +7,7 @@ import chat.sphinx.wrapper.message.media.FileSize
 import okio.Path
 
 data class ThreadItem(
-    val aliasAndColorKey: Pair<ContactAlias?, String?>,
+    val aliasAndColorKey: Pair<ContactAlias?, Int?>,
     val photoUrl: PhotoUrl?,
     val date: String,
     val message: String,

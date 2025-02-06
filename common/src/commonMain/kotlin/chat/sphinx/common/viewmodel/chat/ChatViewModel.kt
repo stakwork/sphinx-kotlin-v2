@@ -539,7 +539,7 @@ abstract class ChatViewModel(
 
     open fun unPinMessage(message: Message? = null) {}
 
-    private suspend fun getColorsMapFor(
+    suspend fun getColorsMapFor(
         message: Message,
         contactColor: Int?,
         tribeAdmin: Contact?
