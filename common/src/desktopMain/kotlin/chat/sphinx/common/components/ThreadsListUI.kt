@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.models.ThreadItem
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.ThreadsViewModel
@@ -157,34 +158,10 @@ fun ThreadItemUI(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            val replyUsers = thread.usersReplies.orEmpty().take(3)
-                            replyUsers.forEachIndexed { index, userHolder ->
-                                if (index > 0) {
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                }
-                                PhotoUrlImage(
-                                    photoUrl = userHolder.photoUrl?.thumbnailUrl,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape),
-                                    color = userHolder.colorKey?.let { Color(it) },
-                                    firstNameLetter = userHolder.alias?.value?.getInitials(),
-                                    fontSize = 10
-                                )
-                            }
-
-                            val extraUsers = (thread.usersReplies?.size ?: 0) - replyUsers.size
-                            if (extraUsers > 0) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "+$extraUsers",
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
+                        OverlappedAvatars(
+                            users = thread.usersReplies.orEmpty(),
+                            modifier = Modifier
+                        )
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (thread.repliesAmount.isNotEmpty()) {
@@ -205,6 +182,7 @@ fun ThreadItemUI(
                             }
                         }
                     }
+
                 }
             }
 
@@ -215,6 +193,60 @@ fun ThreadItemUI(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+fun OverlappedAvatars(
+    users: List<ChatMessage.ReplyUserHolder>,
+    modifier: Modifier = Modifier,
+) {
+    // Maximum avatars to show before we display a +N overlay
+    val maxAvatars = 6
+
+    // Always take at most 6 from the list
+    val displayedUsers = users.take(maxAvatars)
+    val totalUserCount = users.size
+
+    Box(modifier = modifier) {
+        // Each avatar is offset by an increasing X
+        displayedUsers.forEachIndexed { index, user ->
+            Box(
+                modifier = Modifier
+                    // For example, each subsequent avatar moves 16.dp to the right
+                    .offset(x = (index * 16).dp)
+            ) {
+                // Our normal avatar
+                PhotoUrlImage(
+                    photoUrl = user.photoUrl,
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(CircleShape),
+                    color = user.colorKey?.let { Color(it) },
+                    firstNameLetter = user.alias?.value?.getInitials(),
+                    fontSize = 11
+                )
+
+                // If we're on the last avatar (index == 5) AND
+                // there are more actual users than 6, show overlay
+                if (index == maxAvatars - 1 && totalUserCount > maxAvatars) {
+                    // Dark overlay
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.Black.copy(alpha = 0.6f))
+                    )
+                    // “+N” text, typically centered
+                    Text(
+                        text = "+${totalUserCount - maxAvatars}",
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+            }
         }
     }
 }

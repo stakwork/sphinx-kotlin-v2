@@ -18,6 +18,7 @@ import chat.sphinx.wrapper.contact.toContactAlias
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.message.media.*
+import chat.sphinx.wrapper.timeAgo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -188,10 +189,10 @@ class ThreadsViewModel(
             photoUrl = senderPhotoUrl,
             date = originalMessage?.date?.chatTimeFormat() ?: "",
             message = threadMessage,
-            usersReplies = createReplyUserHolders(repliesList, chat, owner),
+            usersReplies = createReplyUserHolders(repliesList, chat, owner)?.reversed(),
             usersCount = repliesList?.size ?: 0,
             repliesAmount = messagesForThread?.drop(1)?.size?.toString() ?: "0",
-            lastReplyDate = messagesForThread?.first()?.date?.chatTimeFormat(),
+            lastReplyDate = messagesForThread?.first()?.date?.timeAgo(),
             uuid = uuid ?: "",
             imageAttachment = imageAttachment,
             videoAttachment = videoAttachment,
