@@ -1,34 +1,28 @@
 package chat.sphinx.common.viewmodel
 
-import androidx.annotation.ColorInt
-import androidx.compose.material.MaterialTheme.colors
 import chat.sphinx.common.models.ChatMessage
-import chat.sphinx.common.models.FileAttachment
 import chat.sphinx.common.models.ThreadItem
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.utils.UserColorsHelper
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.chat.Chat
-import chat.sphinx.wrapper.chat.getColorKey
 import chat.sphinx.wrapper.chatTimeFormat
 import chat.sphinx.wrapper.contact.Contact
-import chat.sphinx.wrapper.contact.getColorKey
 import chat.sphinx.wrapper.contact.toContactAlias
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.message.*
-import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.timeAgo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import okio.Path
 import utils.getRandomColorRes
 
 class ThreadsViewModel(
     val chatId: ChatId,
-    val dashboardViewModel: DashboardViewModel
+    val dashboardViewModel: DashboardViewModel,
+    val chatViewModel: ChatViewModel?
 ) {
     val scope = SphinxContainer.appModule.applicationScope
     val dispatchers = SphinxContainer.appModule.dispatchers
@@ -141,46 +135,11 @@ class ThreadsViewModel(
         }
 
         val senderPhotoUrl = if (isSenderOwner) owner?.photoUrl else originalMessage?.senderPic
-
         val repliesList = messagesForThread?.drop(1)?.distinctBy { it.senderAlias }
 
-        val imageAttachment = originalMessage?.retrieveImageUrlAndMessageMedia()?.let { mediaData ->
-            Pair(mediaData.first, mediaData.second?.localFile)
-        }
-        val videoAttachment: Path? = originalMessage?.messageMedia?.let { nnMessageMedia ->
-            if (nnMessageMedia.mediaType.isVideo) { nnMessageMedia.localFile } else null
-        }
-        val fileAttachment: FileAttachment? = originalMessage?.messageMedia?.let { nnMessageMedia ->
-            if (nnMessageMedia.mediaType.isImage || nnMessageMedia.mediaType.isAudio) {
-                null
-            } else {
-                nnMessageMedia.localFile?.let { nnFile ->
-//                    val pageCount = if (nnMessageMedia.mediaType.isPdf) {
-//                        val fileDescriptor =
-//                            ParcelFileDescriptor.open(nnFile, ParcelFileDescriptor.MODE_READ_ONLY)
-//                        val renderer = PdfRenderer(fileDescriptor)
-//                        renderer.pageCount
-//                    } else {
-//                        0
-//                    }
-
-                    FileAttachment(
-                        nnMessageMedia.fileName,
-                        FileSize(nnFile.toFile().length()),
-                        nnMessageMedia.mediaType.isPdf,
-                        0
-                    )
-                }
-            }
-        }
-
-        val audioAttachment: Boolean? = originalMessage?.messageMedia?.let { nnMessageMedia ->
-            if (nnMessageMedia.mediaType.isAudio) {
-                true
-            } else {
-                null
-            }
-        }
+        val messageMedia = if (originalMessage?.messageMedia != null && chat != null) {
+            chatViewModel?.processSingleMessage(chat, originalMessage)
+        } else null
 
         val threadMessage = originalMessage?.messageContentDecrypted?.value ?: ""
 
@@ -194,10 +153,7 @@ class ThreadsViewModel(
             repliesAmount = messagesForThread?.drop(1)?.size?.toString() ?: "0",
             lastReplyDate = messagesForThread?.first()?.date?.timeAgo(),
             uuid = uuid ?: "",
-            imageAttachment = imageAttachment,
-            videoAttachment = videoAttachment,
-            fileAttachment = fileAttachment,
-            audioAttachment = audioAttachment
+            messageMedia = messageMedia
         )
     }
 
@@ -279,6 +235,7 @@ class ThreadsViewModel(
 
         return colors
     }
+
 
 
 }

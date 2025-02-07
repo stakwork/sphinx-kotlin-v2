@@ -772,7 +772,7 @@ fun LastReplyRow(
                         modifier = Modifier.wrapContentHeight().fillMaxWidth()
                     )
                 } else if (media.mediaType.isUnknown || media.mediaType.isPdf) {
-                    MessageFile(
+                        MessageFile(
                         chatMessage = mediaAttachment,
                         chatViewModel = chatViewModel,
                     )

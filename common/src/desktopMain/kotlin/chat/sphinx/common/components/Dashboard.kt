@@ -175,12 +175,12 @@ actual fun Dashboard(
                                     ) {
                                         when (val screen = splitScreenState.type) {
                                             is DashboardViewModel.SplitContentType.Threads -> {
-
-                                                val threadsViewModel = remember { ThreadsViewModel(screen.chatId, dashboardViewModel) }
+                                                val threadsViewModel = remember { ThreadsViewModel(screen.chatId, dashboardViewModel, chatViewModel) }
 
                                                 ThreadsListUI(
                                                     threadsViewModel = threadsViewModel,
-                                                    dashboardViewModel = dashboardViewModel
+                                                    dashboardViewModel = dashboardViewModel,
+                                                    chatViewModel = chatViewModel
                                                 )
 
                                             }
@@ -728,8 +728,7 @@ fun SplitTopBar(
         // Left Arrow Icon
         IconButton(
             onClick = {
-                 dashboardViewModel?.toggleSplitScreen(false,
-                     chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
+                 dashboardViewModel?.toggleSplitScreen(false, chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
             }
         ) {
             Icon(
@@ -739,17 +738,21 @@ fun SplitTopBar(
             )
         }
 
+        val threadText = when (splitType) {
+            is DashboardViewModel.SplitContentType.Threads -> "Threads List"
+            is DashboardViewModel.SplitContentType.Thread -> "Thread"
+            else -> ""
+        }
 
         Text(
             modifier = Modifier.padding(start = 8.dp),
-            text = "Thread",
+            text = threadText,
             fontFamily = Roboto,
             fontSize = 16.sp,
             fontWeight = FontWeight.W700,
             color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
         )
 
-        // Spacer to push the close icon to the far right
         Spacer(modifier = Modifier.weight(1f))
 
         // Close Icon

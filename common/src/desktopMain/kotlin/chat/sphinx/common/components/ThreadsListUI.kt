@@ -29,6 +29,8 @@ import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.models.ThreadItem
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.ThreadsViewModel
+import chat.sphinx.common.viewmodel.chat.ChatViewModel
+import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.thumbnailUrl
 import chat.sphinx.wrapper.util.getInitials
 import theme.md_theme_dark_background
@@ -37,7 +39,8 @@ import theme.md_theme_dark_background
 @Composable
 fun ThreadsListUI(
     threadsViewModel: ThreadsViewModel,
-    dashboardViewModel: DashboardViewModel
+    dashboardViewModel: DashboardViewModel,
+    chatViewModel: ChatViewModel?
 ) {
     val threadItems by threadsViewModel.threadItems.collectAsState(initial = emptyList())
     val listState = rememberLazyListState()
@@ -54,7 +57,7 @@ fun ThreadsListUI(
                     items = threadItems,
                     key = { index, thread -> thread.uuid }
                 ) { index, thread ->
-                    ThreadItemUI(thread = thread)
+                    ThreadItemUI(thread = thread, chatViewModel = chatViewModel)
                 }
             }
 
@@ -75,14 +78,22 @@ fun ThreadsEmptyScreen() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text("No threads available.", style = MaterialTheme.typography.labelMedium)
+        Text(
+            "No threads found.",
+            fontWeight = FontWeight.W500,
+            fontFamily = Roboto,
+            color = MaterialTheme.colorScheme.tertiary,
+            fontSize = 14.sp,
+            maxLines = 1
+        )
     }
 }
 
 @Composable
 fun ThreadItemUI(
     thread: ThreadItem,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    chatViewModel: ChatViewModel?
 ) {
     Card(
         modifier = Modifier
@@ -100,8 +111,6 @@ fun ThreadItemUI(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
-                // Avatar
-
                 PhotoUrlImage(
                     photoUrl = thread.photoUrl?.thumbnailUrl,
                     modifier = Modifier
@@ -139,8 +148,53 @@ fun ThreadItemUI(
                         )
                     }
 
-                    // Message
                     Spacer(modifier = Modifier.height(2.dp))
+
+                    if (chatViewModel != null) {
+                        // --- MEDIA ATTACHMENT (above the message) ---
+                        thread.messageMedia?.message?.messageMedia?.let { media ->
+                            when {
+                                media.mediaType.isImage -> {
+                                    MessageMediaImage(
+                                        chatMessage = thread.messageMedia,
+                                        chatViewModel = chatViewModel,
+                                        modifier = Modifier
+                                            .wrapContentHeight()
+                                            .fillMaxWidth()
+                                    )
+                                }
+
+                                media.mediaType.isUnknown || media.mediaType.isPdf -> {
+                                    MessageFile(
+                                        chatMessage = thread.messageMedia,
+                                        chatViewModel = chatViewModel,
+                                    )
+                                }
+
+                                media.mediaType.isVideo -> {
+                                    MessageVideo(
+                                        chatMessage = thread.messageMedia,
+                                        chatViewModel = chatViewModel,
+                                        modifier = Modifier
+                                            .wrapContentHeight()
+                                            .fillMaxWidth()
+                                    )
+                                }
+
+                                media.mediaType.isAudio -> {
+                                    MessageAudio(
+                                        chatMessage = thread.messageMedia,
+                                        chatViewModel = chatViewModel,
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                    // --- END MEDIA ATTACHMENT ---
+
+                    // The original message text
                     Text(
                         text = thread.message,
                         fontWeight = FontWeight.Normal,
@@ -182,7 +236,6 @@ fun ThreadItemUI(
                             }
                         }
                     }
-
                 }
             }
 
@@ -207,17 +260,14 @@ fun OverlappedAvatars(
 
     // Always take at most 6 from the list
     val displayedUsers = users.take(maxAvatars)
-    val totalUserCount = users.size
 
     Box(modifier = modifier) {
         // Each avatar is offset by an increasing X
         displayedUsers.forEachIndexed { index, user ->
             Box(
                 modifier = Modifier
-                    // For example, each subsequent avatar moves 16.dp to the right
                     .offset(x = (index * 16).dp)
             ) {
-                // Our normal avatar
                 PhotoUrlImage(
                     photoUrl = user.photoUrl,
                     modifier = Modifier
@@ -227,25 +277,6 @@ fun OverlappedAvatars(
                     firstNameLetter = user.alias?.value?.getInitials(),
                     fontSize = 11
                 )
-
-                // If we're on the last avatar (index == 5) AND
-                // there are more actual users than 6, show overlay
-                if (index == maxAvatars - 1 && totalUserCount > maxAvatars) {
-                    // Dark overlay
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(Color.Black.copy(alpha = 0.6f))
-                    )
-                    // “+N” text, typically centered
-                    Text(
-                        text = "+${totalUserCount - maxAvatars}",
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
             }
         }
     }

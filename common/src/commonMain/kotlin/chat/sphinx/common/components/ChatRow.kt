@@ -84,7 +84,7 @@ fun ChatRow(
                     }
                     return@clickable
                 }
-
+                dashboardViewModel.toggleSplitScreen(false,null)
                 chatListViewModel.chatRowSelected(dashboardChat)
             }
             .height(62.dp)
