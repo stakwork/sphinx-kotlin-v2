@@ -23,6 +23,7 @@ import chat.sphinx.wrapper.message.SenderAlias
 import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
 import chat.sphinx.wrapper.toDateTime
 import chat.sphinx.wrapper.tribe.TribeJoinLink
+import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import theme.primary_red
@@ -53,7 +54,7 @@ class DashboardViewModel(): WindowFocusListener {
     sealed class SplitContentType {
         object Default : SplitContentType()
         data class Threads(val chatId: ChatId) : SplitContentType()
-        data class Thread(val chatId: ChatId) : SplitContentType()
+        data class Thread(val chatId: ChatId, val threadUUID: ThreadUUID) : SplitContentType()
     }
 
     data class SplitScreenState(

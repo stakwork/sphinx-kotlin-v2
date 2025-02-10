@@ -228,13 +228,13 @@ abstract class ChatViewModel(
     private suspend fun loadChatMessages() {
         getChat()?.let { chat ->
             messageRepository.getAllMessagesToShowByChatId(chat.id, 50).firstOrNull()?.let { messages ->
-                processChatMessages(chat, messages)
+                processChatMessages(chat, messages, false)
             }
 
             delay(500L)
 
             messageRepository.getAllMessagesToShowByChatId(chat.id, 1000).distinctUntilChanged().collect { messages ->
-                processChatMessages(chat, messages)
+                processChatMessages(chat, messages, false)
             }
         } ?: run {
             MessageListState.screenState(
@@ -251,7 +251,7 @@ abstract class ChatViewModel(
         }
     }
 
-    private suspend fun processChatMessages(chat: Chat, messages: List<Message>) {
+    private suspend fun processChatMessages(chat: Chat, messages: List<Message>, isThreadView: Boolean) {
         val owner = getOwner()
         val contact = getContact()
 
@@ -365,12 +365,21 @@ abstract class ChatViewModel(
             )
         }
 
-        MessageListState.screenState(
-            MessageListData.PopulatedMessageListData(
-                chat.id,
-                chatMessages.reversed()
+        if (isThreadView) {
+            MessageListState.threadScreenState(
+                MessageListData.PopulatedMessageListData(
+                    chat.id,
+                    chatMessages.reversed()
+                )
             )
-        )
+        } else {
+            MessageListState.screenState(
+                MessageListData.PopulatedMessageListData(
+                    chat.id,
+                    chatMessages.reversed()
+                )
+            )
+        }
 
         if (messagesSize != messages.size) {
             messagesSize = messages.size
@@ -615,6 +624,20 @@ abstract class ChatViewModel(
                     toast("Boost payment failed", primary_red)
                 }
                 is Response.Success -> {}
+            }
+        }
+    }
+
+    fun navigateToThreadChat(chat: Chat, threadUUID: String?) {
+        scope.launch(dispatchers.mainImmediate) {
+            val thread = threadUUID?.toThreadUUID()
+            messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread).firstOrNull()?.let { messages ->
+                val originalMessage = messageRepository.getMessageByUUID(MessageUUID(thread?.value!!)).firstOrNull()
+                val completeThread = listOf(originalMessage) + messages.reversed()
+
+                processChatMessages(chat, completeThread.filterNotNull().toList(), true)
+
+                dashboardViewModel.toggleSplitScreen(true, DashboardViewModel.SplitContentType.Thread(chat.id, thread))
             }
         }
     }

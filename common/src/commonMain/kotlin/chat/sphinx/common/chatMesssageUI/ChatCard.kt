@@ -4,6 +4,7 @@ import Roboto
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -515,6 +516,9 @@ fun BubbleThreadLayout(
     Box(
         modifier = Modifier
             .width(fixedWidth)
+            .clickable {
+                chatViewModel.navigateToThreadChat(chatMessage.chat, chatMessage.message.uuid?.value)
+            }
             .background(
                 color = if (chatMessage.isSent) MaterialTheme.colorScheme.inversePrimary
                 else MaterialTheme.colorScheme.onSecondaryContainer,

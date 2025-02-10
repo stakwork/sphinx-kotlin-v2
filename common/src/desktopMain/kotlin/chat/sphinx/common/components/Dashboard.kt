@@ -171,6 +171,7 @@ actual fun Dashboard(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
+                                            .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                                             .padding(innerPadding)
                                     ) {
                                         when (val screen = splitScreenState.type) {
@@ -182,7 +183,9 @@ actual fun Dashboard(
                                                     dashboardViewModel = dashboardViewModel,
                                                     chatViewModel = chatViewModel
                                                 )
-
+                                            }
+                                            is DashboardViewModel.SplitContentType.Thread -> {
+                                                chatViewModel?.let { MessageListUI(it,dashboardViewModel, dashboardChat, true) }
                                             }
                                             else -> {
                                                 Text("No content type selected or not handled.")

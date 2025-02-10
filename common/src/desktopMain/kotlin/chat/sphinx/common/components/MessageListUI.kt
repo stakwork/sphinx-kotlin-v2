@@ -46,44 +46,85 @@ import theme.md_theme_dark_onBackground
 fun MessageListUI(
     chatViewModel: ChatViewModel,
     dashboardViewModel: DashboardViewModel,
-    dashboardChat: DashboardChat?
+    dashboardChat: DashboardChat?,
+    isThreadView: Boolean = false
 ) {
     chatViewModel.screenInit()
     val isInactiveConversation = dashboardChat is DashboardChat.Inactive.Conversation
 
     Box {
-        when (val messageListData = MessageListState.screenState()) {
-            is MessageListData.EmptyMessageListData -> {
-                ChatEmptyScreen(isInactiveConversation, dashboardChat)
-            }
-            is MessageListData.PopulatedMessageListData -> {
-                val listState = remember(messageListData.chatId) { LazyListState() }
-
-                val chatMessages = messageListData.messages
-                val items= mutableStateListOf<ChatMessage>()
-                items.addAll(chatMessages)
-
-                if (chatMessages.isEmpty()) {
+        if (isThreadView) {
+            when (val messageListData = MessageListState.threadScreenState()) {
+                is MessageListData.EmptyMessageListData -> {
                     ChatEmptyScreen(isInactiveConversation, dashboardChat)
-                } else {
-                    ChatMessagesList(
-                        items,
-                        listState,
-                        chatViewModel,
-                        dashboardViewModel
-                    )
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.BottomCenter
-                    ){
-                        SuggestedAliasListBar(chatViewModel)
-                    }
+                }
 
-                    VerticalScrollbar(
-                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                        reverseLayout = true,
-                        adapter = rememberScrollbarAdapter(scrollState = listState)
-                    )
+                is MessageListData.PopulatedMessageListData -> {
+                    val listState = remember(messageListData.chatId) { LazyListState() }
+
+                    val chatMessages = messageListData.messages
+                    val items = mutableStateListOf<ChatMessage>()
+                    items.addAll(chatMessages)
+
+                    if (chatMessages.isEmpty()) {
+                        ChatEmptyScreen(isInactiveConversation, dashboardChat)
+                    } else {
+                        ChatMessagesList(
+                            items,
+                            listState,
+                            chatViewModel,
+                            dashboardViewModel
+                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            SuggestedAliasListBar(chatViewModel)
+                        }
+
+                        VerticalScrollbar(
+                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                            reverseLayout = true,
+                            adapter = rememberScrollbarAdapter(scrollState = listState)
+                        )
+                    }
+                }
+            }
+        } else {
+            when (val messageListData = MessageListState.screenState()) {
+                is MessageListData.EmptyMessageListData -> {
+                    ChatEmptyScreen(isInactiveConversation, dashboardChat)
+                }
+
+                is MessageListData.PopulatedMessageListData -> {
+                    val listState = remember(messageListData.chatId) { LazyListState() }
+
+                    val chatMessages = messageListData.messages
+                    val items = mutableStateListOf<ChatMessage>()
+                    items.addAll(chatMessages)
+
+                    if (chatMessages.isEmpty()) {
+                        ChatEmptyScreen(isInactiveConversation, dashboardChat)
+                    } else {
+                        ChatMessagesList(
+                            items,
+                            listState,
+                            chatViewModel,
+                            dashboardViewModel
+                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            SuggestedAliasListBar(chatViewModel)
+                        }
+
+                        VerticalScrollbar(
+                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                            reverseLayout = true,
+                            adapter = rememberScrollbarAdapter(scrollState = listState)
+                        )
+                    }
                 }
             }
         }

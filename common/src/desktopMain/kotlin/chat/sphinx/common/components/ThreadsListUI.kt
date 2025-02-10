@@ -151,7 +151,7 @@ fun ThreadItemUI(
                     Spacer(modifier = Modifier.height(2.dp))
 
                     if (chatViewModel != null) {
-                        // --- MEDIA ATTACHMENT (above the message) ---
+                        // --- MEDIA ATTACHMENT ---
                         thread.messageMedia?.message?.messageMedia?.let { media ->
                             when {
                                 media.mediaType.isImage -> {
@@ -194,18 +194,19 @@ fun ThreadItemUI(
                     }
                     // --- END MEDIA ATTACHMENT ---
 
+                    Spacer(modifier = Modifier.height(6.dp))  // Increased from 2.dp to 8.dp
+
                     // The original message text
                     Text(
                         text = thread.message,
-                        fontWeight = FontWeight.Normal,
-                        fontFamily = Roboto,
+                        fontWeight = FontWeight.W400,
                         color = MaterialTheme.colorScheme.tertiary,
-                        fontSize = 12.sp,
+                        fontSize = 15.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
