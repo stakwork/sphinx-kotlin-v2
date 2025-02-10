@@ -631,6 +631,7 @@ abstract class ChatViewModel(
     fun navigateToThreadChat(chat: Chat, threadUUID: String?) {
         scope.launch(dispatchers.mainImmediate) {
             val thread = threadUUID?.toThreadUUID()
+
             messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread).firstOrNull()?.let { messages ->
                 val originalMessage = messageRepository.getMessageByUUID(MessageUUID(thread?.value!!)).firstOrNull()
                 val completeThread = listOf(originalMessage) + messages.reversed()
