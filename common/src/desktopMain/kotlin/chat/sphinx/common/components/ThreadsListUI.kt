@@ -344,13 +344,18 @@ fun ThreadHeaderUI(
                 chatMessage.message.messageMedia?.let { media ->
                     when {
                         media.mediaType.isImage -> {
-                            MessageMediaImage(
-                                chatMessage = chatMessage,
-                                chatViewModel = chatViewModel,
-                                modifier = Modifier
-                                    .wrapContentHeight()
-                                    .fillMaxWidth()
-                            )
+                            Column(
+                                modifier = Modifier.fillMaxWidth().height(160.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                MessageMediaImage(
+                                    chatMessage = chatMessage,
+                                    chatViewModel = chatViewModel,
+                                    modifier = Modifier
+                                        .wrapContentHeight()
+                                        .widthIn(max = 300.dp) // Adjust the max width as needed
+                                )
+                            }
                         }
                         media.mediaType.isUnknown || media.mediaType.isPdf -> {
                             MessageFile(
