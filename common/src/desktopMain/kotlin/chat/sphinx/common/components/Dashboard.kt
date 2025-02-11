@@ -721,55 +721,74 @@ fun SplitTopBar(
     dashboardViewModel: DashboardViewModel?,
     splitType: DashboardViewModel.SplitContentType?
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .height(60.dp)
-            .fillMaxWidth()
-            .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
-    ) {
-        // Left Arrow Icon
-        IconButton(
-            onClick = {
-                 dashboardViewModel?.toggleSplitScreen(false, chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
-            }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .height(60.dp)
+                .fillMaxWidth()
+                .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back",
-                tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
-            )
-        }
-
-        val threadText = when (splitType) {
-            is DashboardViewModel.SplitContentType.Threads -> "Threads List"
-            is DashboardViewModel.SplitContentType.Thread -> "Thread"
-            else -> ""
-        }
-
-        Text(
-            modifier = Modifier.padding(start = 8.dp),
-            text = threadText,
-            fontFamily = Roboto,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.W700,
-            color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Close Icon
-        IconButton(
-            onClick = {
-                dashboardViewModel?.toggleSplitScreen(false,
-                    chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
+            // Left Arrow Icon
+            IconButton(
+                onClick = {
+                    dashboardViewModel?.toggleSplitScreen(
+                        false,
+                        chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+                )
             }
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+
+            val threadText = when (splitType) {
+                is DashboardViewModel.SplitContentType.Threads -> "Threads List"
+                is DashboardViewModel.SplitContentType.Thread -> "Thread"
+                else -> ""
+            }
+
+            Text(
+                modifier = Modifier.padding(start = 8.dp),
+                text = threadText,
+                fontFamily = Roboto,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.W700,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
             )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Close Icon
+            IconButton(
+                onClick = {
+                    dashboardViewModel?.toggleSplitScreen(false,
+                        chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+                )
+            }
+        }
+        if (splitType is DashboardViewModel.SplitContentType.Thread) {
+            // Retrieve the thread header from the thread screen state.
+            when (val messageListData = MessageListState.threadScreenState()) {
+                is MessageListData.PopulatedMessageListData -> {
+                    val chatMessages = messageListData.messages
+                    val threadHeader = chatMessages.lastOrNull()
+                    if (threadHeader != null) {
+                        ThreadHeaderUI(threadHeader, chatViewModel)
+                    }
+                }
+                else -> {
+                    // Handle empty or error state if needed.
+                }
+            }
         }
     }
 }

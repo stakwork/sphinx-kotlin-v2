@@ -10,8 +10,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -21,6 +19,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,7 +29,10 @@ import chat.sphinx.common.models.ThreadItem
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.ThreadsViewModel
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
+import chat.sphinx.utils.toAnnotatedString
+import chat.sphinx.wrapper.chatTimeFormat
 import chat.sphinx.wrapper.message.media.*
+import chat.sphinx.wrapper.message.retrieveTextToShow
 import chat.sphinx.wrapper.thumbnailUrl
 import chat.sphinx.wrapper.util.getInitials
 import theme.md_theme_dark_background
@@ -194,11 +196,11 @@ fun ThreadItemUI(
                     }
                     // --- END MEDIA ATTACHMENT ---
 
-                    Spacer(modifier = Modifier.height(6.dp))  // Increased from 2.dp to 8.dp
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     // The original message text
                     Text(
-                        text = thread.message,
+                        text = thread.message.toAnnotatedString(),
                         fontWeight = FontWeight.W400,
                         color = MaterialTheme.colorScheme.tertiary,
                         fontSize = 15.sp,
@@ -280,5 +282,121 @@ fun OverlappedAvatars(
                 )
             }
         }
+    }
+}
+@Composable
+fun ThreadHeaderUI(
+    chatMessage: ChatMessage,
+    chatViewModel: ChatViewModel? = null
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(md_theme_dark_background)
+            .padding(horizontal = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            PhotoUrlImage(
+                photoUrl = chatMessage.contact?.photoUrl?.thumbnailUrl ?: chatMessage.message.senderPic?.thumbnailUrl,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape),
+                color = chatMessage.replyToMessageColor?.let { Color(it) },
+                firstNameLetter = chatMessage.replyToMessageSenderAliasPreview.getInitials(),
+                fontSize = 12
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = chatMessage.replyToMessageSenderAliasPreview,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontSize = 12.sp,
+                        fontFamily = Roboto,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = chatMessage.message.date.chatTimeFormat(),
+                        fontWeight = FontWeight.W400,
+                        fontFamily = Roboto,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 10.sp,
+                        maxLines = 1
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+            }
+        }
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            if (chatViewModel != null) {
+                chatMessage.message.messageMedia?.let { media ->
+                    when {
+                        media.mediaType.isImage -> {
+                            MessageMediaImage(
+                                chatMessage = chatMessage,
+                                chatViewModel = chatViewModel,
+                                modifier = Modifier
+                                    .wrapContentHeight()
+                                    .fillMaxWidth()
+                            )
+                        }
+                        media.mediaType.isUnknown || media.mediaType.isPdf -> {
+                            MessageFile(
+                                chatMessage = chatMessage,
+                                chatViewModel = chatViewModel
+                            )
+                        }
+                        media.mediaType.isVideo -> {
+                            MessageVideo(
+                                chatMessage = chatMessage,
+                                chatViewModel = chatViewModel,
+                                modifier = Modifier
+                                    .wrapContentHeight()
+                                    .fillMaxWidth()
+                            )
+                        }
+                        media.mediaType.isAudio -> {
+                            MessageAudio(
+                                chatMessage = chatMessage,
+                                chatViewModel = chatViewModel
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = chatMessage.message.retrieveTextToShow()?.trim()?.toAnnotatedString() ?: AnnotatedString(""),
+                fontWeight = FontWeight.W400,
+                color = MaterialTheme.colorScheme.tertiary,
+                fontSize = 14.sp,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Divider(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
