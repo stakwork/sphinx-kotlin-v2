@@ -711,7 +711,12 @@ abstract class ChatViewModel(
     abstract var editMessageState: EditMessageState
         protected set
 
+    abstract var threadMessageState: EditMessageState
+        protected set
+
     abstract fun initialState(): EditMessageState
+
+    abstract fun threadInitialState(): EditMessageState
 
     abstract fun getUniqueKey(): String
 
@@ -721,6 +726,10 @@ abstract class ChatViewModel(
 
     private inline fun setEditMessageState(update: EditMessageState.() -> EditMessageState) {
         editMessageState = editMessageState.update()
+    }
+
+    private inline fun setThreadMessageState(update: EditMessageState.() -> EditMessageState) {
+        threadMessageState = threadMessageState.update()
     }
 
     fun dismissPinMessagePopUp() {
@@ -752,6 +761,19 @@ abstract class ChatViewModel(
         editMessageState.messageText.value = text
         aliasMatcher(text.text)
     }
+
+    fun onThreadMessageTextChanged(text: TextFieldValue) {
+        if (
+            threadMessageState.messageText.value.text == text.text &&
+            (text.selection.start == 0 || text.selection.start == text.text.length) &&
+            aliasMatcherState.isOn
+        ) {
+            return
+        }
+        threadMessageState.messageText.value = text
+        aliasMatcher(text.text)
+    }
+
 
     fun pinFullContentScreen() {
         setPinMessageState {
@@ -799,36 +821,44 @@ abstract class ChatViewModel(
     }
 
     private var sendMessageJob: Job? = null
-    fun onSendMessage() {
+    fun onSendMessage(threadUUID: String?) {
         if (sendMessageJob?.isActive == true) {
             return
         }
-        val messageText = editMessageState.messageText.value.text.trim()
+
+        val messageState = if (threadUUID == null) editMessageState else threadMessageState
+
+        val messageText = messageState.messageText.value.text.trim()
 
         sendMessageJob = scope.launch(dispatchers.mainImmediate) {
             val isCallMessage = messageText.toCallLinkMessageOrNull() != null
 
             val sendMessageBuilder = SendMessage.Builder()
-                .setChatId(editMessageState.chatId)
+                .setChatId(messageState.chatId)
                 .setIsCall(isCallMessage)
-                .setContactId(editMessageState.contactId)
+                .setContactId(messageState.contactId)
                 .setText(messageText)
-                .setPaidMessagePrice(editMessageState.price.value?.toSat())
+                .setPaidMessagePrice(messageState.price.value?.toSat())
                 .also { builder ->
-                    editMessageState.replyToMessage.value?.message?.uuid?.value?.let { uuid ->
-                        val threadUUID = editMessageState.replyToMessage.value?.message?.threadUUID
+                    if (threadUUID != null) {
+                        builder.setReplyUUID(threadUUID.toReplyUUID())
+                        builder.setThreadUUID(threadUUID.toThreadUUID())
+                    } else {
+                        messageState.replyToMessage.value?.message?.uuid?.value?.let { uuid ->
+                            val replyThreadUUID = messageState.replyToMessage.value?.message?.threadUUID
 
-                        builder.setReplyUUID(uuid.toReplyUUID())
-                        builder.setThreadUUID(threadUUID ?: uuid.toThreadUUID())
+                            builder.setReplyUUID(uuid.toReplyUUID())
+                            builder.setThreadUUID(replyThreadUUID ?: uuid.toThreadUUID())
+                        }
                     }
                 }
 
             if (
-                editMessageState.price?.value ?: 0 > 0 &&
-                editMessageState.messageText.value.text.isNotEmpty()
+                messageState.price?.value ?: 0 > 0 &&
+                messageState.messageText.value.text.isNotEmpty()
             ) {
                 //Paid text message
-                createPaidMessageFile(editMessageState.messageText.value.text.trim())?.let { path ->
+                createPaidMessageFile(messageState.messageText.value.text.trim())?.let { path ->
                     sendMessageBuilder.setAttachmentInfo(
                         AttachmentInfo(
                             filePath = path,
@@ -840,7 +870,7 @@ abstract class ChatViewModel(
                 }
             }
 
-            editMessageState.attachmentInfo.value?.let { attachmentInfo ->
+            messageState.attachmentInfo.value?.let { attachmentInfo ->
                 sendMessageBuilder.setAttachmentInfo(attachmentInfo)
             }
 
@@ -850,8 +880,14 @@ abstract class ChatViewModel(
                 sendMessage.first?.let { message ->
                     messageRepository.sendMessage(message)
 
-                    setEditMessageState {
-                        initialState()
+                    if (threadUUID == null) {
+                        setEditMessageState {
+                            initialState()
+                        }
+                    } else {
+                        setThreadMessageState {
+                            threadInitialState()
+                        }
                     }
 
                     delay(200L)
@@ -901,7 +937,7 @@ abstract class ChatViewModel(
                 editMessageState.messageText.value = TextFieldValue(messageText)
                 editMessageState.price.value = null
 
-                onSendMessage()
+                onSendMessage(null)
 
                 (messageText.toSphinxCallLink() ?: messageText.toCallLinkMessageOrNull()?.link)?.let {
                     callback(

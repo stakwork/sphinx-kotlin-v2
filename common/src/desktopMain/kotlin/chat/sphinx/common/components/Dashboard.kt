@@ -57,6 +57,7 @@ import chat.sphinx.wrapper.lightning.asFormattedString
 import chat.sphinx.wrapper.message.media.isImage
 import chat.sphinx.wrapper.message.retrieveTextToShow
 import chat.sphinx.wrapper.util.getInitials
+import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
@@ -163,8 +164,9 @@ actual fun Dashboard(
                                         )
                                     },
                                     bottomBar = {
-                                        if (splitScreenState.type is DashboardViewModel.SplitContentType.Thread) {
-                                            SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel, true)
+                                        val screen = splitScreenState.type
+                                        if (screen is DashboardViewModel.SplitContentType.Thread) {
+                                            SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel, screen.threadUUID)
                                         }
                                     }
                                 ) { innerPadding ->
@@ -530,7 +532,7 @@ fun SphinxChatDetailTopAppBar(
 fun SphinxChatDetailBottomAppBar(
     dashboardChat: DashboardChat?,
     chatViewModel: ChatViewModel?,
-    isThreadView: Boolean = false
+    threadUUID: ThreadUUID? = null
 ) {
     val scope = rememberCoroutineScope()
 
@@ -605,6 +607,12 @@ fun SphinxChatDetailBottomAppBar(
                     modifier = Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
+                        val textValue = if (threadUUID != null) {
+                            chatViewModel?.threadMessageState?.messageText?.value ?: TextFieldValue("")
+                        } else {
+                            chatViewModel?.editMessageState?.messageText?.value ?: TextFieldValue("")
+                        }
+
                         Spacer(modifier = Modifier.height(10.dp))
                         CustomTextField(
                             trailingIcon = null,
@@ -622,7 +630,7 @@ fun SphinxChatDetailBottomAppBar(
                                         if (chatViewModel?.aliasMatcherState?.isOn == true) {
                                             chatViewModel?.onAliasSelected()
                                         } else {
-                                            chatViewModel?.onSendMessage()
+                                            chatViewModel?.onSendMessage(threadUUID?.value)
                                         }
                                     }
                                 )
@@ -656,10 +664,14 @@ fun SphinxChatDetailBottomAppBar(
                                 val proposedText = newValue.text
                                 val proposedTextBytes = proposedText.toByteArray().size
                                 if (proposedTextBytes <= 592) {
-                                    chatViewModel?.onMessageTextChanged(newValue)
+                                    if (threadUUID != null) {
+                                        chatViewModel?.onThreadMessageTextChanged(newValue)
+                                    } else {
+                                        chatViewModel?.onMessageTextChanged(newValue)
+                                    }
                                 } else {}
                             },
-                            value = chatViewModel?.editMessageState?.messageText?.value ?: TextFieldValue(""),
+                            value = textValue ,
                             cursorBrush = primary_blue,
                             enabled = !(dashboardChat?.getChatOrNull()?.isPrivateTribe() == true && dashboardChat?.getChatOrNull()?.status?.isPending() == true)
                         )
@@ -672,7 +684,8 @@ fun SphinxChatDetailBottomAppBar(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Spacer(modifier = Modifier.width(10.dp))
-                        if (!isThreadView) {
+
+                        if (threadUUID == null) {
                             PriceChip(chatViewModel)
                         }
 
@@ -680,7 +693,7 @@ fun SphinxChatDetailBottomAppBar(
                         IconButton(
                             onClick = {
                                 if (chatViewModel != null) run {
-                                    chatViewModel.onSendMessage()
+                                    chatViewModel.onSendMessage(threadUUID?.value)
                                 }
                             },
                             modifier = Modifier.clip(CircleShape)
