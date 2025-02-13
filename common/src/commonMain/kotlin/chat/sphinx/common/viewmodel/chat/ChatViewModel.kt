@@ -632,7 +632,7 @@ abstract class ChatViewModel(
         scope.launch(dispatchers.mainImmediate) {
             val thread = threadUUID?.toThreadUUID()
 
-            messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread).firstOrNull()?.let { messages ->
+            messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread).distinctUntilChanged().collect { messages ->
                 val originalMessage = messageRepository.getMessageByUUID(MessageUUID(thread?.value!!)).firstOrNull()
                 val completeThread = listOf(originalMessage) + messages.reversed()
 
