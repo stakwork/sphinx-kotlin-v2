@@ -187,7 +187,11 @@ actual fun Dashboard(
                                                 )
                                             }
                                             is DashboardViewModel.SplitContentType.Thread -> {
-                                                chatViewModel?.let { MessageListUI(it,dashboardViewModel, dashboardChat, true) }
+                                                chatViewModel?.let {
+                                                    MessageListUI(it,dashboardViewModel, dashboardChat, true)
+                                                    AttachmentPreview(chatViewModel, Modifier.padding(innerPadding), true)
+
+                                                }
                                             }
                                             else -> {
                                                 Text("No content type selected or not handled.")
@@ -564,7 +568,7 @@ fun SphinxChatDetailBottomAppBar(
                             scope.launch {
                                 ContentState.sendFilePickerDialog.awaitResult()?.let { path ->
                                     chatViewModel.hideChatActionsPopup()
-                                    chatViewModel.onMessageFileChanged(path)
+                                    chatViewModel.onMessageFileChanged(path, threadUUID)
                                 }
                             }
                         } else {
@@ -742,12 +746,21 @@ fun SplitTopBar(
                 .fillMaxWidth()
                 .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
         ) {
+            val fromThreadsView = (splitType as? DashboardViewModel.SplitContentType.Thread)?.fromThreadsScreen ?: false
             // Left Arrow Icon
             IconButton(
                 onClick = {
-                    dashboardViewModel?.toggleSplitScreen(
-                        false,
-                        chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
+                    if (!fromThreadsView) {
+                        dashboardViewModel?.toggleSplitScreen(
+                            false,
+                            null
+                        )
+                    } else {
+                        dashboardViewModel?.toggleSplitScreen(
+                            true,
+                            chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it)}
+                        )
+                    }
                 }
             ) {
                 Icon(
@@ -798,9 +811,7 @@ fun SplitTopBar(
                         ThreadHeaderUI(threadHeader, chatViewModel)
                     }
                 }
-                else -> {
-                    // Handle empty or error state if needed.
-                }
+                else -> {}
             }
         }
     }

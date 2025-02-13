@@ -94,13 +94,14 @@ fun ThreadsEmptyScreen() {
 @Composable
 fun ThreadItemUI(
     thread: ThreadItem,
-    onClick: () -> Unit = {},
     chatViewModel: ChatViewModel?
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickable {
+                chatViewModel?.navigateToThreadChat(thread.uuid, true)
+            },
         shape = MaterialTheme.shapes.small,
         colors = CardDefaults.cardColors(containerColor = md_theme_dark_background)
     ) {

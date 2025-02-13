@@ -628,17 +628,24 @@ abstract class ChatViewModel(
         }
     }
 
-    fun navigateToThreadChat(chat: Chat, threadUUID: String?) {
+    fun navigateToThreadChat(threadUUID: String?, fromThreadsScreen: Boolean) {
         scope.launch(dispatchers.mainImmediate) {
+            val chat = getChat()
             val thread = threadUUID?.toThreadUUID()
 
-            messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread).distinctUntilChanged().collect { messages ->
-                val originalMessage = messageRepository.getMessageByUUID(MessageUUID(thread?.value!!)).firstOrNull()
-                val completeThread = listOf(originalMessage) + messages.reversed()
+            if (chat != null) {
+                messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread).distinctUntilChanged().collect { messages ->
+                    val originalMessage = messageRepository.getMessageByUUID(MessageUUID(thread?.value!!)).firstOrNull()
+                    val completeThread = listOf(originalMessage) + messages.reversed()
 
-                processChatMessages(chat, completeThread.filterNotNull().toList(), true)
+                    processChatMessages(chat, completeThread.filterNotNull().toList(), true)
 
-                dashboardViewModel.toggleSplitScreen(true, DashboardViewModel.SplitContentType.Thread(chat.id, thread))
+                    dashboardViewModel.toggleSplitScreen(true, DashboardViewModel.SplitContentType.Thread(
+                        chat.id,
+                        thread,
+                        fromThreadsScreen
+                    ))
+                }
             }
         }
     }
@@ -646,7 +653,6 @@ abstract class ChatViewModel(
     fun payContactInvoice(message: Message) {
         dashboardViewModel.toggleConfirmationWindow(true, ConfirmationType.PayInvoice(message))
     }
-
 
     private fun flagMessage(chat: Chat, message: Message) {
         scope.launch(dispatchers.mainImmediate) {
@@ -806,18 +812,27 @@ abstract class ChatViewModel(
         }
     }
 
-    fun onMessageFileChanged(filepath: Path) {
-        editMessageState.attachmentInfo.value = AttachmentInfo(
+    fun onMessageFileChanged(filepath: Path, threadUUID: ThreadUUID?) {
+        val attachmentInfo = AttachmentInfo(
             filePath = filepath,
             mediaType = filepath.deduceMediaType(),
             fileName = filepath.name.toFileName(),
             isLocalFile = true
         )
+
+        if (threadUUID == null) {
+            editMessageState.attachmentInfo.value = attachmentInfo
+        } else {
+            threadMessageState.attachmentInfo.value = attachmentInfo
+        }
     }
 
-    fun resetMessageFile() {
-        editMessageState.attachmentInfo.value = null
-
+    fun resetMessageFile(isThreadView: Boolean) {
+        if (isThreadView) {
+            threadMessageState.attachmentInfo.value = null
+        } else {
+            editMessageState.attachmentInfo.value = null
+        }
     }
 
     private var sendMessageJob: Job? = null

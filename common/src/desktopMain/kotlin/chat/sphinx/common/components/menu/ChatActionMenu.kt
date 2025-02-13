@@ -135,7 +135,7 @@ fun ChatActionMenu(
                             scope.launch {
                                 ContentState.sendFilePickerDialog.awaitResult()?.let { path ->
                                     chatViewModel.hideChatActionsPopup()
-                                    chatViewModel.onMessageFileChanged(path)
+                                    chatViewModel.onMessageFileChanged(path, null)
                                 }
                             }
                         },

@@ -1,13 +1,11 @@
 package chat.sphinx.common.components.chat
 
-import CommonButton
 import Roboto
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.icons.Icons
@@ -27,12 +25,9 @@ import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.chatMesssageUI.ImageProfile
-import chat.sphinx.common.chatMesssageUI.MessageTextLabel
-import chat.sphinx.common.chatMesssageUI.getBubbleShape
 import chat.sphinx.common.components.CommonMenuButton
 import chat.sphinx.common.components.FileUI
 import chat.sphinx.common.components.ImageFullScreen
@@ -54,9 +49,16 @@ import theme.wash_out_received
 @Composable
 fun AttachmentPreview(
     chatViewModel: ChatViewModel?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isThreadView: Boolean = false
 ) {
-    chatViewModel?.editMessageState?.attachmentInfo?.value?.let { attachmentInfo ->
+    val attachment = if (!isThreadView) {
+        chatViewModel?.editMessageState?.attachmentInfo?.value
+    } else {
+        chatViewModel?.threadMessageState?.attachmentInfo?.value
+    }
+
+    attachment?.let { attachmentInfo ->
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -64,7 +66,7 @@ fun AttachmentPreview(
         ) {
             if (attachmentInfo.mediaType.isImage) {
                 ImageFullScreen(attachmentInfo.filePath) {
-                    chatViewModel.resetMessageFile()
+                    chatViewModel?.resetMessageFile(isThreadView)
                 }
             } else {
                 FilePreview(
@@ -72,7 +74,7 @@ fun AttachmentPreview(
                     attachmentInfo.fileName,
                     attachmentInfo.mediaType
                 ) {
-                    chatViewModel.resetMessageFile()
+                    chatViewModel?.resetMessageFile(isThreadView)
                 }
             }
         }

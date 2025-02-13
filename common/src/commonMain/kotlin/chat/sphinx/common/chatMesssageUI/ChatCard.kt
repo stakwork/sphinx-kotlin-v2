@@ -517,7 +517,7 @@ fun BubbleThreadLayout(
         modifier = Modifier
             .width(fixedWidth)
             .clickable {
-                chatViewModel.navigateToThreadChat(chatMessage.chat, chatMessage.message.uuid?.value)
+                chatViewModel.navigateToThreadChat(chatMessage.message.uuid?.value, false)
             }
             .background(
                 color = if (chatMessage.isSent) MaterialTheme.colorScheme.inversePrimary
