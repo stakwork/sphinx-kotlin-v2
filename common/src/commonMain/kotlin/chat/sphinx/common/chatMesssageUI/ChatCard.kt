@@ -3,7 +3,10 @@ package chat.sphinx.common.chatMesssageUI
 import Roboto
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.*
@@ -17,7 +20,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -31,25 +36,25 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import chat.sphinx.common.Res
 import chat.sphinx.common.components.*
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.platform.imageResource
-import chat.sphinx.utils.linkify.LinkTag
 import chat.sphinx.utils.linkify.SphinxLinkify
 import chat.sphinx.utils.toAnnotatedString
-import chat.sphinx.wrapper.lightning.toLightningNodePubKey
-import chat.sphinx.wrapper.lightning.toVirtualLightningNodeAddress
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.message.MessageType
 import chat.sphinx.wrapper.message.isSphinxCallLink
 import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.message.retrieveTextToShow
-import chat.sphinx.wrapper.tribe.toTribeJoinLink
+import chat.sphinx.wrapper.thumbnailUrl
+import chat.sphinx.wrapper.util.getInitials
 import theme.*
 
 @Composable
@@ -145,8 +150,17 @@ fun ChatCard(
                         }
                     }
                     Column {
-                        MessageTextLabel(chatMessage, chatViewModel, uriHandler)
+                        val isThread = chatMessage.threadState != null
+                        MessageTextLabel(chatMessage, chatViewModel, uriHandler, isThread)
                         FailedContainer(chatMessage)
+
+                        if (isThread) {
+                            BubbleThreadLayout(
+                                thread = chatMessage.threadState,
+                                chatMessage = chatMessage,
+                                chatViewModel = chatViewModel,
+                            )
+                        }
 
                         BoostedFooter(
                             chatMessage,
@@ -182,19 +196,20 @@ fun ChatCard(
 fun MessageTextLabel(
     chatMessage: ChatMessage,
     chatViewModel: ChatViewModel,
-    uriHandler: UriHandler
+    uriHandler: UriHandler,
+    isThread: Boolean
 ) {
     val topPadding = if (chatMessage.message.isPaidTextMessage && chatMessage.isSent) 44.dp else 12.dp
-
     val messageText = chatMessage.message.retrieveTextToShow()?.trim() ?: ""
+    val isThreadHeader = chatMessage.isThreadHeader
 
     if (messageText.isNotEmpty()) {
         val annotatedString = messageText.toAnnotatedString()
-
         Row(
             modifier = Modifier
                 .padding(12.dp, topPadding, 12.dp, 12.dp)
-                .wrapContentWidth(if (chatMessage.isSent) Alignment.End else Alignment.Start),
+                .wrapContentWidth(if (chatMessage.isSent) Alignment.End else Alignment.Start)
+                .then(if (isThreadHeader) Modifier.width(316.dp) else Modifier),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ClickableText(
@@ -203,8 +218,9 @@ fun MessageTextLabel(
                     fontWeight = FontWeight.W400,
                     color = MaterialTheme.colorScheme.tertiary,
                     fontSize = 13.sp,
-                    fontFamily = Roboto,
+                    fontFamily = Roboto
                 ),
+                maxLines = if (isThread) 2 else Int.MAX_VALUE,
                 onClick = { offset ->
                     annotatedString.getStringAnnotations("URL", start = offset, end = offset)
                         .firstOrNull()?.let { annotation ->
@@ -482,5 +498,318 @@ fun InvoiceMessage(chatMessage: ChatMessage, chatViewModel: ChatViewModel, colum
                 }
             }
         }
+    }
+}
+@Composable
+fun BubbleThreadLayout(
+    thread: ChatMessage.ThreadHolder?,
+    chatMessage: ChatMessage,
+    chatViewModel: ChatViewModel,
+    fixedWidth: Dp = 360.dp
+) {
+    if (thread == null) return
+
+    val hasMoreReplies = thread.users.size > 3
+    val hasAtTwoReplies = thread.users.size == 2
+    val hasMoreThanTwoReplies = thread.users.size > 2
+
+    Box(
+        modifier = Modifier
+            .width(fixedWidth)
+            .clickable {
+                chatViewModel.navigateToThreadChat(chatMessage.message.uuid?.value, false)
+            }
+            .background(
+                color = if (chatMessage.isSent) MaterialTheme.colorScheme.inversePrimary
+                else MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = RoundedCornerShape(10.dp)
+            )
+    ) {
+        // First Reply
+        if (thread.users.isNotEmpty()) {
+            ReplyRow(
+                user = thread.users[0],
+                chatMessage = chatMessage,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+                    .zIndex(1f) // Highest layer
+            )
+        }
+
+        // Second Reply (if applicable)
+        if (hasMoreThanTwoReplies) {
+            ReplyRow(
+                user = thread.users[1],
+                chatMessage = chatMessage,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+                    .padding(top = 20.dp) // Overlapping without offset
+                    .zIndex(2f)
+            )
+        }
+
+        // "More Replies" Row
+        if (hasMoreReplies) {
+            MoreRepliesRow(
+                remainingCount = thread.replyCount - 3,
+                isSentMessage = thread.isSentMessage,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+                    .padding(top = 40.dp) // Further overlap
+                    .zIndex(3f)
+            )
+        }
+
+        val lastReplyPadding = if (hasMoreReplies) 80.dp else if (hasAtTwoReplies) 20.dp else 40.dp
+
+        LastReplyRow(
+            lastReplyUser = thread.lastReplyUser,
+            lastReplyMessage = thread.lastReplyMessage,
+            lastReplyDate = thread.lastReplyDate,
+            isSentMessage = thread.isSentMessage,
+            mediaAttachment = thread.lastReplyAttachment,
+            chatMessage = chatMessage,
+            chatViewModel = chatViewModel,
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopStart)
+                .padding(top = lastReplyPadding)
+                .zIndex(4f)
+
+        )
+    }
+}
+
+@Composable
+fun ReplyRow(
+    user: ChatMessage.ReplyUserHolder,
+    chatMessage: ChatMessage,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .border(
+                    width = 1.dp,
+                    color = light_divider,
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .background(
+                    color = md_theme_dark_onSurfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+
+                val color = chatMessage.colors[chatMessage.message.id.value]
+
+                PhotoUrlImage(
+                    photoUrl = user.photoUrl?.thumbnailUrl,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .then( Modifier.drawWithContent {
+                                drawContent()
+                                drawRect(
+                                    color = Color.White.copy(alpha = 0.3f), // 30% white overlay
+                                    size = size
+                                )
+                            }
+                        ),
+                    color = if (color != null) Color(color) else null,
+                    firstNameLetter = user.alias?.value?.getInitials(),
+                    fontSize = 12
+                )
+
+                // Add additional content here if needed
+            }
+        }
+    }
+}
+
+@Composable
+fun MoreRepliesRow(
+    remainingCount: Int,
+    isSentMessage: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .border(
+                    width = 1.dp,
+                    color = light_divider,
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .background(
+                    color = md_theme_dark_onSurfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // White circle with number
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(26.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.tertiary,
+                            shape = CircleShape
+                        )
+                ) {
+                    Text(
+                        text = remainingCount.toString(),
+                        fontFamily = Roboto,
+                        fontWeight = FontWeight.W600,
+                        color = md_theme_dark_onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                // "More Replies" text
+                Text(
+                    text = "more replies",
+                    fontFamily = Roboto,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.W400,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LastReplyRow(
+    lastReplyUser: ChatMessage.ReplyUserHolder,
+    lastReplyMessage: String?,
+    lastReplyDate: String,
+    isSentMessage: Boolean,
+    mediaAttachment: ChatMessage?,
+    chatMessage: ChatMessage,
+    chatViewModel: ChatViewModel,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                color = if (isSentMessage)
+                    md_theme_dark_onSecondaryContainer
+                else
+                    light_divider,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val color = lastReplyUser.colorKey ?: chatMessage.colors[chatMessage.message.id.value]
+
+            PhotoUrlImage(
+                lastReplyUser.photoUrl?.thumbnailUrl ?: chatMessage.message.senderPic?.thumbnailUrl,
+                modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
+                    .size(30.dp)
+                    .clip(CircleShape),
+                color = if (color != null) Color(color) else null,
+                firstNameLetter = lastReplyUser.alias?.value?.getInitials() ?: chatMessage.message.senderAlias?.value?.getInitials(),
+                fontSize = 12
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // User Name
+                Text(
+                    text = lastReplyUser.alias?.value ?: "Unknown",
+                    fontFamily = Roboto,
+                    fontWeight = FontWeight.W500,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+                Spacer(Modifier.width(4.dp))
+                // Reply Date
+                Text(
+                    text = lastReplyDate,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontFamily = Roboto,
+                    fontSize = 11.sp
+                )
+            }
+        }
+
+        // Last Reply Message
+        if (!lastReplyMessage.isNullOrEmpty()) {
+            Text(
+                text = lastReplyMessage,
+                fontWeight = FontWeight.W400,
+                color = MaterialTheme.colorScheme.tertiary,
+                fontSize = 13.sp,
+                fontFamily = Roboto,
+                modifier = Modifier.padding(6.dp)
+            )
+        }
+
+        // Media Attachment
+        if (mediaAttachment != null) {
+            mediaAttachment.message.messageMedia?.let { media ->
+                if (media.mediaType.isImage) {
+                    MessageMediaImage(
+                        mediaAttachment,
+                        chatViewModel = chatViewModel,
+                        modifier = Modifier.wrapContentHeight().fillMaxWidth()
+                    )
+                } else if (media.mediaType.isUnknown || media.mediaType.isPdf) {
+                        MessageFile(
+                        chatMessage = mediaAttachment,
+                        chatViewModel = chatViewModel,
+                    )
+                } else if (media.mediaType.isVideo) {
+                    MessageVideo(
+                        chatMessage = mediaAttachment,
+                        chatViewModel = chatViewModel,
+                        modifier = Modifier.wrapContentHeight().fillMaxWidth()
+                    )
+                } else if (media.mediaType.isAudio) {
+                    MessageAudio(
+                        chatMessage = mediaAttachment,
+                        chatViewModel = chatViewModel,
+                    )
+                }
+            }
+
+        }
+    }
+}
+
+@Composable
+fun MediaAttachment(type: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
+    ) {
+        Text(
+            text = "Media ($type)",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.align(Alignment.Center)
+        )
     }
 }

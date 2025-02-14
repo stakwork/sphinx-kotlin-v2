@@ -12,6 +12,7 @@ import chat.sphinx.concepts.link_preview.model.*
 import chat.sphinx.utils.linkify.LinkSpec
 import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.chat.isConversation
+import chat.sphinx.wrapper.chatTimeFormat
 import chat.sphinx.wrapper.contact.ContactAlias
 import chat.sphinx.wrapper.contact.toContactAlias
 import chat.sphinx.wrapper.lightning.LightningNodeDescriptor
@@ -49,6 +50,8 @@ class ChatMessage(
 
         senderAlias
     }
+
+    val isThreadHeader = message.thread?.isNotEmpty() ?: false
 
     val isAdmin: Boolean by lazy {
         chat.ownerPubKey == accountOwner().nodePubKey
@@ -143,6 +146,78 @@ class ChatMessage(
         }
     }
 
+    val threadState: ThreadHolder? by lazy {
+        message.thread?.let { nnThread ->
+            val replies = nnThread.reversed()
+            if (replies.isEmpty() || chat.isConversation()){
+                null
+            } else {
+                val users: MutableList<ReplyUserHolder> = mutableListOf()
+
+                val owner = accountOwner()
+                val ownerUserHolder = ReplyUserHolder(
+                    owner.photoUrl,
+                    owner.alias,
+                    colors[owner.id.value]
+                )
+
+                replies.forEach { replyMessage ->
+                    users.add(
+                        if (replyMessage.sender == owner.id) {
+                            ownerUserHolder
+                        } else {
+                            ReplyUserHolder(
+                                replyMessage.senderPic,
+                                replyMessage.senderAlias?.value?.toContactAlias(),
+                                colors[replyMessage.id.value]
+                            )
+                        }
+                    )
+                }
+
+                val lastReplyUser = replies.first().let {
+                    if (it.sender == owner.id) {
+                        ownerUserHolder
+                    } else {
+                        ReplyUserHolder(
+                            it.senderPic,
+                            it.senderAlias?.value?.toContactAlias(),
+                            colors[it.id.value]
+                        )
+                    }
+                }
+
+                val sent = message.sender == chat.contactIds.firstOrNull()
+
+                val lastReplyAttachment: Boolean = replies.first().messageMedia != null
+
+                val mediaChatMessage = ChatMessage(
+                    chat,
+                    contact,
+                    replies.first(),
+                    colors,
+                    accountOwner,
+                    boostMessage,
+                    flagMessage,
+                    deleteMessage,
+                    isSeparator,
+                    background,
+                    previewProvider
+                )
+
+                ThreadHolder(
+                    replyCount = replies.size,
+                    users = users.reversed(),
+                    lastReplyMessage = replies.first().retrieveTextToShow(),
+                    lastReplyDate = replies.first().date.chatTimeFormat(),
+                    lastReplyUser = lastReplyUser,
+                    isSentMessage = sent,
+                    lastReplyAttachment = if (lastReplyAttachment) mediaChatMessage else null
+                )
+            }
+        }
+    }
+
     var audioState: MutableState<AudioState?> = mutableStateOf(null)
 
     val isSent: Boolean by lazy {
@@ -226,6 +301,22 @@ class ChatMessage(
             null
         }
     }
+
+    data class ThreadHolder(
+        val replyCount: Int,
+        val users: List<ReplyUserHolder>,
+        val lastReplyMessage: String?,
+        val lastReplyDate: String,
+        val lastReplyUser: ReplyUserHolder,
+        val isSentMessage: Boolean,
+        val lastReplyAttachment: ChatMessage?
+    )
+
+    data class ReplyUserHolder(
+        val photoUrl: PhotoUrl?,
+        val alias: ContactAlias?,
+        val colorKey: Int?
+    )
 
     data class AudioState(
         var length: Int,

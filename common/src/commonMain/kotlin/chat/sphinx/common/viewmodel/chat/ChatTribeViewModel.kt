@@ -21,6 +21,7 @@ import chat.sphinx.wrapper.feed.toFeedType
 import chat.sphinx.wrapper.feed.toFeedUrl
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.toSecondBrainUrl
+import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -183,8 +184,14 @@ class ChatTribeViewModel(
 
     override var editMessageState: EditMessageState by mutableStateOf(initialState())
 
+    override var threadMessageState: EditMessageState by mutableStateOf(threadInitialState())
+
     override fun initialState(): EditMessageState = EditMessageState(
         chatId = chatId
+    )
+
+    override fun threadInitialState(): EditMessageState = EditMessageState(
+        chatId = chatId,
     )
 
     override fun aliasMatcher(text: String) {
@@ -306,4 +313,5 @@ class ChatTribeViewModel(
     override fun getUniqueKey(): String {
         return "TRIBE-$chatId"
     }
+
 }

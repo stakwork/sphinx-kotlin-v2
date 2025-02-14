@@ -58,11 +58,15 @@ actual fun ExistingTribePreview(
                     interactionSource = remember { MutableInteractionSource() }
                 )
         ) {
-            PhotoUrlImage(
-                linkPreview.imageUrl?.toPhotoUrl(),
-                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(10.dp)),
-                placeHolderRes = Res.drawable.ic_tribe_place_holder
-            )
+            val isPhotoUrlAvailable = linkPreview.imageUrl?.value?.isNotEmpty()
+
+            if (isPhotoUrlAvailable == true) {
+                PhotoUrlImage(
+                    linkPreview.imageUrl.toPhotoUrl(),
+                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(10.dp)),
+                    placeHolderRes = Res.drawable.ic_tribe_place_holder
+                )
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Column(
                 modifier = Modifier.fillMaxSize(),

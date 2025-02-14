@@ -33,7 +33,6 @@ import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.contact.getColorKey
 import chat.sphinx.wrapper.dashboard.ChatId
-import chat.sphinx.wrapper.dashboard.toContactId
 import chat.sphinx.wrapper.getMinutesDifferenceWithDateTime
 import chat.sphinx.wrapper.isDifferentDayThan
 import chat.sphinx.wrapper.lightning.*
@@ -45,6 +44,7 @@ import chat.sphinx.wrapper.tribe.TribeJoinLink
 import chat.sphinx.wrapper.tribe.toTribeJoinLink
 import chat.sphinx.wrapper_chat.NotificationLevel
 import chat.sphinx.wrapper_chat.isMuteChat
+import chat.sphinx.wrapper_message.ThreadUUID
 import chat.sphinx.wrapper_message.toThreadUUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -228,13 +228,13 @@ abstract class ChatViewModel(
     private suspend fun loadChatMessages() {
         getChat()?.let { chat ->
             messageRepository.getAllMessagesToShowByChatId(chat.id, 50).firstOrNull()?.let { messages ->
-                processChatMessages(chat, messages)
+                processChatMessages(chat, messages, false)
             }
 
             delay(500L)
 
             messageRepository.getAllMessagesToShowByChatId(chat.id, 1000).distinctUntilChanged().collect { messages ->
-                processChatMessages(chat, messages)
+                processChatMessages(chat, messages, false)
             }
         } ?: run {
             MessageListState.screenState(
@@ -251,7 +251,7 @@ abstract class ChatViewModel(
         }
     }
 
-    private suspend fun processChatMessages(chat: Chat, messages: List<Message>) {
+    private suspend fun processChatMessages(chat: Chat, messages: List<Message>, isThreadView: Boolean) {
         val owner = getOwner()
         val contact = getContact()
 
@@ -274,7 +274,9 @@ abstract class ChatViewModel(
         val chatMessages: MutableList<ChatMessage> = mutableListOf()
         var groupingDate: DateTime? = null
 
-        messages.withIndex().forEach { (index, message) ->
+        val messagesList = filterAndSortMessagesIfNecessary(chat, messages)
+
+        messagesList.withIndex().forEach { (index, message) ->
 
             val colors = getColorsMapFor(message, contactColorInt, tribeAdmin)
 
@@ -290,6 +292,7 @@ abstract class ChatViewModel(
 
             groupingDate = groupingDateAndBubbleBackground.first
 
+
             if (
                 previousMessage == null ||
                 message.date.isDifferentDayThan(previousMessage.date)
@@ -300,13 +303,13 @@ abstract class ChatViewModel(
                         contact,
                         message,
                         colors,
-                        isSeparator = true,
                         accountOwner = { owner },
                         boostMessage = {},
                         flagMessage = {},
                         deleteMessage = {},
-                        previewProvider = { handleLinkPreview(it) },
-                        background = BubbleBackground.Gone
+                        isSeparator = true,
+                        background = BubbleBackground.Gone,
+                        previewProvider = { handleLinkPreview(it) }
                     )
                 )
             }
@@ -337,18 +340,27 @@ abstract class ChatViewModel(
                             deleteMessage(message)
                         }
                     },
-                    previewProvider = { handleLinkPreview(it) },
-                    background = groupingDateAndBubbleBackground.second
+                    background = groupingDateAndBubbleBackground.second,
+                    previewProvider = { handleLinkPreview(it) }
                 )
             )
         }
 
-        MessageListState.screenState(
-            MessageListData.PopulatedMessageListData(
-                chat.id,
-                chatMessages.reversed()
+        if (isThreadView) {
+            MessageListState.threadScreenState(
+                MessageListData.PopulatedMessageListData(
+                    chat.id,
+                    chatMessages.reversed()
+                )
             )
-        )
+        } else {
+            MessageListState.screenState(
+                MessageListData.PopulatedMessageListData(
+                    chat.id,
+                    chatMessages.reversed()
+                )
+            )
+        }
 
         if (messagesSize != messages.size) {
             messagesSize = messages.size
@@ -356,6 +368,41 @@ abstract class ChatViewModel(
             delay(200L)
             onNewMessageCallback?.invoke()
         }
+    }
+
+    private fun filterAndSortMessagesIfNecessary(
+        chat: Chat,
+        messages: List<Message>,
+    ): List<Message> {
+        val filteredMessages: MutableList<Message> = mutableListOf()
+        val threadMessageMap: MutableMap<String, Int> = mutableMapOf()
+
+        // Filter messages to do not show thread replies on chat
+        if (chat.isTribe()) {
+            for (message in messages) {
+
+                if (message.thread?.isNotEmpty() == true) {
+                    message.uuid?.value?.let { uuid ->
+                        threadMessageMap[uuid] = message.thread?.count() ?: 0
+                    }
+                }
+
+                val shouldAddMessage = message.threadUUID?.let { threadUUID ->
+                    val count = threadMessageMap[threadUUID.value] ?: 0
+                    count <= 1
+                } ?: true
+
+                if (shouldAddMessage) {
+                    filteredMessages.add(message)
+                }
+            }
+        } else {
+            filteredMessages.addAll(messages)
+        }
+
+        // Sort messages list by the last thread message date if applicable
+
+        return filteredMessages.sortedBy { it.thread?.last()?.date?.value ?: it.date.value }
     }
 
     suspend fun processSingleMessage(chat: Chat, message: Message): ChatMessage {
@@ -412,8 +459,8 @@ abstract class ChatViewModel(
                     deleteMessage(message)
                 }
             },
-            previewProvider = { handleLinkPreview(it) },
-            background = background
+            background = background,
+            previewProvider = { handleLinkPreview(it) }
         )
     }
 
@@ -429,20 +476,24 @@ abstract class ChatViewModel(
 
         val shouldAvoidGroupingWithPrevious =
             (previousMessage?.shouldAvoidGrouping() ?: true) || message.shouldAvoidGrouping()
-        val isGroupedBySenderWithPrevious = previousMessage?.hasSameSenderThanMessage(message) ?: false
-        val isGroupedByDateWithPrevious = message.date.getMinutesDifferenceWithDateTime(date) < groupingMinutesLimit
+        val isGroupedBySenderWithPrevious =
+            previousMessage?.hasSameSenderThanMessage(message) ?: false
+        val isGroupedByDateWithPrevious =
+            message.date.getMinutesDifferenceWithDateTime(date) < groupingMinutesLimit
 
         val groupedWithPrevious =
             (!shouldAvoidGroupingWithPrevious && isGroupedBySenderWithPrevious && isGroupedByDateWithPrevious)
 
         date = if (groupedWithPrevious) date else message.date
 
-        val shouldAvoidGroupingWithNext = (nextMessage?.shouldAvoidGrouping() ?: true) || message.shouldAvoidGrouping()
+        val shouldAvoidGroupingWithNext =
+            (nextMessage?.shouldAvoidGrouping() ?: true) || message.shouldAvoidGrouping()
         val isGroupedBySenderWithNext = nextMessage?.hasSameSenderThanMessage(message) ?: false
         val isGroupedByDateWithNext =
             if (nextMessage != null) nextMessage.date.getMinutesDifferenceWithDateTime(date) < groupingMinutesLimit else false
 
-        val groupedWithNext = (!shouldAvoidGroupingWithNext && isGroupedBySenderWithNext && isGroupedByDateWithNext)
+        val groupedWithNext =
+            (!shouldAvoidGroupingWithNext && isGroupedBySenderWithNext && isGroupedByDateWithNext)
 
         when {
             (!groupedWithPrevious && !groupedWithNext) -> {
@@ -476,7 +527,7 @@ abstract class ChatViewModel(
 
     open fun unPinMessage(message: Message? = null) {}
 
-    private suspend fun getColorsMapFor(
+    suspend fun getColorsMapFor(
         message: Message,
         contactColor: Int?,
         tribeAdmin: Contact?
@@ -556,10 +607,31 @@ abstract class ChatViewModel(
         }
     }
 
+    fun navigateToThreadChat(threadUUID: String?, fromThreadsScreen: Boolean) {
+        scope.launch(dispatchers.mainImmediate) {
+            val chat = getChat()
+            val thread = threadUUID?.toThreadUUID()
+
+            if (chat != null) {
+                messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread).distinctUntilChanged().collect { messages ->
+                    val originalMessage = messageRepository.getMessageByUUID(MessageUUID(thread?.value!!)).firstOrNull()
+                    val completeThread = listOf(originalMessage) + messages.reversed()
+
+                    processChatMessages(chat, completeThread.filterNotNull().toList(), true)
+
+                    dashboardViewModel.toggleSplitScreen(true, DashboardViewModel.SplitContentType.Thread(
+                        chat.id,
+                        thread,
+                        fromThreadsScreen
+                    ))
+                }
+            }
+        }
+    }
+
     fun payContactInvoice(message: Message) {
         dashboardViewModel.toggleConfirmationWindow(true, ConfirmationType.PayInvoice(message))
     }
-
 
     private fun flagMessage(chat: Chat, message: Message) {
         scope.launch(dispatchers.mainImmediate) {
@@ -624,12 +696,21 @@ abstract class ChatViewModel(
     abstract var editMessageState: EditMessageState
         protected set
 
+    abstract var threadMessageState: EditMessageState
+        protected set
+
     abstract fun initialState(): EditMessageState
+
+    abstract fun threadInitialState(): EditMessageState
 
     abstract fun getUniqueKey(): String
 
     private inline fun setEditMessageState(update: EditMessageState.() -> EditMessageState) {
         editMessageState = editMessageState.update()
+    }
+
+    private inline fun setThreadMessageState(update: EditMessageState.() -> EditMessageState) {
+        threadMessageState = threadMessageState.update()
     }
 
     fun dismissPinMessagePopUp() {
@@ -662,6 +743,19 @@ abstract class ChatViewModel(
         aliasMatcher(text.text)
     }
 
+    fun onThreadMessageTextChanged(text: TextFieldValue) {
+        if (
+            threadMessageState.messageText.value.text == text.text &&
+            (text.selection.start == 0 || text.selection.start == text.text.length) &&
+            aliasMatcherState.isOn
+        ) {
+            return
+        }
+        threadMessageState.messageText.value = text
+        aliasMatcher(text.text)
+    }
+
+
     fun pinFullContentScreen() {
         setPinMessageState {
             copy(pinFullContentScreen = true)
@@ -693,51 +787,68 @@ abstract class ChatViewModel(
         }
     }
 
-    fun onMessageFileChanged(filepath: Path) {
-        editMessageState.attachmentInfo.value = AttachmentInfo(
+    fun onMessageFileChanged(filepath: Path, threadUUID: ThreadUUID?) {
+        val attachmentInfo = AttachmentInfo(
             filePath = filepath,
             mediaType = filepath.deduceMediaType(),
             fileName = filepath.name.toFileName(),
             isLocalFile = true
         )
+
+        if (threadUUID == null) {
+            editMessageState.attachmentInfo.value = attachmentInfo
+        } else {
+            threadMessageState.attachmentInfo.value = attachmentInfo
+        }
     }
 
-    fun resetMessageFile() {
-        editMessageState.attachmentInfo.value = null
-
+    fun resetMessageFile(isThreadView: Boolean) {
+        if (isThreadView) {
+            threadMessageState.attachmentInfo.value = null
+        } else {
+            editMessageState.attachmentInfo.value = null
+        }
     }
 
     private var sendMessageJob: Job? = null
-    fun onSendMessage() {
+    fun onSendMessage(threadUUID: String?) {
         if (sendMessageJob?.isActive == true) {
             return
         }
-        val messageText = editMessageState.messageText.value.text.trim()
+
+        val messageState = if (threadUUID == null) editMessageState else threadMessageState
+
+        val messageText = messageState.messageText.value.text.trim()
 
         sendMessageJob = scope.launch(dispatchers.mainImmediate) {
             val isCallMessage = messageText.toCallLinkMessageOrNull() != null
 
             val sendMessageBuilder = SendMessage.Builder()
-                .setChatId(editMessageState.chatId)
+                .setChatId(messageState.chatId)
                 .setIsCall(isCallMessage)
-                .setContactId(editMessageState.contactId)
+                .setContactId(messageState.contactId)
                 .setText(messageText)
-                .setPaidMessagePrice(editMessageState.price.value?.toSat())
+                .setPaidMessagePrice(messageState.price.value?.toSat())
                 .also { builder ->
-                    editMessageState.replyToMessage.value?.message?.uuid?.value?.let { uuid ->
-                        val threadUUID = editMessageState.replyToMessage.value?.message?.threadUUID
+                    if (threadUUID != null) {
+                        builder.setReplyUUID(threadUUID.toReplyUUID())
+                        builder.setThreadUUID(threadUUID.toThreadUUID())
+                    } else {
+                        messageState.replyToMessage.value?.message?.uuid?.value?.let { uuid ->
+                            val replyThreadUUID = messageState.replyToMessage.value?.message?.threadUUID
 
-                        builder.setReplyUUID(uuid.toReplyUUID())
-                        builder.setThreadUUID(threadUUID ?: uuid.toThreadUUID())
+                            builder.setReplyUUID(uuid.toReplyUUID())
+                            builder.setThreadUUID(replyThreadUUID ?: uuid.toThreadUUID())
+                        }
                     }
                 }
 
             if (
-                editMessageState.price?.value ?: 0 > 0 &&
-                editMessageState.messageText.value.text.isNotEmpty()
+                messageState.price?.value ?: 0 > 0 &&
+                messageState.messageText.value.text.isNotEmpty()
             ) {
                 //Paid text message
-                createPaidMessageFile(editMessageState.messageText.value.text.trim())?.let { path ->
+                createPaidMessageFile(messageState.messageText.value.text.trim())?.let { path ->
                     sendMessageBuilder.setAttachmentInfo(
                         AttachmentInfo(
                             filePath = path,
@@ -749,7 +860,7 @@ abstract class ChatViewModel(
                 }
             }
 
-            editMessageState.attachmentInfo.value?.let { attachmentInfo ->
+            messageState.attachmentInfo.value?.let { attachmentInfo ->
                 sendMessageBuilder.setAttachmentInfo(attachmentInfo)
             }
 
@@ -759,8 +870,14 @@ abstract class ChatViewModel(
                 sendMessage.first?.let { message ->
                     messageRepository.sendMessage(message)
 
-                    setEditMessageState {
-                        initialState()
+                    if (threadUUID == null) {
+                        setEditMessageState {
+                            initialState()
+                        }
+                    } else {
+                        setThreadMessageState {
+                            threadInitialState()
+                        }
                     }
 
                     delay(200L)
@@ -810,7 +927,7 @@ abstract class ChatViewModel(
                 editMessageState.messageText.value = TextFieldValue(messageText)
                 editMessageState.price.value = null
 
-                onSendMessage()
+                onSendMessage(null)
 
                 (messageText.toSphinxCallLink() ?: messageText.toCallLinkMessageOrNull()?.link)?.let {
                     callback(

@@ -22,6 +22,7 @@ import chat.sphinx.wrapper.contact.ContactAlias
 import chat.sphinx.wrapper.contact.getColorKey
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.ContactId
+import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 
@@ -121,6 +122,8 @@ class ChatContactViewModel(
 
     override var editMessageState: EditMessageState by mutableStateOf(initialState())
 
+    override var threadMessageState: EditMessageState by mutableStateOf(threadInitialState())
+
     override var pinMessageState: PinMessageState by mutableStateOf(initialPinMessageState())
 
     override fun initialPinMessageState(): PinMessageState = PinMessageState(
@@ -129,6 +132,11 @@ class ChatContactViewModel(
     )
 
     override fun initialState(): EditMessageState = EditMessageState(
+        chatId = chatId,
+        contactId = contactId,
+    )
+
+    override fun threadInitialState(): EditMessageState = EditMessageState(
         chatId = chatId,
         contactId = contactId,
     )

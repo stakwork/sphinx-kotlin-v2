@@ -17,6 +17,7 @@ abstract class MessageListData {
 
 object MessageListState {
     private val screen: MutableState<MessageListData> = mutableStateOf(MessageListData.EmptyMessageListData)
+    private val threadScreen: MutableState<MessageListData> = mutableStateOf(MessageListData.EmptyMessageListData)
 
     fun screenState() : MessageListData {
         return screen.value
@@ -24,5 +25,13 @@ object MessageListState {
 
     fun screenState(state: MessageListData) {
         screen.value = state
+    }
+
+    fun threadScreenState() : MessageListData  {
+        return threadScreen.value
+    }
+
+    fun threadScreenState(state: MessageListData) {
+        threadScreen.value = state
     }
 }
