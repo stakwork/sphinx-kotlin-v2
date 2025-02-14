@@ -145,12 +145,4 @@ class ChatContactViewModel(
         return "CONTACT-$contactId"
     }
 
-    override fun getThreadUUID(): ThreadUUID? {
-        return null
-    }
-
-    override fun isThreadChat(): Boolean {
-        return false
-    }
-
 }

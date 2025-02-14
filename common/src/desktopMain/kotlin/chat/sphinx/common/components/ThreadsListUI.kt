@@ -392,7 +392,6 @@ fun ThreadHeaderUI(
                 fontWeight = FontWeight.W400,
                 color = MaterialTheme.colorScheme.tertiary,
                 fontSize = 14.sp,
-                overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(16.dp))

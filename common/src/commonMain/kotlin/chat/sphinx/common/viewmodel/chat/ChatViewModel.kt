@@ -292,25 +292,6 @@ abstract class ChatViewModel(
 
             groupingDate = groupingDateAndBubbleBackground.first
 
-            val isThreadHeaderMessage = (message.uuid?.value == getThreadUUID()?.value && index == 0 && !message.type.isGroupAction())
-
-            if (isThreadHeaderMessage) {
-                chatMessages.add(
-                    ChatMessage(
-                        chat,
-                        contact,
-                        message,
-                        colors,
-                        accountOwner = { owner },
-                        boostMessage = {},
-                        flagMessage = {},
-                        deleteMessage = {},
-                        isSeparator = true,
-                        background = BubbleBackground.Gone,
-                        previewProvider = { handleLinkPreview(it) }
-                    )
-                )
-            }
 
             if (
                 previousMessage == null ||
@@ -397,7 +378,7 @@ abstract class ChatViewModel(
         val threadMessageMap: MutableMap<String, Int> = mutableMapOf()
 
         // Filter messages to do not show thread replies on chat
-        if (chat.isTribe() && !isThreadChat()) {
+        if (chat.isTribe()) {
             for (message in messages) {
 
                 if (message.thread?.isNotEmpty() == true) {
@@ -421,7 +402,7 @@ abstract class ChatViewModel(
 
         // Sort messages list by the last thread message date if applicable
 
-        return filteredMessages.sortedBy { it.thread?.first()?.date?.value ?: it.date.value }
+        return filteredMessages.sortedBy { it.thread?.last()?.date?.value ?: it.date.value }
     }
 
     suspend fun processSingleMessage(chat: Chat, message: Message): ChatMessage {
@@ -493,8 +474,6 @@ abstract class ChatViewModel(
         val groupingMinutesLimit = 5.0
         var date = groupingDate ?: message.date
 
-        val isPreviousMessageThreadHeader = (previousMessage?.uuid?.value == getThreadUUID()?.value && previousMessage?.type?.isGroupAction() == false)
-
         val shouldAvoidGroupingWithPrevious =
             (previousMessage?.shouldAvoidGrouping() ?: true) || message.shouldAvoidGrouping()
         val isGroupedBySenderWithPrevious =
@@ -503,7 +482,7 @@ abstract class ChatViewModel(
             message.date.getMinutesDifferenceWithDateTime(date) < groupingMinutesLimit
 
         val groupedWithPrevious =
-            (!shouldAvoidGroupingWithPrevious && isGroupedBySenderWithPrevious && isGroupedByDateWithPrevious && !isPreviousMessageThreadHeader)
+            (!shouldAvoidGroupingWithPrevious && isGroupedBySenderWithPrevious && isGroupedByDateWithPrevious)
 
         date = if (groupedWithPrevious) date else message.date
 
@@ -725,10 +704,6 @@ abstract class ChatViewModel(
     abstract fun threadInitialState(): EditMessageState
 
     abstract fun getUniqueKey(): String
-
-    abstract fun getThreadUUID(): ThreadUUID?
-
-    abstract fun isThreadChat(): Boolean
 
     private inline fun setEditMessageState(update: EditMessageState.() -> EditMessageState) {
         editMessageState = editMessageState.update()

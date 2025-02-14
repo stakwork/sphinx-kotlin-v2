@@ -314,12 +314,4 @@ class ChatTribeViewModel(
         return "TRIBE-$chatId"
     }
 
-    // TODO V2 implement threadUUID
-    override fun getThreadUUID(): ThreadUUID? {
-        return null
-    }
-
-    override fun isThreadChat(): Boolean {
-        return getThreadUUID() != null
-    }
 }
