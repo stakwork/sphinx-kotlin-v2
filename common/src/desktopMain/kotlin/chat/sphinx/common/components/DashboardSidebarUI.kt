@@ -407,7 +407,7 @@ fun DashboardSidebarUI(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Version 1.0.2",
+                        text = "Version 1.0.3",
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.align(Alignment.Start)
@@ -416,7 +416,7 @@ fun DashboardSidebarUI(
                     Spacer(Modifier.height(8.dp))
 
                     Text(
-                        text = "© 2024 Stakwork All rights reserved",
+                        text = "© 2025 Stakwork All rights reserved",
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         color = place_holder_text,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
