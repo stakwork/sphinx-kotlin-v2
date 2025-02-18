@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
@@ -56,6 +57,7 @@ import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.lightning.asFormattedString
 import chat.sphinx.wrapper.message.media.isImage
 import chat.sphinx.wrapper.message.retrieveTextToShow
+import chat.sphinx.wrapper.thumbnailUrl
 import chat.sphinx.wrapper.util.getInitials
 import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.launch
@@ -835,7 +837,7 @@ fun SuggestedAliasListBar(
 
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Column() {
-                    chatViewModel.aliasMatcherState.suggestedAliasList.forEachIndexed() { index, alias ->
+                    chatViewModel.aliasMatcherState.suggestedAliasAndPicList.forEachIndexed() { index, suggestedList ->
                         val backgroundColor = if (index == chatViewModel.aliasMatcherState.selectedItem) androidx.compose.material3.MaterialTheme.colorScheme.background else androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer
                             Row(
                                 modifier = Modifier
@@ -845,8 +847,22 @@ fun SuggestedAliasListBar(
                                     .padding(start = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                val color = suggestedList.third
+
+                                PhotoUrlImage(
+                                    photoUrl = suggestedList.second?.thumbnailUrl,
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .clip(CircleShape),
+                                    color = if (color != null) Color(color) else null,
+                                    firstNameLetter = suggestedList.first.getInitials(),
+                                    fontSize = 12
+                                )
+
+                                Spacer(Modifier.width(8.dp))
+
                                 Text(
-                                    alias,
+                                    suggestedList.first,
                                     color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
                                     fontSize = 12.sp,
                                     fontFamily = Roboto,

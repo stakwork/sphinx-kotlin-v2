@@ -3,16 +3,16 @@ package chat.sphinx.common.viewmodel.chat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.ResponseError
 import chat.sphinx.utils.ServersUrlsHelper
+import chat.sphinx.wrapper.DateTime.Companion.getThreeMonthsAgo
 import chat.sphinx.wrapper.PhotoUrl
+import chat.sphinx.wrapper.before
 import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
@@ -20,8 +20,8 @@ import chat.sphinx.wrapper.feed.FeedType
 import chat.sphinx.wrapper.feed.toFeedType
 import chat.sphinx.wrapper.feed.toFeedUrl
 import chat.sphinx.wrapper.message.*
+import chat.sphinx.wrapper.toPhotoUrl
 import chat.sphinx.wrapper.toSecondBrainUrl
-import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -237,7 +237,7 @@ class ChatTribeViewModel(
         aliasMatcherState = AliasMatcherState(
             false,
             "",
-            listOf(""),
+            listOf(Triple("",null, null)),
             0
         )
     }
@@ -245,15 +245,44 @@ class ChatTribeViewModel(
     private fun generateSuggestedAliasList() {
         val messageListData = MessageListState.screenState()
         if (messageListData is MessageListData.PopulatedMessageListData) {
+            val inputText = aliasMatcherState.inputText.trim()
+            if (inputText.isEmpty()) return
 
-            val inputText = aliasMatcherState.inputText.replace("\t", "").replace("\n", "")
-            val aliasList = messageListData.messages.map { it.message.senderAlias?.value ?: "" }.distinct()
-            val suggestedList = aliasList.filter { it.startsWith(inputText, ignoreCase = true) }.reversed()
+            val threeMonthsAgo = getThreeMonthsAgo()
+
+            val seenPictures = mutableSetOf<String?>()
+            val seenAliases = mutableSetOf<String>()
+            val aliasAndPictures = mutableListOf<Triple<String, PhotoUrl?, Int?>>()
+
+            messageListData.messages
+                .asReversed()
+                .forEach { chatMessage ->
+                    val alias = chatMessage.message.senderAlias?.value ?: return@forEach
+                    val picture = chatMessage.message.senderPic?.value ?: ""
+
+                    if (chatMessage.message.date.before(threeMonthsAgo)) return@forEach
+
+                    if (alias.startsWith(inputText, ignoreCase = true)) {
+                        if (!seenPictures.contains(picture) && !seenAliases.contains(alias)) {
+                            seenPictures.add(picture)
+                            seenAliases.add(alias)
+                            val color = chatMessage.colors[chatMessage.message.id.value]
+
+                            aliasAndPictures.add(
+                                Triple(
+                                    alias,
+                                    picture.toPhotoUrl(),
+                                    color
+                                )
+                            )
+                        }
+                    }
+                }
+
+            val suggestedList = aliasAndPictures.reversed()
 
             setAliasMatcherState {
-                copy(
-                    suggestedAliasList = suggestedList
-                )
+                copy(suggestedAliasAndPicList = suggestedList)
             }
         }
     }
@@ -265,7 +294,7 @@ class ChatTribeViewModel(
 
         var selectedItem = aliasMatcherState.selectedItem
 
-        if (aliasMatcherState.selectedItem < aliasMatcherState.suggestedAliasList.lastIndex) {
+        if (aliasMatcherState.selectedItem < aliasMatcherState.suggestedAliasAndPicList.lastIndex) {
             selectedItem++
         } else {
             selectedItem = 0
@@ -288,7 +317,7 @@ class ChatTribeViewModel(
         if (aliasMatcherState.selectedItem > 0) {
             selectedItem--
         } else {
-            selectedItem = aliasMatcherState.suggestedAliasList.lastIndex
+            selectedItem = aliasMatcherState.suggestedAliasAndPicList.lastIndex
         }
 
         setAliasMatcherState {
@@ -303,7 +332,7 @@ class ChatTribeViewModel(
             return
         }
         val oldString = "@" + aliasMatcherState.inputText
-        val newString = "@" + aliasMatcherState.suggestedAliasList[aliasMatcherState.selectedItem] + " "
+        val newString = "@" + aliasMatcherState.suggestedAliasAndPicList[aliasMatcherState.selectedItem].first + " "
         val replacedString = editMessageState.messageText.value.text.replace(oldString, newString)
         val cursorPosition = replacedString.lastIndexOf(newString) + newString.length
         editMessageState.messageText.value = TextFieldValue(replacedString, TextRange(cursorPosition))
