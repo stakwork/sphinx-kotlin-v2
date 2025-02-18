@@ -200,7 +200,7 @@ fun MessagePinnedFullContent(
 
                         IconButton(
                             onClick = { chatViewModel?.dismissPinFullContentScreen() },
-                            modifier = Modifier.align(Alignment.End)
+                            modifier = Modifier.align(Alignment.Start)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
