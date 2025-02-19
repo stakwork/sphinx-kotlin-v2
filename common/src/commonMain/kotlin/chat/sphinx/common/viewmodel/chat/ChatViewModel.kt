@@ -522,7 +522,7 @@ abstract class ChatViewModel(
     ) {
     }
 
-    open suspend fun deleteTribe() {}
+    open fun deleteTribe() {}
 
     open fun pinMessage(message: Message) {}
 

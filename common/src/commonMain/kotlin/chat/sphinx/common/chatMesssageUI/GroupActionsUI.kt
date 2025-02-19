@@ -1,5 +1,6 @@
 package chat.sphinx.common.chatMesssageUI
 
+import Roboto
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,8 +28,11 @@ import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.wrapper.message.MessageType
 import kotlinx.coroutines.launch
 import theme.badge_red
+import theme.darker_gray
 import theme.light_divider
 import theme.primary_green
+import java.awt.Robot
+
 @Composable
 fun GroupActionsUI(
     chatMessage: ChatMessage,
@@ -51,7 +56,10 @@ fun GroupActionsUI(
             requestType is MessageType.GroupAction.Kick ||
             requestType is MessageType.GroupAction.TribeDelete
         ) {
-            KickDeclinedOrTribeDeleted(chatMessage.message.senderAlias?.value ?: "", requestType)
+            val isKickedMember = chatMessage.message.sender.value != 0L
+            if (requestType is MessageType.GroupAction.Kick && !isKickedMember) return
+
+            KickDeclinedOrTribeDeleted(chatMessage.message.senderAlias?.value ?: "", requestType, chatViewModel)
         } else {
             GroupActionAnnouncement(chatMessage)
         }
@@ -206,14 +214,15 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
 @Composable
 fun KickDeclinedOrTribeDeleted(
     alias: String,
-    requestType: MessageType
+    requestType: MessageType,
+    chatViewModel: ChatViewModel
 ) {
     val requestText = when (requestType) {
         is MessageType.GroupAction.MemberReject -> {
             "The admin\ndeclined your request"
         }
         is MessageType.GroupAction.Kick -> {
-            "$alias just left the tribe"
+            "The admin has removed\nyou from this tribe"
         }
         else -> {
             "The admin has\ndeleted this tribe"
@@ -224,12 +233,13 @@ fun KickDeclinedOrTribeDeleted(
         Card(
             backgroundColor = MaterialTheme.colorScheme.onSecondaryContainer,
             shape = RoundedCornerShape(9.dp),
-            border = BorderStroke(1.dp, light_divider)
+            border = BorderStroke(1.dp, light_divider),
+            modifier = Modifier.padding(4.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-                modifier = Modifier.padding(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = requestText,
@@ -237,6 +247,26 @@ fun KickDeclinedOrTribeDeleted(
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.tertiary
                 )
+
+                Button(
+                    onClick = { chatViewModel.deleteTribe() },
+                    shape = RoundedCornerShape(5.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = darker_gray,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 32.dp)
+                ) {
+                    Text(
+                        text = "Delete Tribe",
+                        fontFamily = Roboto,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.tertiary
+
+                    )
+                }
             }
         }
     }
