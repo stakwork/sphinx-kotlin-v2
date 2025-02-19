@@ -26,6 +26,7 @@ import chat.sphinx.wrapper.tribe.TribeJoinLink
 import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import theme.badge_red
 import theme.primary_red
 import java.awt.event.WindowEvent
 import java.awt.event.WindowFocusListener
@@ -427,10 +428,10 @@ class DashboardViewModel(): WindowFocusListener {
                     createInvoiceState = initialInvoiceState()
 
                 } else {
-                    toast("Failed to request payment", primary_red)
+                    toast("Failed to request payment", badge_red)
                 }
             } else {
-                toast("Failed to request payment", primary_red)
+                toast("Failed to request payment", badge_red)
             }
         }
     }
@@ -450,7 +451,7 @@ class DashboardViewModel(): WindowFocusListener {
                     )
                 }
             } else {
-                toast("Invalid invoice", primary_red)
+                toast("Invalid invoice", badge_red)
             }
         }
     }
@@ -467,7 +468,7 @@ class DashboardViewModel(): WindowFocusListener {
                 togglePayInvoiceWindow(false)
                 clearInvoice()
             } else {
-                toast("Unable to process payment", primary_red)
+                toast("Unable to process payment", badge_red)
             }
         }
     }
@@ -480,7 +481,7 @@ class DashboardViewModel(): WindowFocusListener {
         payInvoiceJob = scope.launch(dispatchers.mainImmediate) {
             repositoryDashboard.getAccountBalanceStateFlow().firstOrNull()?.let { balance ->
                 if (message.amount.value > balance.balance.value) {
-                    toast("Insufficient balance", primary_red)
+                    toast("Insufficient balance", badge_red)
                 } else {
                     connectManagerRepository.payContactPaymentRequest(message.paymentRequest)
                 }
@@ -571,7 +572,7 @@ class DashboardViewModel(): WindowFocusListener {
             if (contactId != null) {
                 contactRepository.deleteContactById(contactId)
             } else {
-                toast("Failed to delete contact, please try later", primary_red)
+                toast("Failed to delete contact, please try later", badge_red)
             }
         }
     }

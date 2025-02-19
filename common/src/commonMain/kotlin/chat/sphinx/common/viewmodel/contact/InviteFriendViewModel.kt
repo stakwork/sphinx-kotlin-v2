@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import theme.badge_red
 import theme.primary_red
 
 class InviteFriendViewModel(
@@ -116,7 +117,7 @@ class InviteFriendViewModel(
 
     private fun toast(
         message: String,
-        color: Color = primary_red,
+        color: Color = badge_red,
         delay: Long = 2000L
     ) {
         scope.launch(dispatchers.mainImmediate) {
