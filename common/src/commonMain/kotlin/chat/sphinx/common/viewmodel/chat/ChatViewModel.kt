@@ -51,6 +51,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import okio.Path
+import theme.badge_red
 import theme.primary_green
 import theme.primary_red
 import utils.deduceMediaType
@@ -600,7 +601,7 @@ abstract class ChatViewModel(
 
             when (response) {
                 is Response.Error -> {
-                    toast("Boost payment failed", primary_red)
+                    toast("Boost payment failed", badge_red)
                 }
                 is Response.Success -> {}
             }
@@ -884,7 +885,7 @@ abstract class ChatViewModel(
                     onNewMessageCallback?.invoke()
                 }
             } else if (sendMessage.second != null) {
-                toast("Message Validation failed: ${sendMessage.second?.name}", primary_red)
+                toast("Message Validation failed: ${sendMessage.second?.name}", badge_red)
             }
         }
     }
@@ -957,7 +958,7 @@ abstract class ChatViewModel(
                 Exhaustive@
                 when (val response = chatRepository.setNotificationLevel(chat, newLevel)) {
                     is Response.Error -> {
-                        toast(response.cause.message, color = primary_red)
+                        toast(response.cause.message, color = badge_red)
                     }
                     is Response.Success -> {
                         if (response.value) {
@@ -985,7 +986,7 @@ abstract class ChatViewModel(
                 val response = chatRepository.setNotificationLevel(chat, level)
 
                 if (response is Response.Error) {
-                    toast(response.cause.message, color = primary_red)
+                    toast(response.cause.message, color = badge_red)
                     _notificationLevelStateFlow.value = Pair(true, chat.notifyActualValue())
                 }
             }

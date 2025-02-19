@@ -34,8 +34,10 @@ import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.message.isPaidPendingMessage
 import chat.sphinx.wrapper.message.retrieveUrlAndMessageMedia
 import kotlinx.coroutines.launch
+import theme.badge_red
 import theme.primary_blue
 import theme.primary_green
+import theme.primary_red
 
 
 @Composable

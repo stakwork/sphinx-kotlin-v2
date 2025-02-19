@@ -31,6 +31,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okio.Path
+import theme.badge_red
 import theme.primary_green
 import theme.primary_red
 
@@ -101,7 +102,7 @@ class JoinTribeViewModel(
                                 loadingTribe = false
                             )
                         }
-                        toast("There was an error loading the tribe. Please try again later", primary_red)
+                        toast("There was an error loading the tribe. Please try again later", badge_red)
                     }
 
                     else -> {}
@@ -165,7 +166,7 @@ class JoinTribeViewModel(
                     )
                 dashboardViewModel.toggleJoinTribeWindow(false)
             } else {
-                 toast("There was an error joining the tribe. Please try again later", primary_red)
+                 toast("There was an error joining the tribe. Please try again later", badge_red)
             }
         }
     }
