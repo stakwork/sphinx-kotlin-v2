@@ -281,8 +281,8 @@ abstract class ChatViewModel(
 
             val colors = getColorsMapFor(message, contactColorInt, tribeAdmin)
 
-            val previousMessage: Message? = if (index > 0) messages[index - 1] else null
-            val nextMessage: Message? = if (index < messages.size - 1) messages[index + 1] else null
+            val previousMessage: Message? = if (index > 0) messagesList[index - 1] else null
+            val nextMessage: Message? = if (index < messagesList.size - 1) messagesList[index + 1] else null
 
             val groupingDateAndBubbleBackground = getBubbleBackgroundForMessage(
                 message,
