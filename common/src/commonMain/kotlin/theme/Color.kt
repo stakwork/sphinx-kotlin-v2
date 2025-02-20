@@ -84,6 +84,7 @@ val incoming_pmt_background = Color(0xFF1E2934)
 val outgoing_pmt_background = Color(0xFF1A232D)
 val failed_pmt_background = Color(0xFF1A232E)
 val darker_gray = Color(0xFFAAAAAA)
+val washed_green = Color(0xB349C998)
 
 
 val randomColor1 = Color(0xFF7077FF)

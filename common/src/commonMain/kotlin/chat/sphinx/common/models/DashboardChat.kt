@@ -43,7 +43,6 @@ sealed class DashboardChat {
                         this.invite?.status == other.invite?.status
                 )
             }
-
             return (
                     this.getMessageText() == other.getMessageText() &&
                     this.chatName == other.chatName &&
@@ -179,7 +178,7 @@ sealed class DashboardChat {
                 }
                 message.type.isGroupKick() -> {
                     if (message.sender.value == 0L) {
-                        "${getMessageSender(message, false)} just left the tribe"
+                        ""
                     } else {
                         "The admin has removed you from this group"
                     }                }

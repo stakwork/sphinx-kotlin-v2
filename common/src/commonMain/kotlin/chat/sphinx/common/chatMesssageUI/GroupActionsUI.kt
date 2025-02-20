@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,10 +28,7 @@ import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.wrapper.message.MessageType
 import kotlinx.coroutines.launch
-import theme.badge_red
-import theme.darker_gray
-import theme.light_divider
-import theme.primary_green
+import theme.*
 import java.awt.Robot
 
 @Composable
@@ -116,32 +114,48 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
     val buttonsEnabled = requestType == MessageType.GroupAction.MemberRequest
     val isLoading = remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier.fillMaxWidth(0.3f),
+        contentAlignment = Alignment.Center
+    ) {
         Card(
-            backgroundColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            shape = RoundedCornerShape(9.dp),
-            border = BorderStroke(1.dp, light_divider)
+            backgroundColor = when (requestType) {
+                is MessageType.GroupAction.MemberApprove -> washed_green
+                is MessageType.GroupAction.MemberReject -> darker_gray
+                else -> MaterialTheme.colorScheme.onSecondaryContainer
+            },
+            shape = RoundedCornerShape(12.dp),
+            border = if (requestType is MessageType.GroupAction.MemberApprove || requestType is MessageType.GroupAction.MemberReject) null else BorderStroke(1.dp, light_divider),
+            modifier = Modifier.padding(12.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-                modifier = Modifier.padding(10.dp)
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .padding(12.dp)
+                    .fillMaxWidth()
             ) {
                 Text(
                     text = requestText,
-                    fontSize = 10.sp,
+                    fontSize = 14.sp,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.tertiary
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.weight(1f)
                 )
+
+                if (requestType is MessageType.GroupAction.MemberApprove || requestType is MessageType.GroupAction.MemberReject ) {
+                    return@Row // hide buttons
+                }
+
                 if (isLoading.value) {
                     Box(
                         modifier = Modifier
                             .width(80.dp)
-                            .background(color = MaterialTheme.colorScheme.onSecondaryContainer),
+                            .height(30.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(24.dp),
                             color = MaterialTheme.colorScheme.tertiary,
                             strokeWidth = 2.dp
                         )
@@ -163,17 +177,17 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
                             }
                         },
                         modifier = Modifier
-                            .padding(start = 8.dp)
+                            .padding(start = 10.dp)
                             .clip(CircleShape)
                             .background(primary_green)
-                            .size(24.dp),
+                            .size(30.dp),
                         enabled = buttonsEnabled
                     ) {
                         Icon(
                             imageVector = Icons.Default.Done,
                             contentDescription = "Accept",
                             tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.padding(4.dp)
+                            modifier = Modifier.padding(5.dp)
                         )
                     }
                     IconButton(
@@ -192,17 +206,17 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
                             }
                         },
                         modifier = Modifier
-                            .padding(start = 6.dp)
+                            .padding(start = 8.dp)
                             .clip(CircleShape)
-                            .background(badge_red)
-                            .size(24.dp),
+                            .background(darker_gray)
+                            .size(30.dp),
                         enabled = buttonsEnabled
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Decline",
                             tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.padding(4.dp)
+                            modifier = Modifier.padding(5.dp)
                         )
                     }
                 }
