@@ -292,7 +292,7 @@ class ChatMessage(
         }
         MessageType.GroupAction.MemberApprove -> {
             if (chat.type == ChatType.Tribe) {
-                "Welcome! You are now a member"
+                "$groupActionSubjectName has joined the tribe"
             } else {
                 null
             }

@@ -143,7 +143,7 @@ class ChatTribeViewModel(
         }
     }
 
-    override suspend fun deleteTribe() {
+    override fun deleteTribe() {
         scope.launch(dispatchers.mainImmediate){
             val chat = getChat()
             if (chat != null) {
@@ -151,7 +151,7 @@ class ChatTribeViewModel(
             }
 
             ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
-        }.join()
+        }
     }
 
     override fun pinMessage(message: Message) {

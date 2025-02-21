@@ -1,5 +1,6 @@
 package chat.sphinx.common.chatMesssageUI
 
+import Roboto
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -25,9 +28,9 @@ import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.wrapper.message.MessageType
 import kotlinx.coroutines.launch
-import theme.badge_red
-import theme.light_divider
-import theme.primary_green
+import theme.*
+import java.awt.Robot
+
 @Composable
 fun GroupActionsUI(
     chatMessage: ChatMessage,
@@ -51,7 +54,10 @@ fun GroupActionsUI(
             requestType is MessageType.GroupAction.Kick ||
             requestType is MessageType.GroupAction.TribeDelete
         ) {
-            KickDeclinedOrTribeDeleted(chatMessage.message.senderAlias?.value ?: "", requestType)
+            val isKickedMember = chatMessage.message.sender.value != 0L
+            if (requestType is MessageType.GroupAction.Kick && !isKickedMember) return
+
+            KickDeclinedOrTribeDeleted(chatMessage.message.senderAlias?.value ?: "", requestType, chatViewModel)
         } else {
             GroupActionAnnouncement(chatMessage)
         }
@@ -108,32 +114,48 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
     val buttonsEnabled = requestType == MessageType.GroupAction.MemberRequest
     val isLoading = remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier.fillMaxWidth(0.3f),
+        contentAlignment = Alignment.Center
+    ) {
         Card(
-            backgroundColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            shape = RoundedCornerShape(9.dp),
-            border = BorderStroke(1.dp, light_divider)
+            backgroundColor = when (requestType) {
+                is MessageType.GroupAction.MemberApprove -> washed_green
+                is MessageType.GroupAction.MemberReject -> darker_gray
+                else -> MaterialTheme.colorScheme.onSecondaryContainer
+            },
+            shape = RoundedCornerShape(12.dp),
+            border = if (requestType is MessageType.GroupAction.MemberApprove || requestType is MessageType.GroupAction.MemberReject) null else BorderStroke(1.dp, light_divider),
+            modifier = Modifier.padding(12.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-                modifier = Modifier.padding(10.dp)
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .padding(12.dp)
+                    .fillMaxWidth()
             ) {
                 Text(
                     text = requestText,
-                    fontSize = 10.sp,
+                    fontSize = 14.sp,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.tertiary
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.weight(1f)
                 )
+
+                if (requestType is MessageType.GroupAction.MemberApprove || requestType is MessageType.GroupAction.MemberReject ) {
+                    return@Row // hide buttons
+                }
+
                 if (isLoading.value) {
                     Box(
                         modifier = Modifier
                             .width(80.dp)
-                            .background(color = MaterialTheme.colorScheme.onSecondaryContainer),
+                            .height(30.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(24.dp),
                             color = MaterialTheme.colorScheme.tertiary,
                             strokeWidth = 2.dp
                         )
@@ -155,17 +177,17 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
                             }
                         },
                         modifier = Modifier
-                            .padding(start = 8.dp)
+                            .padding(start = 10.dp)
                             .clip(CircleShape)
                             .background(primary_green)
-                            .size(24.dp),
+                            .size(30.dp),
                         enabled = buttonsEnabled
                     ) {
                         Icon(
                             imageVector = Icons.Default.Done,
                             contentDescription = "Accept",
                             tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.padding(4.dp)
+                            modifier = Modifier.padding(5.dp)
                         )
                     }
                     IconButton(
@@ -184,17 +206,17 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
                             }
                         },
                         modifier = Modifier
-                            .padding(start = 6.dp)
+                            .padding(start = 8.dp)
                             .clip(CircleShape)
-                            .background(badge_red)
-                            .size(24.dp),
+                            .background(darker_gray)
+                            .size(30.dp),
                         enabled = buttonsEnabled
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Decline",
                             tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.padding(4.dp)
+                            modifier = Modifier.padding(5.dp)
                         )
                     }
                 }
@@ -206,14 +228,15 @@ fun MemberRequest(chatMessage: ChatMessage, viewModel: ChatViewModel, requestTyp
 @Composable
 fun KickDeclinedOrTribeDeleted(
     alias: String,
-    requestType: MessageType
+    requestType: MessageType,
+    chatViewModel: ChatViewModel
 ) {
     val requestText = when (requestType) {
         is MessageType.GroupAction.MemberReject -> {
             "The admin\ndeclined your request"
         }
         is MessageType.GroupAction.Kick -> {
-            "$alias just left the tribe"
+            "The admin has removed\nyou from this tribe"
         }
         else -> {
             "The admin has\ndeleted this tribe"
@@ -224,12 +247,13 @@ fun KickDeclinedOrTribeDeleted(
         Card(
             backgroundColor = MaterialTheme.colorScheme.onSecondaryContainer,
             shape = RoundedCornerShape(9.dp),
-            border = BorderStroke(1.dp, light_divider)
+            border = BorderStroke(1.dp, light_divider),
+            modifier = Modifier.padding(4.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-                modifier = Modifier.padding(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = requestText,
@@ -237,6 +261,26 @@ fun KickDeclinedOrTribeDeleted(
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.tertiary
                 )
+
+                Button(
+                    onClick = { chatViewModel.deleteTribe() },
+                    shape = RoundedCornerShape(5.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = darker_gray,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 32.dp)
+                ) {
+                    Text(
+                        text = "Delete Tribe",
+                        fontFamily = Roboto,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.tertiary
+
+                    )
+                }
             }
         }
     }
