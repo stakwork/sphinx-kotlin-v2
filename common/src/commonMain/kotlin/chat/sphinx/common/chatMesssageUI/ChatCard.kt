@@ -32,10 +32,13 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -204,7 +207,30 @@ fun MessageTextLabel(
     val isThreadHeader = chatMessage.isThreadHeader
 
     if (messageText.isNotEmpty()) {
-        val annotatedString = messageText.toAnnotatedString()
+        val annotatedString = buildAnnotatedString {
+            append(messageText)
+
+            SphinxLinkify.gatherLinks(text = messageText, mask = SphinxLinkify.ALL).forEach { link ->
+                val start = messageText.indexOf(link.url)
+                if (start != -1) {
+                    addStyle(
+                        style = SpanStyle(
+                            color = primary_blue,
+                            textDecoration = TextDecoration.Underline
+                        ),
+                        start = start,
+                        end = start + link.url.length
+                    )
+                    addStringAnnotation(
+                        tag = "URL",
+                        annotation = link.url,
+                        start = start,
+                        end = start + link.url.length
+                    )
+                }
+            }
+        }
+
         Row(
             modifier = Modifier
                 .padding(12.dp, topPadding, 12.dp, 12.dp)
@@ -254,7 +280,6 @@ fun MessageTextLabel(
         )
     }
 }
-
 @Composable
 fun LinkPreviews(
     chatMessage: ChatMessage,
@@ -295,9 +320,9 @@ fun LinkPreviews(
                 }
             }
             is ChatMessage.LinkPreview.HttpUrlPreview -> {
-                (linkPreview.value as? ChatMessage.LinkPreview.HttpUrlPreview)?.let { webLinkPreview ->
-                    URLPreview(webLinkPreview, chatViewModel, uriHandler)
-                }
+//                (linkPreview.value as? ChatMessage.LinkPreview.HttpUrlPreview)?.let { webLinkPreview ->
+//                    URLPreview(webLinkPreview, chatViewModel, uriHandler)
+//                }
             }
             else -> {}
         }

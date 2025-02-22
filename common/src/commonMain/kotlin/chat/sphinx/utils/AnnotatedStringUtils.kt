@@ -123,3 +123,11 @@ fun String.containLinksWithPreview(): Boolean {
     )
     return links.isNotEmpty()
 }
+
+fun String.containsWebUrl(): Boolean {
+    val links = SphinxLinkify.gatherLinks(
+        text = this,
+        mask = SphinxLinkify.WEB_URLS
+    )
+    return links.isNotEmpty()
+}
