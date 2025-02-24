@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontStyle
 import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.wrapper.chat.isTribe
 import chat.sphinx.utils.containLinksWithPreview
+import chat.sphinx.utils.containsWebUrl
 import chat.sphinx.wrapper.invoicePaymentDateFormat
 
 @Composable
@@ -159,9 +160,10 @@ fun ChatMessageUI(
                                     }
 
                                     val messageContainsLinks = chatMessage.message.retrieveTextToShow()?.containLinksWithPreview() ?: false
+                                    val containsWebUrl = chatMessage.message.retrieveTextToShow()?.containsWebUrl() ?: false
 
                                     Column(
-                                        modifier = if (messageContainsLinks) {
+                                        modifier = if (messageContainsLinks && !containsWebUrl) {
                                             Modifier.width(350.dp)
                                         } else if (chatMessage.message.isMediaMessage) {
                                             Modifier.fillMaxWidth(0.5f)
@@ -190,7 +192,7 @@ fun ChatMessageUI(
                                             ChatCard(
                                                 chatMessage,
                                                 chatViewModel,
-                                                modifier = if (messageContainsLinks) {
+                                                modifier = if (messageContainsLinks && !containsWebUrl) {
                                                     Modifier.width(350.dp)
                                                 } else {
                                                     null
