@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import chat.sphinx.common.components.profile.Profile
 import chat.sphinx.common.components.tribe.CreateTribeView
 import chat.sphinx.common.components.tribe.JoinTribeView
 import chat.sphinx.common.components.tribe.TribeDetailView
@@ -307,7 +306,6 @@ fun DashboardSidebarUI(
 
             AboutSphinxWindow(dashboardViewModel)
             AddContactWindow(dashboardViewModel)
-            ProfileWindow(dashboardViewModel)
             TransactionsWindow(dashboardViewModel)
             CreateInvoiceWindow(dashboardViewModel)
             PayInvoiceWindow(dashboardViewModel)
@@ -338,7 +336,7 @@ fun DashboardSidebarUI(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     // Profile Option
                     MenuItem(icon = Icons.Default.Person, title = "Profile", clickAction = {
-                        dashboardViewModel.toggleProfileWindow(true)
+                        dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.Profile)
                         isMenuExpanded = !isMenuExpanded
                     })
                     // Transactions Option
@@ -542,16 +540,6 @@ fun AddContactWindow(
     val addContactWindowState by dashboardViewModel.contactWindowStateFlow.collectAsState()
     if (addContactWindowState.first) {
         AddContactWindowUI(dashboardViewModel)
-    }
-}
-
-@Composable
-fun ProfileWindow(
-    dashboardViewModel: DashboardViewModel
-) {
-    val profileWindowState by dashboardViewModel.profileStateFlow.collectAsState()
-    if (profileWindowState) {
-        Profile(dashboardViewModel)
     }
 }
 

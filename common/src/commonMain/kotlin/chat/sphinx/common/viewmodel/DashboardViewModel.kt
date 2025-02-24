@@ -58,6 +58,11 @@ class DashboardViewModel(): WindowFocusListener {
         data class Thread(val chatId: ChatId, val threadUUID: ThreadUUID, val fromThreadsScreen: Boolean) : SplitContentType()
     }
 
+    sealed class FullScreenView {
+        object None : FullScreenView()
+        object Profile : FullScreenView()
+    }
+
     data class SplitScreenState(
         val isOpen: Boolean,
         val type: SplitContentType? = null
@@ -72,6 +77,21 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun toggleSplitScreen(isOpen: Boolean, type: SplitContentType? = null) {
         _splitScreenStateFlow.value = SplitScreenState(isOpen, type)
+    }
+
+    private val _fullScreenViewStateFlow: MutableStateFlow<FullScreenView> by lazy {
+        MutableStateFlow(FullScreenView.None)
+    }
+
+    val fullScreenViewStateFlow: StateFlow<FullScreenView>
+        get() = _fullScreenViewStateFlow.asStateFlow()
+
+    fun showFullScreenView(view: FullScreenView) {
+        _fullScreenViewStateFlow.value = view
+    }
+
+    fun closeFullScreenView() {
+        _fullScreenViewStateFlow.value = FullScreenView.None
     }
 
     private val webViewState: MutableStateFlow<WebViewState> by lazy {
@@ -222,17 +242,6 @@ class DashboardViewModel(): WindowFocusListener {
             }
         }
         _qrWindowStateFlow.value = Pair(open, null)
-    }
-
-    private val _profileStateFlow: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(false)
-    }
-
-    val profileStateFlow: StateFlow<Boolean>
-        get() = _profileStateFlow.asStateFlow()
-
-    fun toggleProfileWindow(open: Boolean) {
-        _profileStateFlow.value = open
     }
 
     private val _transactionsStateFlow: MutableStateFlow<Boolean> by lazy {
@@ -583,7 +592,7 @@ class DashboardViewModel(): WindowFocusListener {
                 if (setProfileRestore == true) {
                     toast("Please enter your alias and an optional profile picture to finish setting up your Profile")
                     delay(2000L)
-                    toggleProfileWindow(open = true)
+                    showFullScreenView(FullScreenView.Profile)
                 }
             }
         }

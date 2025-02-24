@@ -82,6 +82,7 @@ actual fun Dashboard(
 
     val webAppViewModel = remember { WebAppViewModel() }
     val splitScreenState by dashboardViewModel.splitScreenStateFlow.collectAsState()
+    val fullScreenViewState by dashboardViewModel.fullScreenViewStateFlow.collectAsState()
 
     when (DashboardScreenState.screenState()) {
         DashboardScreenType.Unlocked -> {
@@ -283,6 +284,12 @@ actual fun Dashboard(
                     }
                 }
             }
+
+            FullScreenOverlay(
+                fullScreenView = fullScreenViewState,
+                dashboardViewModel = dashboardViewModel,
+                onClose = { dashboardViewModel.closeFullScreenView() }
+            )
 
             ImageFullScreen(fullScreenImageState)
 
