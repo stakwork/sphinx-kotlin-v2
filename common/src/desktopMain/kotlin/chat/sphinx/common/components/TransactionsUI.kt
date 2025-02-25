@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
@@ -41,70 +42,65 @@ import kotlinx.coroutines.Delay
 import kotlinx.coroutines.flow.collect
 import theme.*
 
-
 @Composable
-fun TransactionsUI(dashboardViewModel: DashboardViewModel) {
-    var isOpen by remember { mutableStateOf(true) }
-    val listState = rememberLazyListState()
-
+fun TransactionsScreen(dashboardViewModel: DashboardViewModel, preferredSize: DpSize) {
     val viewModel = remember { TransactionsViewModel() }
     val viewState = viewModel.transactionViewState
+    val listState = rememberLazyListState()
+    val endOfListReached by remember { derivedStateOf { listState.isScrolledToEnd() } }
 
-    val endOfListReached by remember {
-        derivedStateOf {
-            listState.isScrolledToEnd()
-        }
-    }
-
-    if (isOpen) {
-        Window(
-            onCloseRequest = { dashboardViewModel.toggleTransactionsWindow(false) },
-            title = "Transactions",
-            state = WindowState(
-                position = WindowPosition.Aligned(Alignment.Center),
-                size = getPreferredWindowSize(420, 700)
-            )
-        ) {
-            if (viewState.loadingTransactions) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.onSurfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        Modifier.size(40.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-                ) {
-                    LazyColumn(
-                        state = listState,
-                        contentPadding = PaddingValues(top = 1.dp)
+    Box(
+        modifier = Modifier
+            .size(preferredSize)
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            TopHeaderContainer(
+                title = "Transactions",
+                onClose = { dashboardViewModel.closeFullScreenView() }
+            ) {
+                if (viewState.loadingTransactions) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        items(viewState.transactionsList) { transaction ->
-                            transaction?.let {
-                                TransactionRow(transaction)
+                        CircularProgressIndicator(
+                            Modifier.size(40.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        LazyColumn(
+                            state = listState,
+                            contentPadding = PaddingValues(top = 1.dp)
+                        ) {
+                            items(viewState.transactionsList) { transaction ->
+                                transaction?.let {
+                                    TransactionRow(transaction)
+                                }
+                            }
+                            if (viewState.loadingMore) {
+                                item { LoadingRow() }
                             }
                         }
-                        if (viewState.loadingMore) {
-                            item { LoadingRow() }
+                        VerticalScrollbar(
+                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                            adapter = rememberScrollbarAdapter(scrollState = listState)
+                        )
+                        if (endOfListReached) {
+                            viewModel.loadMoreTransactions()
                         }
-                    }
-                    VerticalScrollbar(
-                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                        adapter = rememberScrollbarAdapter(scrollState = listState)
-                    )
-                    if (endOfListReached) {
-                        viewModel.loadMoreTransactions()
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun TransactionRow(transaction: TransactionState) {

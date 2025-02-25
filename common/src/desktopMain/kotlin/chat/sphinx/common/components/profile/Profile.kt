@@ -26,6 +26,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
@@ -33,6 +34,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import chat.sphinx.common.DesktopResource
 import chat.sphinx.common.components.PhotoUrlImage
+import chat.sphinx.common.components.TopHeaderContainer
 import chat.sphinx.common.components.notifications.DesktopSphinxConfirmAlert
 import chat.sphinx.common.components.notifications.DesktopSphinxToast
 import chat.sphinx.common.components.pin.ChangePin
@@ -55,11 +57,9 @@ import kotlinx.coroutines.launch
 import utils.deduceMediaType
 
 @Composable
-fun ProfileScreen(dashboardViewModel: DashboardViewModel) {
+fun ProfileScreen(dashboardViewModel: DashboardViewModel, preferredSize: DpSize) {
     val viewModel = remember { ProfileViewModel() }
     val scope = rememberCoroutineScope()
-
-    val preferredSize = getPreferredWindowSize(420, 830)
 
     Box(
         modifier = Modifier
@@ -69,78 +69,69 @@ fun ProfileScreen(dashboardViewModel: DashboardViewModel) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
+            TopHeaderContainer(
+                title = "Profile",
+                onClose = { dashboardViewModel.closeFullScreenView() }
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Close Profile",
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable { dashboardViewModel.closeFullScreenView() }
-                )
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(24.dp)
-            ) {
-                if (viewModel.profileState.profilePictureResponse is LoadResponse.Loading) {
-                    CircularProgressIndicator(
-                        Modifier.padding(10.dp).size(40.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    PhotoUrlImage(
-                        photoUrl = viewModel.profileState.photoUrl,
-                        modifier = Modifier
-                            .size(60.dp)
-                            .clip(CircleShape)
-                            .clickable {
-                                scope.launch {
-                                    ContentState.sendFilePickerDialog.awaitResult()?.let { path ->
-                                        if (path.deduceMediaType().isImage) {
-                                            viewModel.onProfilePictureChanged(path)
+                // Profile content
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    if (viewModel.profileState.profilePictureResponse is LoadResponse.Loading) {
+                        CircularProgressIndicator(
+                            Modifier.padding(10.dp).size(40.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        PhotoUrlImage(
+                            photoUrl = viewModel.profileState.photoUrl,
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    scope.launch {
+                                        ContentState.sendFilePickerDialog.awaitResult()?.let { path ->
+                                            if (path.deduceMediaType().isImage) {
+                                                viewModel.onProfilePictureChanged(path)
+                                            }
                                         }
                                     }
                                 }
-                            }
-                    )
-                }
+                        )
+                    }
 
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(verticalArrangement = Arrangement.Center) {
-                    Text(
-                        text = viewModel.profileState.alias,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = SphinxFonts.montserratFamily,
-                        fontSize = 16.sp
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        val balance by dashboardViewModel.balanceStateFlow.collectAsState()
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(verticalArrangement = Arrangement.Center) {
                         Text(
-                            text = balance?.balance?.asFormattedString(' ') ?: "0",
+                            text = viewModel.profileState.alias,
                             color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.Bold,
                             fontFamily = SphinxFonts.montserratFamily,
-                            fontSize = 14.sp
+                            fontSize = 16.sp
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            "sat",
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontFamily = SphinxFonts.montserratFamily,
-                            fontSize = 14.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            val balance by dashboardViewModel.balanceStateFlow.collectAsState()
+                            Text(
+                                text = balance?.balance?.asFormattedString(' ') ?: "0",
+                                color = MaterialTheme.colorScheme.tertiary,
+                                fontFamily = SphinxFonts.montserratFamily,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "sat",
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontFamily = SphinxFonts.montserratFamily,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             }

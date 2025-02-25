@@ -306,7 +306,6 @@ fun DashboardSidebarUI(
 
             AboutSphinxWindow(dashboardViewModel)
             AddContactWindow(dashboardViewModel)
-            TransactionsWindow(dashboardViewModel)
             CreateInvoiceWindow(dashboardViewModel)
             PayInvoiceWindow(dashboardViewModel)
             TribeDetailWindow(dashboardViewModel)
@@ -341,7 +340,7 @@ fun DashboardSidebarUI(
                     })
                     // Transactions Option
                     MenuItem(icon = Icons.Default.Subject, title = "Transactions", clickAction = {
-                        dashboardViewModel.toggleTransactionsWindow(true)
+                        dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.Transactions)
                         isMenuExpanded = !isMenuExpanded
                     })
                     // Request Payment Option
@@ -540,16 +539,6 @@ fun AddContactWindow(
     val addContactWindowState by dashboardViewModel.contactWindowStateFlow.collectAsState()
     if (addContactWindowState.first) {
         AddContactWindowUI(dashboardViewModel)
-    }
-}
-
-@Composable
-fun TransactionsWindow(
-    dashboardViewModel: DashboardViewModel
-) {
-    val transactionsWindowState by dashboardViewModel.transactionsStateFlow.collectAsState()
-    if (transactionsWindowState) {
-        TransactionsUI(dashboardViewModel)
     }
 }
 

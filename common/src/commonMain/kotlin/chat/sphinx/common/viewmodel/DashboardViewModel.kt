@@ -61,6 +61,7 @@ class DashboardViewModel(): WindowFocusListener {
     sealed class FullScreenView {
         object None : FullScreenView()
         object Profile : FullScreenView()
+        object Transactions : FullScreenView()
     }
 
     data class SplitScreenState(
@@ -242,17 +243,6 @@ class DashboardViewModel(): WindowFocusListener {
             }
         }
         _qrWindowStateFlow.value = Pair(open, null)
-    }
-
-    private val _transactionsStateFlow: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(false)
-    }
-
-    val transactionsStateFlow: StateFlow<Boolean>
-        get() = _transactionsStateFlow.asStateFlow()
-
-    fun toggleTransactionsWindow(open: Boolean) {
-        _transactionsStateFlow.value = open
     }
 
     private val _createTribeStateFlow: MutableStateFlow<Pair<Boolean, ChatId?>> by lazy {

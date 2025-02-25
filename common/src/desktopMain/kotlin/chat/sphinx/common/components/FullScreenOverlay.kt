@@ -2,20 +2,27 @@ package chat.sphinx.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Divider
 import androidx.compose.material.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import chat.sphinx.common.components.profile.ProfileScreen
 import chat.sphinx.common.viewmodel.DashboardViewModel
+import chat.sphinx.utils.getPreferredWindowSize
 
 @Composable
 fun FullScreenOverlay(
@@ -24,10 +31,12 @@ fun FullScreenOverlay(
     onClose: () -> Unit
 ) {
     if (fullScreenView != DashboardViewModel.FullScreenView.None) {
+        val preferredSize = remember { getPreferredWindowSize(420, 830) }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.85f))
+                .background(color = Color.Black.copy(0.60f))
         ) {
             Icon(
                 Icons.Default.Close,
@@ -46,11 +55,62 @@ fun FullScreenOverlay(
                     .padding(50.dp),
                 contentAlignment = Alignment.Center
             ) {
-                when (fullScreenView) {
-                    is DashboardViewModel.FullScreenView.Profile -> ProfileScreen(dashboardViewModel)
-                    else -> {}
+                Card(
+                    modifier = Modifier.size(preferredSize),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)
+                ) {
+                    when (fullScreenView) {
+                        is DashboardViewModel.FullScreenView.Profile -> ProfileScreen(dashboardViewModel, preferredSize)
+                        is DashboardViewModel.FullScreenView.Transactions -> TransactionsScreen(dashboardViewModel, preferredSize)
+                        else -> {}
+                    }
                 }
             }
         }
     }
 }
+
+
+@Composable
+fun TopHeaderContainer(
+    title: String,
+    onClose: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
+
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Close",
+                tint = Color.LightGray,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+                    .size(20.dp)
+                    .align(Alignment.TopEnd)
+                    .clickable { onClose() }
+            )
+        }
+        Divider(color = Color.Black.copy(0.60f), thickness = 1.dp)
+        content()
+    }
+}
+
