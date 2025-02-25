@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,6 +38,7 @@ fun TribeProfilePopUp(
 ) {
     val viewModel = remember { chatViewModel }
     val viewState = viewModel.tribeProfileState
+    val clipboardManager = LocalClipboardManager.current
 
     Box(
         modifier = Modifier
@@ -239,6 +241,47 @@ fun TribeProfilePopUp(
                     }
                 }
                 Divider(modifier = Modifier.fillMaxWidth(), color = light_divider)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(49.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Public Key:",
+                        fontSize = 15.sp,
+                        fontFamily = Roboto,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text(
+                            text = viewState.publicKey,
+                            fontSize = 15.sp,
+                            fontFamily = Roboto,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+                }
+                Divider(modifier = Modifier.fillMaxWidth(), color = light_divider)
+
+                Button(
+                    onClick = {
+                        clipboardManager.setText(viewState.publicKey.toAnnotatedString())
+                        chatViewModel.toast("Public Key copied to clipboard")
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 16.dp),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text(
+                        "Copy Public Key",
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontFamily = Roboto,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
             Box(
@@ -299,4 +342,3 @@ private fun SendSatsButton(
         }
     }
 }
-
