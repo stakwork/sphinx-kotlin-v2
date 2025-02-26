@@ -27,7 +27,6 @@ import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import theme.badge_red
-import theme.primary_red
 import java.awt.event.WindowEvent
 import java.awt.event.WindowFocusListener
 
@@ -53,15 +52,16 @@ class DashboardViewModel(): WindowFocusListener {
     }
 
     sealed class SplitContentType {
-        object Default : SplitContentType()
-        data class Threads(val chatId: ChatId) : SplitContentType()
-        data class Thread(val chatId: ChatId, val threadUUID: ThreadUUID, val fromThreadsScreen: Boolean) : SplitContentType()
+        object Default: SplitContentType()
+        data class Threads(val chatId: ChatId): SplitContentType()
+        data class Thread(val chatId: ChatId, val threadUUID: ThreadUUID, val fromThreadsScreen: Boolean): SplitContentType()
     }
 
     sealed class FullScreenView {
-        object None : FullScreenView()
-        object Profile : FullScreenView()
-        object Transactions : FullScreenView()
+        object None: FullScreenView()
+        object Profile: FullScreenView()
+        object Transactions: FullScreenView()
+        data class ContactScreen (val screen: ContactScreenState?): FullScreenView()
     }
 
     data class SplitScreenState(
@@ -89,6 +89,10 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun showFullScreenView(view: FullScreenView) {
         _fullScreenViewStateFlow.value = view
+
+        if (view is FullScreenView.ContactScreen) {
+            setContactScreenState(view.screen)
+        }
     }
 
     fun closeFullScreenView() {
@@ -137,17 +141,15 @@ class DashboardViewModel(): WindowFocusListener {
     val packageVersionAndUpgrade: StateFlow<Pair<String?, Boolean>>
         get() = _packageVersionAndUpgrade.asStateFlow()
 
-
-    private val _contactWindowStateFlow: MutableStateFlow<Pair<Boolean, ContactScreenState?>> by lazy {
-        MutableStateFlow(Pair(false, null))
+    private val _contactScreenStateFlow: MutableStateFlow<ContactScreenState?> by lazy {
+        MutableStateFlow(null)
     }
 
-    val contactWindowStateFlow: StateFlow<Pair<Boolean, ContactScreenState?>>
-        get() = _contactWindowStateFlow.asStateFlow()
+    val contactScreenStateFlow: StateFlow<ContactScreenState?>
+        get() = _contactScreenStateFlow.asStateFlow()
 
-
-    fun toggleContactWindow(open: Boolean, screen: ContactScreenState?) {
-        _contactWindowStateFlow.value = Pair(open, screen)
+    fun setContactScreenState(screen: ContactScreenState?) {
+        _contactScreenStateFlow.value = screen
     }
 
     private val _payInvoiceWindowStateFlow: MutableStateFlow<Boolean> by lazy {

@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,6 +66,7 @@ fun FullScreenOverlay(
                     when (fullScreenView) {
                         is DashboardViewModel.FullScreenView.Profile -> ProfileScreen(dashboardViewModel, preferredSize)
                         is DashboardViewModel.FullScreenView.Transactions -> TransactionsScreen(dashboardViewModel, preferredSize)
+                        is DashboardViewModel.FullScreenView.ContactScreen -> AddContactScreen(dashboardViewModel, preferredSize)
                         else -> {}
                     }
                 }
@@ -76,6 +79,8 @@ fun FullScreenOverlay(
 @Composable
 fun TopHeaderContainer(
     title: String,
+    showBackButton: Boolean = false,
+    onBack: () -> Unit = {},
     onClose: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -90,18 +95,34 @@ fun TopHeaderContainer(
                 .height(64.dp),
             contentAlignment = Alignment.CenterStart
         ) {
+            if (showBackButton) {
+                IconButton(
+                    onClick = { onBack() },
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp, vertical = 12.dp)
+                        .size(20.dp)
+                        .align(Alignment.CenterStart)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            }
+
             Text(
                 text = title,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier.padding(start = if (showBackButton) 48.dp else 24.dp),
             )
 
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
-                tint = Color.LightGray,
+                tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .padding(horizontal = 12.dp, vertical = 12.dp)
                     .size(20.dp)

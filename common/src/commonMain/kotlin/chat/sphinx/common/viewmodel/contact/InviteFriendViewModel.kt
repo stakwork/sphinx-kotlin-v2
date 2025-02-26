@@ -87,7 +87,7 @@ class InviteFriendViewModel(
                 sats = amount
             )
 
-            dashboardViewModel.toggleContactWindow(false, null)
+            dashboardViewModel.closeFullScreenView()
         }
     }
 

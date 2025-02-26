@@ -369,7 +369,7 @@ fun SphinxChatDetailTopAppBar(
                                 if (dashboardChat.isTribe()) {
                                     chatViewModel?.chatId?.let { dashboardViewModel?.toggleTribeDetailWindow(true, it) }
                                 } else {
-                                    dashboardViewModel?.toggleContactWindow(true, ContactScreenState.EditContact(contactId))
+                                    dashboardViewModel?.showFullScreenView(DashboardViewModel.FullScreenView.ContactScreen(ContactScreenState.EditContact(contactId)))
                                 }
                             }
                         )
@@ -775,7 +775,7 @@ fun SplitTopBar(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
-                    tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                 )
             }
 
@@ -806,7 +806,7 @@ fun SplitTopBar(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                 )
             }
         }

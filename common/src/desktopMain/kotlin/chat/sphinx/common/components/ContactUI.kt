@@ -18,11 +18,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.WindowState
 import chat.sphinx.common.components.notifications.DesktopSphinxToast
 import chat.sphinx.common.state.ConfirmationType
 import chat.sphinx.common.state.ContactScreenState
@@ -33,7 +31,6 @@ import chat.sphinx.common.viewmodel.contact.InviteFriendViewModel
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.utils.SphinxFonts
-import chat.sphinx.utils.getPreferredWindowSize
 import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.lightning.LightningNodeDescriptor
 import theme.badge_red
@@ -41,20 +38,24 @@ import theme.light_divider
 import theme.primary_red
 
 @Composable
-fun AddContactWindowUI(dashboardViewModel: DashboardViewModel) {
-    var isOpen by remember { mutableStateOf(true) }
-    var screenState: ContactScreenState? = dashboardViewModel.contactWindowStateFlow.value.second
-    if (isOpen) {
-        Window(
-            onCloseRequest = {
-                dashboardViewModel.toggleContactWindow(false, null)
-            },
-            title = if (screenState is ContactScreenState.EditContact) "Contact Info" else "Add New Friend",
-            state = WindowState(
-                position = WindowPosition.Aligned(Alignment.Center),
-                size = getPreferredWindowSize(420, 620)
-            )
+fun AddContactScreen(dashboardViewModel: DashboardViewModel, preferredSize: DpSize) {
+    val screenState = dashboardViewModel.contactScreenStateFlow.value
+
+    Box(
+        modifier = Modifier
+            .size(preferredSize)
+            .background(MaterialTheme.colors.background)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
+            TopHeaderContainer(
+                title = if (screenState is ContactScreenState.Choose) "New Contact" else "Contact",
+                showBackButton = screenState is ContactScreenState.AlreadyOnSphinx || screenState is ContactScreenState.NewToSphinx,
+                onClose = { dashboardViewModel.closeFullScreenView() },
+                onBack = { dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.ContactScreen(ContactScreenState.Choose)) }
+            ) {
+
             when (screenState) {
                 is ContactScreenState.Choose -> AddContact(dashboardViewModel)
                 is ContactScreenState.NewToSphinx -> AddNewContactOnSphinx(dashboardViewModel)
@@ -62,7 +63,9 @@ fun AddContactWindowUI(dashboardViewModel: DashboardViewModel) {
                 is ContactScreenState.EditContact -> ContactForm(dashboardViewModel, screenState.contactId)
                 else -> {}
             }
+
             DesktopSphinxToast("Add New Friend")
+        }
         }
     }
 }
@@ -80,7 +83,7 @@ fun AddContact(dashboardViewModel: DashboardViewModel) {
         ) {
             CommonButton(
                 callback = {
-                    dashboardViewModel.toggleContactWindow(true, ContactScreenState.NewToSphinx)
+                    dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.ContactScreen(ContactScreenState.NewToSphinx))
                 },
                 text = "New to Sphinx",
                 backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
@@ -89,7 +92,7 @@ fun AddContact(dashboardViewModel: DashboardViewModel) {
             Divider(Modifier.padding(12.dp), color = Color.Transparent)
             CommonButton(
                 callback = {
-                    dashboardViewModel.toggleContactWindow(true, ContactScreenState.AlreadyOnSphinx())
+                    dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.ContactScreen(ContactScreenState.AlreadyOnSphinx()))
                 },
                 text = "Already on Sphinx",
                 enabled = true
@@ -324,7 +327,7 @@ fun ContactForm(
                             .height(42.dp),
                         callback = {
                             dashboardViewModel.toggleConfirmationWindow(open = true, ConfirmationType.ContactDelete)
-                            dashboardViewModel.toggleContactWindow(false, null)
+                            dashboardViewModel.closeFullScreenView()
                         }
                     )
                 }
@@ -507,7 +510,7 @@ fun ContactForm(
     }
 
     if (viewModel.contactState.status is Response.Success) {
-        dashboardViewModel.toggleContactWindow(false, null)
+        dashboardViewModel.closeFullScreenView()
     }
 }
 

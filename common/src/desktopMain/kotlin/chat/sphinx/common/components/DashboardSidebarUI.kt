@@ -285,7 +285,7 @@ fun DashboardSidebarUI(
                 ) {
                     IconButton(
                         onClick = {
-                            dashboardViewModel.toggleContactWindow(true, ContactScreenState.Choose)
+                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.ContactScreen(ContactScreenState.Choose))
                         },
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
@@ -305,7 +305,6 @@ fun DashboardSidebarUI(
             }
 
             AboutSphinxWindow(dashboardViewModel)
-            AddContactWindow(dashboardViewModel)
             CreateInvoiceWindow(dashboardViewModel)
             PayInvoiceWindow(dashboardViewModel)
             TribeDetailWindow(dashboardViewModel)
@@ -381,7 +380,7 @@ fun DashboardSidebarUI(
                             .padding(vertical = 4.dp),
                         textColor = MaterialTheme.colorScheme.tertiary,
                         callback = {
-                            dashboardViewModel.toggleContactWindow(true, ContactScreenState.Choose)
+                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.ContactScreen(ContactScreenState.Choose))
                             isMenuExpanded = !isMenuExpanded
                         }
                     )
@@ -529,16 +528,6 @@ fun AboutSphinxWindow(
     val aboutSphinxWindowState by dashboardViewModel.aboutSphinxStateFlow.collectAsState()
     if (aboutSphinxWindowState) {
         AboutSphinx(dashboardViewModel)
-    }
-}
-
-@Composable
-fun AddContactWindow(
-    dashboardViewModel: DashboardViewModel
-) {
-    val addContactWindowState by dashboardViewModel.contactWindowStateFlow.collectAsState()
-    if (addContactWindowState.first) {
-        AddContactWindowUI(dashboardViewModel)
     }
 }
 
