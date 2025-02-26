@@ -279,7 +279,7 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         onClick = {
                             showOptionMenu.value = false
                             dashboardViewModel.toggleTribeDetailWindow(false, null)
-                            dashboardViewModel.toggleCreateTribeWindow(true, chatId)
+                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.CreateTribeScreen(chatId))
                         }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

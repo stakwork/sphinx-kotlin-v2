@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.components.profile.ProfileScreen
+import chat.sphinx.common.components.tribe.CreateTribeScreen
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.utils.getPreferredWindowSize
 
@@ -67,6 +68,7 @@ fun FullScreenOverlay(
                         is DashboardViewModel.FullScreenView.Profile -> ProfileScreen(dashboardViewModel, preferredSize)
                         is DashboardViewModel.FullScreenView.Transactions -> TransactionsScreen(dashboardViewModel, preferredSize)
                         is DashboardViewModel.FullScreenView.ContactScreen -> AddContactScreen(dashboardViewModel, preferredSize)
+                        is DashboardViewModel.FullScreenView.CreateTribeScreen -> CreateTribeScreen(dashboardViewModel, fullScreenView.chatId, preferredSize)
                         else -> {}
                     }
                 }

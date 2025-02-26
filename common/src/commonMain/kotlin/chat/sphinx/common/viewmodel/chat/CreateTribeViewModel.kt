@@ -176,7 +176,7 @@ class CreateTribeViewModel(
             createTribeBuilder.build()?.let {
                 saveTribeJob = scope.launch(dispatchers.mainImmediate) {
                     chatRepository.storeTribe(it,chatId)
-                    dashboardViewModel.toggleCreateTribeWindow(false, null)
+                    dashboardViewModel.closeFullScreenView()
 
 //                    if (chatId == null) {
 //                        when (chatRepository.createTribe(it)) {

@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import chat.sphinx.common.components.tribe.CreateTribeView
 import chat.sphinx.common.components.tribe.JoinTribeView
 import chat.sphinx.common.components.tribe.TribeDetailView
 import chat.sphinx.common.components.tribe.TribeMembersView
@@ -308,7 +307,6 @@ fun DashboardSidebarUI(
             CreateInvoiceWindow(dashboardViewModel)
             PayInvoiceWindow(dashboardViewModel)
             TribeDetailWindow(dashboardViewModel)
-            CreateTribeWindow(dashboardViewModel)
             QRWindow(dashboardViewModel)
             TribeMembersWindow(dashboardViewModel)
             JoinTribeWindow(dashboardViewModel)
@@ -395,7 +393,7 @@ fun DashboardSidebarUI(
                             .padding(vertical = 4.dp),
                         textColor = MaterialTheme.colorScheme.tertiary,
                         callback = {
-                            dashboardViewModel.toggleCreateTribeWindow(true, null)
+                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.CreateTribeScreen(null))
                             isMenuExpanded = !isMenuExpanded
                         }
 
@@ -571,20 +569,6 @@ fun TribeDetailWindow(
     if (tribeWindowState.first) {
         tribeWindowState.second?.let { chatId ->
             TribeDetailView(dashboardViewModel, chatId)
-        }
-    }
-}
-
-@Composable
-fun CreateTribeWindow(
-    dashboardViewModel: DashboardViewModel
-) {
-    val createTribeWindowState by dashboardViewModel.createTribeStateFlow.collectAsState()
-    if (createTribeWindowState.first) {
-        if (createTribeWindowState.second != null) {
-            CreateTribeView(dashboardViewModel, createTribeWindowState.second)
-        } else {
-            CreateTribeView(dashboardViewModel, null)
         }
     }
 }

@@ -62,6 +62,7 @@ class DashboardViewModel(): WindowFocusListener {
         object Profile: FullScreenView()
         object Transactions: FullScreenView()
         data class ContactScreen (val screen: ContactScreenState?): FullScreenView()
+        data class CreateTribeScreen(val chatId: ChatId?): FullScreenView()
     }
 
     data class SplitScreenState(
@@ -245,17 +246,6 @@ class DashboardViewModel(): WindowFocusListener {
             }
         }
         _qrWindowStateFlow.value = Pair(open, null)
-    }
-
-    private val _createTribeStateFlow: MutableStateFlow<Pair<Boolean, ChatId?>> by lazy {
-        MutableStateFlow(Pair(false, null))
-    }
-
-    val createTribeStateFlow: StateFlow<Pair<Boolean, ChatId?>>
-        get() = _createTribeStateFlow.asStateFlow()
-
-    fun toggleCreateTribeWindow(open: Boolean, chatId: ChatId?) {
-        _createTribeStateFlow.value = Pair(open, chatId)
     }
 
     private val _joinTribeStateFlow: MutableStateFlow<Pair<Boolean, TribeJoinLink?>> by lazy {

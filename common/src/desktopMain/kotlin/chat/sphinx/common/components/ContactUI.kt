@@ -350,7 +350,7 @@ fun ContactForm(
                     text = "Nickname*",
                     fontSize = 12.sp,
                     fontFamily = Roboto,
-                    color = Color.Gray,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
                 )
                 BasicTextField(
                     value = viewModel.contactState.contactAlias,
@@ -360,7 +360,7 @@ fun ContactForm(
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                     textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
                     singleLine = true,
-                    cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.secondary)
+                    cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
 
                 )
                 Divider(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = Color.Gray)
@@ -373,7 +373,7 @@ fun ContactForm(
                     text = "Address*",
                     fontSize = 12.sp,
                     fontFamily = Roboto,
-                    color = Color.Gray,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
                 )
                 Row(
                     modifier = Modifier.height(32.dp),
@@ -389,7 +389,7 @@ fun ContactForm(
                         modifier = Modifier.weight(1f).padding(top = 8.dp),
                         textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
                         singleLine = true,
-                        cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.secondary)
+                        cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
                     )
                     if(editMode) {
                         IconButton(onClick = {
@@ -415,7 +415,7 @@ fun ContactForm(
                     text = "Route Hint",
                     fontSize = 12.sp,
                     fontFamily = Roboto,
-                    color = Color.Gray,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
                 )
                 BasicTextField(
                     value = viewModel.contactState.lightningRouteHint ?: "",
@@ -426,7 +426,7 @@ fun ContactForm(
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                     textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
                     singleLine = true,
-                    cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.secondary)
+                    cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
 
                 )
                 Divider(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = Color.Gray)
