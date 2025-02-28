@@ -37,137 +37,7 @@ import chat.sphinx.utils.toAnnotatedString
 import theme.primary_red
 
 @Composable
-fun QRDetail(
-    dashboardViewModel: DashboardViewModel,
-    viewModel: QRCodeViewModel
-) {
-    val density = LocalDensity.current
-    val clipboardManager: ClipboardManager = LocalClipboardManager.current
-    val isInvite = viewModel.contactQRCodeState.viewTitle.uppercase() == "INVITE CODE"
-
-    var isOpen by remember { mutableStateOf(true) }
-    if (isOpen) {
-        Window(
-            onCloseRequest = {
-                dashboardViewModel.closeFullScreenView()
-            },
-            title = "QR Code",
-            state = WindowState(
-                position = WindowPosition.Aligned(Alignment.Center),
-                size = getPreferredWindowSize(357, 550)
-            ),
-            resizable = false
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize()
-                    .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
-                    .clickable {
-                        clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
-                        viewModel.toast("Code copied to clipboard")
-                    }
-            ) {
-                if (isInvite) {
-                    Box(
-                        modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
-                    ) {
-                        CommonButton(
-                            text = "DELETE INVITE",
-                            enabled = true,
-                            customColor = primary_red,
-                            textButtonSize = 8.sp,
-                            fontWeight = FontWeight.W500,
-                            modifier = Modifier
-                                .width(84.dp)
-                                .height(36.dp),
-                            callback = {
-                            dashboardViewModel.deleteInvite(viewModel.contactQRCodeState.string)
-                            dashboardViewModel.closeFullScreenView()
-                            }
-                        )
-                    }
-                }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 38.dp),
-                    verticalArrangement = Arrangement.Top,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = viewModel.contactQRCodeState.viewTitle.uppercase(),
-                        fontFamily = SphinxFonts.montserratFamily,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(Modifier.height(24.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(end = 24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.TouchApp,
-                            contentDescription = "QR Code",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(30.dp)
-                        )
-
-                        Text(
-                            text = "CLICK TO COPY",
-                            fontFamily = SphinxFonts.montserratFamily,
-                            color = Color.Gray,
-                            fontSize = 10.sp
-                        )
-                    }
-
-                    Spacer(Modifier.height(18.dp))
-
-                    viewModel.contactQRCodeState.bitMatrix?.let { bitMatrix ->
-                        val width = bitMatrix.width
-                        val height = bitMatrix.height
-
-                        val widthDp = with(density) { width.toDp() }
-                        val heightDp = with(density) { height.toDp() }
-
-                        Box(modifier = Modifier.height(heightDp).width(widthDp)) {
-                            Canvas(modifier = Modifier.height(heightDp).width(widthDp)) {
-                                for (x in 0 until width) {
-                                    for (y in 0 until height) {
-                                        drawRect(
-                                            brush = SolidColor(if (bitMatrix.get(x, y)) Color.Black else Color.White),
-                                            topLeft = Offset(x.toFloat(), y.toFloat()),
-                                            size = Size(1f, 1f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(24.dp))
-
-                    Text(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
-                        text = viewModel.contactQRCodeState.string,
-                        maxLines = 2,
-                        fontFamily = SphinxFonts.montserratFamily,
-                        color = Color.Gray,
-                        fontSize = 11.sp,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            DesktopSphinxToast("QR Code")
-        }
-    }
-}
-
-@Composable
 fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeViewModel, preferredSize: DpSize) {
-    val density = LocalDensity.current
     val clipboardManager: ClipboardManager = LocalClipboardManager.current
     val isInvite = viewModel.contactQRCodeState.viewTitle.uppercase() == "INVITE CODE"
 
@@ -244,28 +114,29 @@ fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeView
                     Spacer(Modifier.height(18.dp))
 
                     viewModel.contactQRCodeState.bitMatrix?.let { bitMatrix ->
-                        val width = bitMatrix.width
-                        val height = bitMatrix.height
-
-                        val widthDp = with(density) { width.toDp() }
-                        val heightDp = with(density) { height.toDp() }
+                        val qrCodeSize = 200.dp // Fixed size to ensure proportion
 
                         Box(
                             modifier = Modifier
-                                .height(heightDp)
-                                .width(widthDp)
+                                .size(qrCodeSize)
                                 .clickable {
                                     clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
                                     viewModel.toast("Code copied to clipboard")
                                 }
                         ) {
-                            Canvas(modifier = Modifier.height(heightDp).width(widthDp)) {
-                                for (x in 0 until width) {
-                                    for (y in 0 until height) {
+                            Canvas(modifier = Modifier.size(qrCodeSize).clickable {
+                                clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
+                                viewModel.toast("Code copied to clipboard")
+                            }) {
+                                val scaleX = size.width / bitMatrix.width
+                                val scaleY = size.height / bitMatrix.height
+
+                                for (x in 0 until bitMatrix.width) {
+                                    for (y in 0 until bitMatrix.height) {
                                         drawRect(
                                             brush = SolidColor(if (bitMatrix.get(x, y)) Color.Black else Color.White),
-                                            topLeft = Offset(x.toFloat(), y.toFloat()),
-                                            size = Size(1f, 1f)
+                                            topLeft = Offset(x * scaleX, y * scaleY),
+                                            size = Size(scaleX, scaleY)
                                         )
                                     }
                                 }
@@ -278,7 +149,6 @@ fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeView
                     Text(
                         modifier = Modifier.fillMaxWidth().padding(20.dp),
                         text = viewModel.contactQRCodeState.string,
-                        maxLines = 2,
                         fontFamily = SphinxFonts.montserratFamily,
                         color = Color.Gray,
                         fontSize = 11.sp,
@@ -289,5 +159,4 @@ fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeView
         }
     }
 }
-
 

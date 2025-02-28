@@ -30,7 +30,6 @@ import androidx.compose.ui.window.WindowState
 import chat.sphinx.common.components.ImageLoadingView
 import chat.sphinx.common.components.PhotoFileImage
 import chat.sphinx.common.components.PhotoUrlImage
-import chat.sphinx.common.components.QRDetail
 import chat.sphinx.common.components.chat.KebabMenu
 import chat.sphinx.common.components.notifications.DesktopSphinxToast
 import chat.sphinx.common.state.ContentState

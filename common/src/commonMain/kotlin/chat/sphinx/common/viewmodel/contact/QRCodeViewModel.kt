@@ -79,7 +79,7 @@ class QRCodeViewModel(
     ) {
         scope.launch(dispatchers.mainImmediate) {
             sphinxNotificationManager.toast(
-                "QR Code",
+                "Sphinx",
                 message,
                 color.value,
                 delay

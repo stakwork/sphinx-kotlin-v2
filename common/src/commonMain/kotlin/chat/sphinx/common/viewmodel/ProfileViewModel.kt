@@ -234,7 +234,7 @@ class ProfileViewModel {
     ) {
         scope.launch(dispatchers.mainImmediate) {
             sphinxNotificationManager.toast(
-                "Profile",
+                "Sphinx",
                 message,
                 color.value,
                 delay
