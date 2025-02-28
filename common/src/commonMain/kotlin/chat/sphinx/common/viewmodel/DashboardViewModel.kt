@@ -11,6 +11,7 @@ import chat.sphinx.database.core.SphinxDatabaseQueries
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.features.repository.util.deleteAll
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
+import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
@@ -65,7 +66,14 @@ class DashboardViewModel(): WindowFocusListener {
         object PayInvoice : FullScreenView()
         data class ContactScreen(val screen: ContactScreenState?) : FullScreenView()
         data class CreateTribeScreen(val chatId: ChatId?) : FullScreenView()
-        data class QRDetail(val title: String?, val value: String?) : FullScreenView()
+        data class QRDetail(val title: String?, val value: String?): FullScreenView()
+
+        data class OwnerQRDetail(
+            val title: String?,
+            val value: String?,
+            val ownerAlias: String? = null,
+            val ownerPicture: PhotoUrl? = null
+        ): FullScreenView()
     }
     data class SplitScreenState(
         val isOpen: Boolean,
@@ -266,7 +274,12 @@ class DashboardViewModel(): WindowFocusListener {
     fun triggerOwnerQRCode() {
         val owner = accountOwnerStateFlow.value
         val nodeDescriptor = owner?.let { getNodeDescriptor(it) }
-        showFullScreenView(FullScreenView.QRDetail("PUBLIC KEY", nodeDescriptor?.value ?: ""))
+        showFullScreenView(FullScreenView.OwnerQRDetail(
+            "PUBLIC KEY",
+            nodeDescriptor?.value ?: "",
+            owner?.alias?.value,
+            owner?.photoUrl
+        ))
     }
 
     fun forceDisconnectMqtt() {

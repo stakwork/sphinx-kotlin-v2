@@ -41,9 +41,16 @@ fun FullScreenOverlay(
                 is DashboardViewModel.FullScreenView.PayInvoice -> getPreferredWindowSize(420, 520)
 
                 is DashboardViewModel.FullScreenView.QRDetail -> getPreferredWindowSize(357, 550)
+                is DashboardViewModel.FullScreenView.OwnerQRDetail -> getPreferredWindowSize(357, 550)
 
                 else -> getPreferredWindowSize(420, 830)
             }
+        }
+
+        val cardColor = if (fullScreenView is DashboardViewModel.FullScreenView.OwnerQRDetail) {
+            Color.Black.copy(0.60f)
+        } else {
+            MaterialTheme.colorScheme.background
         }
 
         Box(
@@ -71,7 +78,7 @@ fun FullScreenOverlay(
                 Card(
                     modifier = Modifier.size(preferredSize),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+                    colors = CardDefaults.cardColors(containerColor = cardColor),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)
                 ) {
                     when (fullScreenView) {
@@ -85,6 +92,17 @@ fun FullScreenOverlay(
                             if (fullScreenView.title != null && fullScreenView.value != null) {
                                 val qrCodeViewModel = QRCodeViewModel(fullScreenView.title, fullScreenView.value)
                                 QRDetailScreen(dashboardViewModel, qrCodeViewModel, preferredSize)
+                            }
+                        }
+                        is DashboardViewModel.FullScreenView.OwnerQRDetail -> {
+                            if (fullScreenView.title != null && fullScreenView.value != null) {
+                                val qrCodeViewModel = QRCodeViewModel(
+                                    fullScreenView.title,
+                                    fullScreenView.value,
+                                    fullScreenView.ownerAlias,
+                                    fullScreenView.ownerPicture
+                                )
+                                QRDetailProfileScreen(dashboardViewModel, qrCodeViewModel)
                             }
                         }
                         else -> {}
