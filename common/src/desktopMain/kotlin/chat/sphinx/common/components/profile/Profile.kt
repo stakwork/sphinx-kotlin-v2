@@ -342,7 +342,7 @@ fun BasicTab(viewModel: ProfileViewModel, dashboardViewModel: DashboardViewModel
                         cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.secondary)
                     )
                     IconButton(onClick = {
-                        dashboardViewModel.toggleQRWindow(true, "PUBLIC KEY", viewModel.profileState.nodeDescription)
+                        dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.QRDetail( "PUBLIC KEY", viewModel.profileState.nodeDescription))
                     }
                     ) {
                         Icon(

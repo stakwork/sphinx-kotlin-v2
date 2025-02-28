@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import chat.sphinx.common.components.profile.ProfileScreen
 import chat.sphinx.common.components.tribe.CreateTribeScreen
 import chat.sphinx.common.viewmodel.DashboardViewModel
+import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.utils.getPreferredWindowSize
 
 @Composable
@@ -34,7 +35,16 @@ fun FullScreenOverlay(
     onClose: () -> Unit
 ) {
     if (fullScreenView != DashboardViewModel.FullScreenView.None) {
-        val preferredSize = remember { getPreferredWindowSize(420, 830) }
+        val preferredSize = remember {
+            when (fullScreenView) {
+                is DashboardViewModel.FullScreenView.CreateInvoice,
+                is DashboardViewModel.FullScreenView.PayInvoice -> getPreferredWindowSize(420, 520)
+
+                is DashboardViewModel.FullScreenView.QRDetail -> getPreferredWindowSize(357, 550)
+
+                else -> getPreferredWindowSize(420, 830)
+            }
+        }
 
         Box(
             modifier = Modifier
@@ -69,6 +79,14 @@ fun FullScreenOverlay(
                         is DashboardViewModel.FullScreenView.Transactions -> TransactionsScreen(dashboardViewModel, preferredSize)
                         is DashboardViewModel.FullScreenView.ContactScreen -> AddContactScreen(dashboardViewModel, preferredSize)
                         is DashboardViewModel.FullScreenView.CreateTribeScreen -> CreateTribeScreen(dashboardViewModel, fullScreenView.chatId, preferredSize)
+                        is DashboardViewModel.FullScreenView.CreateInvoice -> CreateInvoiceScreen(dashboardViewModel, preferredSize)
+                        is DashboardViewModel.FullScreenView.PayInvoice -> PayInvoiceScreen(dashboardViewModel, preferredSize)
+                        is DashboardViewModel.FullScreenView.QRDetail -> {
+                            if (fullScreenView.title != null && fullScreenView.value != null) {
+                                val qrCodeViewModel = QRCodeViewModel(fullScreenView.title, fullScreenView.value)
+                                QRDetailScreen(dashboardViewModel, qrCodeViewModel, preferredSize)
+                            }
+                        }
                         else -> {}
                     }
                 }

@@ -58,13 +58,15 @@ class DashboardViewModel(): WindowFocusListener {
     }
 
     sealed class FullScreenView {
-        object None: FullScreenView()
-        object Profile: FullScreenView()
-        object Transactions: FullScreenView()
-        data class ContactScreen (val screen: ContactScreenState?): FullScreenView()
-        data class CreateTribeScreen(val chatId: ChatId?): FullScreenView()
+        object None : FullScreenView()
+        object Profile : FullScreenView()
+        object Transactions : FullScreenView()
+        object CreateInvoice : FullScreenView()
+        object PayInvoice : FullScreenView()
+        data class ContactScreen(val screen: ContactScreenState?) : FullScreenView()
+        data class CreateTribeScreen(val chatId: ChatId?) : FullScreenView()
+        data class QRDetail(val title: String?, val value: String?) : FullScreenView()
     }
-
     data class SplitScreenState(
         val isOpen: Boolean,
         val type: SplitContentType? = null
@@ -153,30 +155,8 @@ class DashboardViewModel(): WindowFocusListener {
         _contactScreenStateFlow.value = screen
     }
 
-    private val _payInvoiceWindowStateFlow: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(false)
-    }
-
-    private val _createInvoiceWindowStateFlow: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(false)
-    }
-
-    val payInvoiceWindowStateFlow: StateFlow<Boolean>
-        get() = _payInvoiceWindowStateFlow.asStateFlow()
-
-    val createInvoiceWindowStateFlow: StateFlow<Boolean>
-        get() = _createInvoiceWindowStateFlow.asStateFlow()
-
     val profileSetInfoRestoreStateFlow: StateFlow<Boolean?>
         get() = connectManagerRepository.profileSetInfoRestore.asStateFlow()
-
-    fun togglePayInvoiceWindow(open: Boolean) {
-        _payInvoiceWindowStateFlow.value = open
-    }
-
-    fun toggleCreateInvoiceWindow(open: Boolean) {
-        _createInvoiceWindowStateFlow.value = open
-    }
 
     fun setWebViewState(state: WebViewState) {
         webViewState.value = state
@@ -225,27 +205,6 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun toggleTribeMembersWindow(open: Boolean, chatId: ChatId?) {
         _tribeMembersStateFlow.value = Pair(open, chatId)
-    }
-
-    private val _qrWindowStateFlow: MutableStateFlow<Pair<Boolean, Pair<String, String>?>> by lazy {
-        MutableStateFlow(Pair(false, null))
-    }
-
-    val qrWindowStateFlow: StateFlow<Pair<Boolean, Pair<String, String>?>>
-        get() = _qrWindowStateFlow.asStateFlow()
-
-    fun toggleQRWindow(
-        open: Boolean,
-        title: String? = null,
-        value: String? = null
-    ) {
-        title?.let { nnTitle ->
-            value?.let { nnValue ->
-                _qrWindowStateFlow.value = Pair(open, Pair(nnTitle, nnValue))
-                return
-            }
-        }
-        _qrWindowStateFlow.value = Pair(open, null)
     }
 
     private val _joinTribeStateFlow: MutableStateFlow<Pair<Boolean, TribeJoinLink?>> by lazy {
@@ -307,7 +266,7 @@ class DashboardViewModel(): WindowFocusListener {
     fun triggerOwnerQRCode() {
         val owner = accountOwnerStateFlow.value
         val nodeDescriptor = owner?.let { getNodeDescriptor(it) }
-        toggleQRWindow(true, "PUBLIC KEY", nodeDescriptor?.value ?: "")
+        showFullScreenView(FullScreenView.QRDetail("PUBLIC KEY", nodeDescriptor?.value ?: ""))
     }
 
     fun forceDisconnectMqtt() {
@@ -415,7 +374,7 @@ class DashboardViewModel(): WindowFocusListener {
                 val invoiceAndHash = connectManagerRepository.createInvoice(requestPayment.amount, requestPayment.memo ?: "")
 
                 if (invoiceAndHash != null) {
-                    toggleQRWindow(true, "Payment Request", invoiceAndHash.first)
+                    showFullScreenView(FullScreenView.QRDetail("Payment Request", invoiceAndHash.first))
                     createInvoiceState = initialInvoiceState()
 
                 } else {
@@ -456,7 +415,7 @@ class DashboardViewModel(): WindowFocusListener {
                 lightningRepository.processLightningPaymentRequest(invoice, bolt11, callback = {
                     toast(it)
                 })
-                togglePayInvoiceWindow(false)
+                closeFullScreenView()
                 clearInvoice()
             } else {
                 toast("Unable to process payment", badge_red)

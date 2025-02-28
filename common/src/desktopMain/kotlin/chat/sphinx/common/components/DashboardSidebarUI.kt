@@ -304,10 +304,7 @@ fun DashboardSidebarUI(
             }
 
             AboutSphinxWindow(dashboardViewModel)
-            CreateInvoiceWindow(dashboardViewModel)
-            PayInvoiceWindow(dashboardViewModel)
             TribeDetailWindow(dashboardViewModel)
-            QRWindow(dashboardViewModel)
             TribeMembersWindow(dashboardViewModel)
             JoinTribeWindow(dashboardViewModel)
             WebAppWindow(dashboardViewModel, webAppViewModel)
@@ -342,12 +339,12 @@ fun DashboardSidebarUI(
                     })
                     // Request Payment Option
                     MenuItem(icon = Icons.Default.NorthEast, title = "Request Payment", clickAction = {
-                        dashboardViewModel.toggleCreateInvoiceWindow(true)
+                        dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.CreateInvoice)
                         isMenuExpanded = !isMenuExpanded
                     })
                     // Pay Invoice Option
                     MenuItem(icon = Icons.Default.SouthWest, title = "Pay Invoice", clickAction = {
-                        dashboardViewModel.togglePayInvoiceWindow(true)
+                        dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.PayInvoice)
                         isMenuExpanded = !isMenuExpanded
                     })
                     Spacer(modifier = Modifier.height(8.dp))
@@ -530,26 +527,6 @@ fun AboutSphinxWindow(
 }
 
 @Composable
-fun CreateInvoiceWindow(
-    dashboardViewModel: DashboardViewModel
-) {
-    val createInvoiceWindowState by dashboardViewModel.createInvoiceWindowStateFlow.collectAsState()
-    if (createInvoiceWindowState) {
-        CreateInvoiceWindowUI(dashboardViewModel)
-    }
-}
-
-@Composable
-fun PayInvoiceWindow(
-    dashboardViewModel: DashboardViewModel
-) {
-    val payInvoiceWindowState by dashboardViewModel.payInvoiceWindowStateFlow.collectAsState()
-    if (payInvoiceWindowState) {
-        PayInvoiceWindowUI(dashboardViewModel)
-    }
-}
-
-@Composable
 fun ConfirmationWindow(
     dashboardViewModel: DashboardViewModel
 ) {
@@ -581,19 +558,6 @@ fun TribeMembersWindow(
     if (tribeMembersWindowState.first) {
         tribeMembersWindowState.second?.let { chatId ->
             TribeMembersView(TribeMembersViewModel(chatId), dashboardViewModel)
-        }
-    }
-}
-
-
-@Composable
-fun QRWindow(
-    dashboardViewModel: DashboardViewModel
-) {
-    val qrWindowState by dashboardViewModel.qrWindowStateFlow.collectAsState()
-    if (qrWindowState.first) {
-        qrWindowState.second?.let { titleAndValue ->
-            QRDetail(dashboardViewModel, QRCodeViewModel(titleAndValue.first, titleAndValue.second))
         }
     }
 }

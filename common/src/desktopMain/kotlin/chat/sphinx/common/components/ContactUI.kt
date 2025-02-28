@@ -302,7 +302,6 @@ fun ContactForm(
 
     if ((viewModel as? EditContactViewModel)?.contactId != contactId) {
         (viewModel as? EditContactViewModel)?.loadContact(contactId)
-        dashboardViewModel.toggleQRWindow(false)
     }
 
     Box(
@@ -393,7 +392,7 @@ fun ContactForm(
                     )
                     if(editMode) {
                         IconButton(onClick = {
-                            dashboardViewModel.toggleQRWindow(true, "PUBLIC KEY", viewModel.getNodeDescriptor() ?: "")
+                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.QRDetail( "PUBLIC KEY", viewModel.getNodeDescriptor() ?: ""))
                         }
                         ) {
                             Icon(
