@@ -47,130 +47,102 @@ import utils.deduceMediaType
 
 @Composable
 actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatId) {
-
     val viewModel = TribeDetailViewModel(dashboardViewModel, chatId)
     val scope = rememberCoroutineScope()
 
-    Window(
-        onCloseRequest = {
-            dashboardViewModel.toggleTribeDetailWindow(false,  null)
-        },
-        title = "Tribe Detail",
-
-        state = WindowState(
-            position = WindowPosition.Aligned(Alignment.Center),
-            size = getPreferredWindowSize(420, 560)
-        ),
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.onSurfaceVariant)
+            .padding(24.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.onSurfaceVariant).padding(32.dp)
-        ) {
-            TopHeader(dashboardViewModel, viewModel, chatId)
+        TopHeader(dashboardViewModel, viewModel, chatId)
 
+        TribeTextField(
+            "Alias",
+            viewModel.tribeDetailState.userAlias
+        ) {
+            viewModel.onAliasTextChanged(it)
+        }
+
+        Box(
+            modifier = Modifier
+        ) {
             TribeTextField(
-                "Alias",
-                viewModel.tribeDetailState.userAlias
-            ) {
-                viewModel.onAliasTextChanged(it)
-            }
+                "Profile Picture",
+                viewModel.tribeDetailState.myPhotoUrl?.value ?: "",
+                Modifier.padding(end = 50.dp),
+                false
+            ) {}
             Box(
                 modifier = Modifier
-            ) {
-                TribeTextField(
-                    "Profile Picture",
-                    viewModel.tribeDetailState.myPhotoUrl?.value ?: "",
-                    Modifier.padding(end = 50.dp),
-                    false
-                ) {}
-                Box(
-                    modifier = Modifier
-                        .padding(top = 6.dp)
-                        .align(Alignment.TopEnd)
-                        .wrapContentSize()
-                ){
-                    val onImageClick = {
-                        scope.launch {
-                            ContentState.sendFilePickerDialog.awaitResult()?.let { path ->
-                                if (path.deduceMediaType().isImage) {
-                                    viewModel.onProfilePictureChanged(path)
-                                }
+                    .padding(top = 6.dp)
+                    .align(Alignment.TopEnd)
+                    .wrapContentSize()
+            ){
+                val onImageClick = {
+                    scope.launch {
+                        ContentState.sendFilePickerDialog.awaitResult()?.let { path ->
+                            if (path.deduceMediaType().isImage) {
+                                viewModel.onProfilePictureChanged(path)
                             }
                         }
                     }
+                }
 
-                    viewModel.tribeDetailState.myPhotoUrl?.let {
-                        PhotoUrlImage(
-                            photoUrl = it,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    onImageClick.invoke()
-                                }
-                        )
-                    }
-                    viewModel.tribeDetailState.userPicture?.let {
-                        PhotoFileImage(
-                            it.filePath,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    onImageClick.invoke()
-                                },
-                            effect = {}
-                        )
-                    }
+                viewModel.tribeDetailState.myPhotoUrl?.let {
+                    PhotoUrlImage(
+                        photoUrl = it,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                onImageClick.invoke()
+                            }
+                    )
+                }
+                viewModel.tribeDetailState.userPicture?.let {
+                    PhotoFileImage(
+                        it.filePath,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                onImageClick.invoke()
+                            },
+                        effect = {}
+                    )
                 }
             }
-//            Spacer(modifier = Modifier.height(16.dp))
-//            Row(verticalAlignment = Alignment.CenterVertically) {
-//                Text(
-//                    "Privacy Setting",
-//                    fontSize = 12.sp,
-//                    color = Color.Gray,
-//                    modifier = Modifier.padding(start = 10.dp)
-//                )
-//                IconButton(onClick = {}, modifier = Modifier.size(20.dp)) {
-//                    Icon(
-//                        Icons.Outlined.Help,
-//                        contentDescription = null,
-//                        tint = MaterialTheme.colorScheme.onBackground,
-//                        modifier = Modifier.size(12.dp)
-//                    )
-//                }
-//            }
-//            Spacer(modifier = Modifier.height(16.dp))
-//            Row(
-//                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-//                horizontalArrangement = Arrangement.SpaceBetween
-//            ) {
-//                Text("Select PIN", fontSize = 17.sp, color = MaterialTheme.colorScheme.tertiary)
-//                Tabs()
-//            }
         }
-        Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            verticalArrangement = Arrangement.Bottom,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ){
-            if (viewModel.tribeDetailState.updateResponse is LoadResponse.Loading) {
-                CircularProgressIndicator(
-                    Modifier.padding(20.dp).size(20.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
-                )
-            }
-            CommonButton(
-                enabled = viewModel.tribeDetailState.saveButtonEnable,
-                text = "SAVE",
-                callback = {
-                    viewModel.updateUserInfo()
-                }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Bottom,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (viewModel.tribeDetailState.updateResponse is LoadResponse.Loading) {
+            CircularProgressIndicator(
+                Modifier
+                    .padding(20.dp)
+                    .size(20.dp),
+                color = Color.White,
+                strokeWidth = 2.dp
             )
         }
-        DesktopSphinxToast("Tribe Detail")
+        CommonButton(
+            enabled = viewModel.tribeDetailState.saveButtonEnable,
+            text = "SAVE",
+            callback = {
+                viewModel.updateUserInfo()
+            }
+        )
     }
+
+    DesktopSphinxToast("Tribe Detail")
 }
 
 @Composable

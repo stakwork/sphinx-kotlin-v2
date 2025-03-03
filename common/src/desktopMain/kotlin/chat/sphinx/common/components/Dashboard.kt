@@ -39,6 +39,7 @@ import chat.sphinx.common.components.chat.MessagePinnedPopUp
 import chat.sphinx.common.components.menu.ChatAction
 import chat.sphinx.common.components.pin.PINScreen
 import chat.sphinx.common.components.tribe.NotificationLevel
+import chat.sphinx.common.components.tribe.TribeDetailView
 import chat.sphinx.common.models.DashboardChat
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
@@ -195,6 +196,9 @@ actual fun Dashboard(
                                                     AttachmentPreview(chatViewModel, Modifier.padding(innerPadding), true)
 
                                                 }
+                                            }
+                                            is DashboardViewModel.SplitContentType.TribeDetail -> {
+                                                TribeDetailView(dashboardViewModel, screen.chatId)
                                             }
                                             else -> {
                                                 Text("No content type selected or not handled.")
@@ -754,40 +758,42 @@ fun SplitTopBar(
                 .height(60.dp)
                 .fillMaxWidth()
                 .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+                .padding(start = if (splitType is DashboardViewModel.SplitContentType.TribeDetail) 12.dp else 0.dp)
         ) {
             val fromThreadsView = (splitType as? DashboardViewModel.SplitContentType.Thread)?.fromThreadsScreen ?: false
-            // Left Arrow Icon
-            IconButton(
-                onClick = {
-                    if (!fromThreadsView) {
-                        dashboardViewModel?.toggleSplitScreen(
-                            false,
-                            null
-                        )
-                    } else {
-                        dashboardViewModel?.toggleSplitScreen(
-                            true,
-                            chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it)}
-                        )
+
+            // Hide back button if it's TribeDetail
+            if (splitType !is DashboardViewModel.SplitContentType.TribeDetail) {
+                IconButton(
+                    onClick = {
+                        if (!fromThreadsView) {
+                            dashboardViewModel?.toggleSplitScreen(false, null)
+                        } else {
+                            dashboardViewModel?.toggleSplitScreen(
+                                true,
+                                chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) }
+                            )
+                        }
                     }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                    )
                 }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-                )
             }
 
-            val threadText = when (splitType) {
+            val titleText = when (splitType) {
                 is DashboardViewModel.SplitContentType.Threads -> "Threads List"
                 is DashboardViewModel.SplitContentType.Thread -> "Thread"
+                is DashboardViewModel.SplitContentType.TribeDetail -> "Tribe Info"
                 else -> ""
             }
 
             Text(
                 modifier = Modifier.padding(start = 8.dp),
-                text = threadText,
+                text = titleText,
                 fontFamily = Roboto,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.W700,
@@ -796,11 +802,11 @@ fun SplitTopBar(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Close Icon
             IconButton(
                 onClick = {
-                    dashboardViewModel?.toggleSplitScreen(false,
-                        chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
+                    dashboardViewModel?.toggleSplitScreen(false, chatViewModel?.chatId?.let {
+                        DashboardViewModel.SplitContentType.Threads(it)
+                    })
                 }
             ) {
                 Icon(
@@ -810,8 +816,8 @@ fun SplitTopBar(
                 )
             }
         }
+
         if (splitType is DashboardViewModel.SplitContentType.Thread) {
-            // Retrieve the thread header from the thread screen state.
             when (val messageListData = MessageListState.threadScreenState()) {
                 is MessageListData.PopulatedMessageListData -> {
                     val chatMessages = messageListData.messages

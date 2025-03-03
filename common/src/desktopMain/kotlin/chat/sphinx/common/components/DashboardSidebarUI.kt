@@ -304,7 +304,6 @@ fun DashboardSidebarUI(
             }
 
             AboutSphinxWindow(dashboardViewModel)
-            TribeDetailWindow(dashboardViewModel)
             TribeMembersWindow(dashboardViewModel)
             JoinTribeWindow(dashboardViewModel)
             WebAppWindow(dashboardViewModel, webAppViewModel)
@@ -538,17 +537,6 @@ fun ConfirmationWindow(
     }
 }
 
-@Composable
-fun TribeDetailWindow(
-    dashboardViewModel: DashboardViewModel
-) {
-    val tribeWindowState by dashboardViewModel.tribeDetailStateFlow.collectAsState()
-    if (tribeWindowState.first) {
-        tribeWindowState.second?.let { chatId ->
-            TribeDetailView(dashboardViewModel, chatId)
-        }
-    }
-}
 
 @Composable
 fun TribeMembersWindow(
