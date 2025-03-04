@@ -164,7 +164,7 @@ class JoinTribeViewModel(
                     tribeInfo.getEscrowAmountInSats(),
                     tribeInfo.getPriceToJoinInSats(),
                     )
-                dashboardViewModel.toggleJoinTribeWindow(false)
+                dashboardViewModel.closeFullScreenView()
             } else {
                  toast("There was an error joining the tribe. Please try again later", badge_red)
             }

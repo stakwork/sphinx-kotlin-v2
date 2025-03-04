@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
@@ -39,6 +38,8 @@ import chat.sphinx.common.components.chat.MessagePinnedPopUp
 import chat.sphinx.common.components.menu.ChatAction
 import chat.sphinx.common.components.pin.PINScreen
 import chat.sphinx.common.components.tribe.NotificationLevel
+import chat.sphinx.common.components.tribe.TribeDetailView
+import chat.sphinx.common.components.tribe.TribeMembersView
 import chat.sphinx.common.models.DashboardChat
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
@@ -48,6 +49,7 @@ import chat.sphinx.common.viewmodel.WebAppViewModel
 import chat.sphinx.common.viewmodel.chat.ChatContactViewModel
 import chat.sphinx.common.viewmodel.chat.ChatTribeViewModel
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
+import chat.sphinx.common.viewmodel.chat.TribeMembersViewModel
 import chat.sphinx.platform.imageResource
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
@@ -82,6 +84,7 @@ actual fun Dashboard(
 
     val webAppViewModel = remember { WebAppViewModel() }
     val splitScreenState by dashboardViewModel.splitScreenStateFlow.collectAsState()
+    val fullScreenViewState by dashboardViewModel.fullScreenViewStateFlow.collectAsState()
 
     when (DashboardScreenState.screenState()) {
         DashboardScreenType.Unlocked -> {
@@ -195,9 +198,17 @@ actual fun Dashboard(
 
                                                 }
                                             }
-                                            else -> {
-                                                Text("No content type selected or not handled.")
+                                            is DashboardViewModel.SplitContentType.TribeDetail -> {
+                                                TribeDetailView(dashboardViewModel, screen.chatId)
                                             }
+                                            is DashboardViewModel.SplitContentType.TribeMembers -> {
+                                                val tribeMemberViewModel = remember { TribeMembersViewModel(screen.chatId) }
+                                                TribeMembersView(tribeMemberViewModel, dashboardViewModel)
+                                            }
+                                            is DashboardViewModel.SplitContentType.EditContact -> {
+                                                ContactForm(dashboardViewModel, screen.contactId)
+                                            }
+                                            else -> {}
                                         }
                                     }
                                 }
@@ -284,6 +295,12 @@ actual fun Dashboard(
                 }
             }
 
+            FullScreenOverlay(
+                fullScreenView = fullScreenViewState,
+                dashboardViewModel = dashboardViewModel,
+                onClose = { dashboardViewModel.closeFullScreenView() }
+            )
+
             ImageFullScreen(fullScreenImageState)
 
             val restoreState by dashboardViewModel.restoreProgressStateFlow.collectAsState()
@@ -360,9 +377,9 @@ fun SphinxChatDetailTopAppBar(
                             text = chatName, fontSize = 16.sp, fontWeight = FontWeight.W700,
                             modifier = Modifier.clickable {
                                 if (dashboardChat.isTribe()) {
-                                    chatViewModel?.chatId?.let { dashboardViewModel?.toggleTribeDetailWindow(true, it) }
+                                    chatViewModel?.chatId?.let { dashboardViewModel?.toggleTribeDetailSplitScreen(true, it) }
                                 } else {
-                                    dashboardViewModel?.toggleContactWindow(true, ContactScreenState.EditContact(contactId))
+                                    dashboardViewModel?.toggleEditContactSplitScreen(true, contactId)
                                 }
                             }
                         )
@@ -747,40 +764,52 @@ fun SplitTopBar(
                 .height(60.dp)
                 .fillMaxWidth()
                 .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+                .padding(start = if (splitType is DashboardViewModel.SplitContentType.TribeDetail) 12.dp else 0.dp)
         ) {
-            val fromThreadsView = (splitType as? DashboardViewModel.SplitContentType.Thread)?.fromThreadsScreen ?: false
-            // Left Arrow Icon
-            IconButton(
-                onClick = {
-                    if (!fromThreadsView) {
-                        dashboardViewModel?.toggleSplitScreen(
-                            false,
-                            null
-                        )
-                    } else {
-                        dashboardViewModel?.toggleSplitScreen(
-                            true,
-                            chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it)}
-                        )
+
+            if (splitType !is DashboardViewModel.SplitContentType.TribeDetail) {
+                IconButton(
+                    onClick = {
+                        when (splitType) {
+                            is DashboardViewModel.SplitContentType.Thread -> {
+                                dashboardViewModel?.toggleSplitScreen(
+                                    true,
+                                    chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it)}
+                                )
+                            }
+
+                            is DashboardViewModel.SplitContentType.TribeMembers -> {
+                                dashboardViewModel?.toggleSplitScreen(
+                                    true,
+                                    DashboardViewModel.SplitContentType.TribeDetail(splitType.chatId)
+                                )
+                            }
+                            else -> {
+                                dashboardViewModel?.toggleSplitScreen(false, null)
+                            }
+                        }
                     }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                    )
                 }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
-                )
             }
 
-            val threadText = when (splitType) {
+            val titleText = when (splitType) {
                 is DashboardViewModel.SplitContentType.Threads -> "Threads List"
                 is DashboardViewModel.SplitContentType.Thread -> "Thread"
+                is DashboardViewModel.SplitContentType.TribeDetail -> "Tribe Info"
+                is DashboardViewModel.SplitContentType.TribeMembers -> "Tribe Members"
+                is DashboardViewModel.SplitContentType.EditContact -> "Contact Details"
                 else -> ""
             }
 
             Text(
                 modifier = Modifier.padding(start = 8.dp),
-                text = threadText,
+                text = titleText,
                 fontFamily = Roboto,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.W700,
@@ -789,22 +818,22 @@ fun SplitTopBar(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Close Icon
             IconButton(
                 onClick = {
-                    dashboardViewModel?.toggleSplitScreen(false,
-                        chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) })
+                    dashboardViewModel?.toggleSplitScreen(false, chatViewModel?.chatId?.let {
+                        DashboardViewModel.SplitContentType.Threads(it)
+                    })
                 }
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                 )
             }
         }
+
         if (splitType is DashboardViewModel.SplitContentType.Thread) {
-            // Retrieve the thread header from the thread screen state.
             when (val messageListData = MessageListState.threadScreenState()) {
                 is MessageListData.PopulatedMessageListData -> {
                     val chatMessages = messageListData.messages

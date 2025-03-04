@@ -10,6 +10,7 @@ import chat.sphinx.common.state.ContactQRCodeState
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.utils.toAnnotatedString
+import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.util.isValidBech32
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.common.BitMatrix
@@ -19,7 +20,9 @@ import theme.primary_green
 
 class QRCodeViewModel(
     private val title: String,
-    private var qrText: String
+    private var qrText: String,
+    private val ownerAlias: String? = null,
+    private val ownerPicture: PhotoUrl? = null
 ) {
 
     val scope = SphinxContainer.appModule.applicationScope
@@ -33,7 +36,12 @@ class QRCodeViewModel(
 
     var contactQRCodeState: ContactQRCodeState by mutableStateOf(initialState())
 
-    private fun initialState(): ContactQRCodeState = ContactQRCodeState(viewTitle = title, string = qrText)
+    private fun initialState(): ContactQRCodeState = ContactQRCodeState(
+        viewTitle = title,
+        string = qrText,
+        ownerAlias = ownerAlias,
+        ownerPicture = ownerPicture
+    )
 
     private inline fun setContactState(update: ContactQRCodeState.() -> ContactQRCodeState) {
         contactQRCodeState = contactQRCodeState.update()
@@ -79,7 +87,7 @@ class QRCodeViewModel(
     ) {
         scope.launch(dispatchers.mainImmediate) {
             sphinxNotificationManager.toast(
-                "QR Code",
+                "Sphinx",
                 message,
                 color.value,
                 delay

@@ -1143,7 +1143,7 @@ abstract class ChatViewModel(
                             selectListRowFor(dashboardChat)
                         }
                     } ?: run {
-                        dashboardViewModel.toggleJoinTribeWindow(true, it)
+                        dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.TribeJoin(it))
                     }
                 }
             }
@@ -1178,7 +1178,7 @@ abstract class ChatViewModel(
                         }
                     }
                 } ?: run {
-                    dashboardViewModel.toggleContactWindow(true, ContactScreenState.AlreadyOnSphinx(link))
+                    dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.ContactScreen(ContactScreenState.AlreadyOnSphinx(link)))
                 }
             }
         }

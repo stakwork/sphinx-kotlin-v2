@@ -80,7 +80,8 @@ fun ChatRow(
             .clickable {
                 if (dashboardChat is DashboardChat.Inactive.Invite) {
                     dashboardChat.invite.let { invite ->
-                        dashboardViewModel.toggleQRWindow(true, "INVITE CODE", invite.inviteString.value)
+                        dashboardViewModel.showFullScreenView(
+                            DashboardViewModel.FullScreenView.QRDetail("INVITE CODE", invite.inviteString.value))
                     }
                     return@clickable
                 }

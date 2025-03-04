@@ -11,8 +11,10 @@ import chat.sphinx.database.core.SphinxDatabaseQueries
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.features.repository.util.deleteAll
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
+import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
+import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.dashboard.toContactId
 import chat.sphinx.wrapper.eeemmddhmma
@@ -27,7 +29,6 @@ import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import theme.badge_red
-import theme.primary_red
 import java.awt.event.WindowEvent
 import java.awt.event.WindowFocusListener
 
@@ -53,11 +54,32 @@ class DashboardViewModel(): WindowFocusListener {
     }
 
     sealed class SplitContentType {
-        object Default : SplitContentType()
-        data class Threads(val chatId: ChatId) : SplitContentType()
-        data class Thread(val chatId: ChatId, val threadUUID: ThreadUUID, val fromThreadsScreen: Boolean) : SplitContentType()
+        object Default: SplitContentType()
+        data class Threads(val chatId: ChatId): SplitContentType()
+        data class Thread(val chatId: ChatId, val threadUUID: ThreadUUID, val fromThreadsScreen: Boolean): SplitContentType()
+        data class TribeDetail(val chatId: ChatId): SplitContentType()
+        data class TribeMembers(val chatId: ChatId): SplitContentType()
+        data class EditContact(val contactId: ContactId?): SplitContentType()
     }
 
+    sealed class FullScreenView {
+        object None : FullScreenView()
+        object Profile : FullScreenView()
+        object Transactions : FullScreenView()
+        object CreateInvoice : FullScreenView()
+        object PayInvoice : FullScreenView()
+        data class ContactScreen(val screen: ContactScreenState?) : FullScreenView()
+        data class CreateTribeScreen(val chatId: ChatId?) : FullScreenView()
+        data class QRDetail(val title: String?, val value: String?): FullScreenView()
+        data class TribeJoin(val tribeJoinLink: TribeJoinLink): FullScreenView()
+
+        data class OwnerQRDetail(
+            val title: String?,
+            val value: String?,
+            val ownerAlias: String? = null,
+            val ownerPicture: PhotoUrl? = null
+        ): FullScreenView()
+    }
     data class SplitScreenState(
         val isOpen: Boolean,
         val type: SplitContentType? = null
@@ -72,6 +94,25 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun toggleSplitScreen(isOpen: Boolean, type: SplitContentType? = null) {
         _splitScreenStateFlow.value = SplitScreenState(isOpen, type)
+    }
+
+    private val _fullScreenViewStateFlow: MutableStateFlow<FullScreenView> by lazy {
+        MutableStateFlow(FullScreenView.None)
+    }
+
+    val fullScreenViewStateFlow: StateFlow<FullScreenView>
+        get() = _fullScreenViewStateFlow.asStateFlow()
+
+    fun showFullScreenView(view: FullScreenView) {
+        _fullScreenViewStateFlow.value = view
+
+        if (view is FullScreenView.ContactScreen) {
+            setContactScreenState(view.screen)
+        }
+    }
+
+    fun closeFullScreenView() {
+        _fullScreenViewStateFlow.value = FullScreenView.None
     }
 
     private val webViewState: MutableStateFlow<WebViewState> by lazy {
@@ -116,43 +157,19 @@ class DashboardViewModel(): WindowFocusListener {
     val packageVersionAndUpgrade: StateFlow<Pair<String?, Boolean>>
         get() = _packageVersionAndUpgrade.asStateFlow()
 
-
-    private val _contactWindowStateFlow: MutableStateFlow<Pair<Boolean, ContactScreenState?>> by lazy {
-        MutableStateFlow(Pair(false, null))
+    private val _contactScreenStateFlow: MutableStateFlow<ContactScreenState?> by lazy {
+        MutableStateFlow(null)
     }
 
-    val contactWindowStateFlow: StateFlow<Pair<Boolean, ContactScreenState?>>
-        get() = _contactWindowStateFlow.asStateFlow()
+    val contactScreenStateFlow: StateFlow<ContactScreenState?>
+        get() = _contactScreenStateFlow.asStateFlow()
 
-
-    fun toggleContactWindow(open: Boolean, screen: ContactScreenState?) {
-        _contactWindowStateFlow.value = Pair(open, screen)
+    fun setContactScreenState(screen: ContactScreenState?) {
+        _contactScreenStateFlow.value = screen
     }
-
-    private val _payInvoiceWindowStateFlow: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(false)
-    }
-
-    private val _createInvoiceWindowStateFlow: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(false)
-    }
-
-    val payInvoiceWindowStateFlow: StateFlow<Boolean>
-        get() = _payInvoiceWindowStateFlow.asStateFlow()
-
-    val createInvoiceWindowStateFlow: StateFlow<Boolean>
-        get() = _createInvoiceWindowStateFlow.asStateFlow()
 
     val profileSetInfoRestoreStateFlow: StateFlow<Boolean?>
         get() = connectManagerRepository.profileSetInfoRestore.asStateFlow()
-
-    fun togglePayInvoiceWindow(open: Boolean) {
-        _payInvoiceWindowStateFlow.value = open
-    }
-
-    fun toggleCreateInvoiceWindow(open: Boolean) {
-        _createInvoiceWindowStateFlow.value = open
-    }
 
     fun setWebViewState(state: WebViewState) {
         webViewState.value = state
@@ -181,91 +198,28 @@ class DashboardViewModel(): WindowFocusListener {
         _aboutSphinxStateFlow.value = open
     }
 
-    private val _tribeDetailWindowStateFlow: MutableStateFlow<Pair<Boolean, ChatId?>> by lazy {
-        MutableStateFlow(Pair(false, null))
-    }
-
-    val tribeDetailStateFlow: StateFlow<Pair<Boolean, ChatId?>>
-        get() = _tribeDetailWindowStateFlow.asStateFlow()
-
-    fun toggleTribeDetailWindow(open: Boolean, chatId: ChatId?) {
-        _tribeDetailWindowStateFlow.value = Pair(open, chatId)
-    }
-
-    private val _tribeMembersStateFlow: MutableStateFlow<Pair<Boolean, ChatId?>> by lazy {
-        MutableStateFlow(Pair(false, null))
-    }
-
-    val tribeMembersStateFlow: StateFlow<Pair<Boolean, ChatId?>>
-        get() = _tribeMembersStateFlow.asStateFlow()
-
-    fun toggleTribeMembersWindow(open: Boolean, chatId: ChatId?) {
-        _tribeMembersStateFlow.value = Pair(open, chatId)
-    }
-
-    private val _qrWindowStateFlow: MutableStateFlow<Pair<Boolean, Pair<String, String>?>> by lazy {
-        MutableStateFlow(Pair(false, null))
-    }
-
-    val qrWindowStateFlow: StateFlow<Pair<Boolean, Pair<String, String>?>>
-        get() = _qrWindowStateFlow.asStateFlow()
-
-    fun toggleQRWindow(
-        open: Boolean,
-        title: String? = null,
-        value: String? = null
-    ) {
-        title?.let { nnTitle ->
-            value?.let { nnValue ->
-                _qrWindowStateFlow.value = Pair(open, Pair(nnTitle, nnValue))
-                return
-            }
+    fun toggleTribeDetailSplitScreen(open: Boolean, chatId: ChatId?) {
+        if (open && chatId != null) {
+            toggleSplitScreen(true, SplitContentType.TribeDetail(chatId))
+        } else {
+            toggleSplitScreen(false)
         }
-        _qrWindowStateFlow.value = Pair(open, null)
     }
 
-    private val _profileStateFlow: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(false)
+    fun toggleTribeMembersSplitScreen(open: Boolean, chatId: ChatId?) {
+        if (open && chatId != null) {
+            toggleSplitScreen(true, SplitContentType.TribeMembers(chatId))
+        } else {
+            toggleSplitScreen(false, null)
+        }
     }
 
-    val profileStateFlow: StateFlow<Boolean>
-        get() = _profileStateFlow.asStateFlow()
-
-    fun toggleProfileWindow(open: Boolean) {
-        _profileStateFlow.value = open
-    }
-
-    private val _transactionsStateFlow: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(false)
-    }
-
-    val transactionsStateFlow: StateFlow<Boolean>
-        get() = _transactionsStateFlow.asStateFlow()
-
-    fun toggleTransactionsWindow(open: Boolean) {
-        _transactionsStateFlow.value = open
-    }
-
-    private val _createTribeStateFlow: MutableStateFlow<Pair<Boolean, ChatId?>> by lazy {
-        MutableStateFlow(Pair(false, null))
-    }
-
-    val createTribeStateFlow: StateFlow<Pair<Boolean, ChatId?>>
-        get() = _createTribeStateFlow.asStateFlow()
-
-    fun toggleCreateTribeWindow(open: Boolean, chatId: ChatId?) {
-        _createTribeStateFlow.value = Pair(open, chatId)
-    }
-
-    private val _joinTribeStateFlow: MutableStateFlow<Pair<Boolean, TribeJoinLink?>> by lazy {
-        MutableStateFlow(Pair(false, null))
-    }
-
-    val joinTribeStateFlow: StateFlow<Pair<Boolean, TribeJoinLink?>>
-        get() = _joinTribeStateFlow.asStateFlow()
-
-    fun toggleJoinTribeWindow(open: Boolean, tribeJoinLink: TribeJoinLink? = null) {
-        _joinTribeStateFlow.value = Pair(open, tribeJoinLink)
+    fun toggleEditContactSplitScreen(open: Boolean, contactId: ContactId?){
+        if (open && contactId != null) {
+            toggleSplitScreen(true, SplitContentType.EditContact(contactId))
+        } else {
+            toggleSplitScreen(false, null)
+        }
     }
 
     private val _confirmationStateFlow: MutableStateFlow<Pair<Boolean, ConfirmationType?>> by lazy {
@@ -316,7 +270,12 @@ class DashboardViewModel(): WindowFocusListener {
     fun triggerOwnerQRCode() {
         val owner = accountOwnerStateFlow.value
         val nodeDescriptor = owner?.let { getNodeDescriptor(it) }
-        toggleQRWindow(true, "PUBLIC KEY", nodeDescriptor?.value ?: "")
+        showFullScreenView(FullScreenView.OwnerQRDetail(
+            "PUBLIC KEY",
+            nodeDescriptor?.value ?: "",
+            owner?.alias?.value,
+            owner?.photoUrl
+        ))
     }
 
     fun forceDisconnectMqtt() {
@@ -424,7 +383,7 @@ class DashboardViewModel(): WindowFocusListener {
                 val invoiceAndHash = connectManagerRepository.createInvoice(requestPayment.amount, requestPayment.memo ?: "")
 
                 if (invoiceAndHash != null) {
-                    toggleQRWindow(true, "Payment Request", invoiceAndHash.first)
+                    showFullScreenView(FullScreenView.QRDetail("Payment Request", invoiceAndHash.first))
                     createInvoiceState = initialInvoiceState()
 
                 } else {
@@ -465,7 +424,7 @@ class DashboardViewModel(): WindowFocusListener {
                 lightningRepository.processLightningPaymentRequest(invoice, bolt11, callback = {
                     toast(it)
                 })
-                togglePayInvoiceWindow(false)
+                closeFullScreenView()
                 clearInvoice()
             } else {
                 toast("Unable to process payment", badge_red)
@@ -583,7 +542,7 @@ class DashboardViewModel(): WindowFocusListener {
                 if (setProfileRestore == true) {
                     toast("Please enter your alias and an optional profile picture to finish setting up your Profile")
                     delay(2000L)
-                    toggleProfileWindow(open = true)
+                    showFullScreenView(FullScreenView.Profile)
                 }
             }
         }

@@ -24,22 +24,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.WindowState
-import chat.sphinx.common.components.ImageLoadingView
 import chat.sphinx.common.components.PhotoFileImage
 import chat.sphinx.common.components.PhotoUrlImage
-import chat.sphinx.common.components.QRDetail
 import chat.sphinx.common.components.chat.KebabMenu
 import chat.sphinx.common.components.notifications.DesktopSphinxToast
 import chat.sphinx.common.state.ContentState
-import chat.sphinx.common.state.fullScreenImageState
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.chat.TribeDetailViewModel
-import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.response.LoadResponse
-import chat.sphinx.utils.getPreferredWindowSize
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.message.media.isImage
 import kotlinx.coroutines.launch
@@ -48,130 +40,102 @@ import utils.deduceMediaType
 
 @Composable
 actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatId) {
-
     val viewModel = TribeDetailViewModel(dashboardViewModel, chatId)
     val scope = rememberCoroutineScope()
 
-    Window(
-        onCloseRequest = {
-            dashboardViewModel.toggleTribeDetailWindow(false,  null)
-        },
-        title = "Tribe Detail",
-
-        state = WindowState(
-            position = WindowPosition.Aligned(Alignment.Center),
-            size = getPreferredWindowSize(420, 560)
-        ),
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.onSurfaceVariant)
+            .padding(24.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.onSurfaceVariant).padding(32.dp)
-        ) {
-            TopHeader(dashboardViewModel, viewModel, chatId)
+        TopHeader(dashboardViewModel, viewModel, chatId)
 
+        TribeTextField(
+            "Alias",
+            viewModel.tribeDetailState.userAlias
+        ) {
+            viewModel.onAliasTextChanged(it)
+        }
+
+        Box(
+            modifier = Modifier
+        ) {
             TribeTextField(
-                "Alias",
-                viewModel.tribeDetailState.userAlias
-            ) {
-                viewModel.onAliasTextChanged(it)
-            }
+                "Profile Picture",
+                viewModel.tribeDetailState.myPhotoUrl?.value ?: "",
+                Modifier.padding(end = 50.dp),
+                false
+            ) {}
             Box(
                 modifier = Modifier
-            ) {
-                TribeTextField(
-                    "Profile Picture",
-                    viewModel.tribeDetailState.myPhotoUrl?.value ?: "",
-                    Modifier.padding(end = 50.dp),
-                    false
-                ) {}
-                Box(
-                    modifier = Modifier
-                        .padding(top = 6.dp)
-                        .align(Alignment.TopEnd)
-                        .wrapContentSize()
-                ){
-                    val onImageClick = {
-                        scope.launch {
-                            ContentState.sendFilePickerDialog.awaitResult()?.let { path ->
-                                if (path.deduceMediaType().isImage) {
-                                    viewModel.onProfilePictureChanged(path)
-                                }
+                    .padding(top = 6.dp)
+                    .align(Alignment.TopEnd)
+                    .wrapContentSize()
+            ){
+                val onImageClick = {
+                    scope.launch {
+                        ContentState.sendFilePickerDialog.awaitResult()?.let { path ->
+                            if (path.deduceMediaType().isImage) {
+                                viewModel.onProfilePictureChanged(path)
                             }
                         }
                     }
+                }
 
-                    viewModel.tribeDetailState.myPhotoUrl?.let {
-                        PhotoUrlImage(
-                            photoUrl = it,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    onImageClick.invoke()
-                                }
-                        )
-                    }
-                    viewModel.tribeDetailState.userPicture?.let {
-                        PhotoFileImage(
-                            it.filePath,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    onImageClick.invoke()
-                                },
-                            effect = {}
-                        )
-                    }
+                viewModel.tribeDetailState.myPhotoUrl?.let {
+                    PhotoUrlImage(
+                        photoUrl = it,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                onImageClick.invoke()
+                            }
+                    )
+                }
+                viewModel.tribeDetailState.userPicture?.let {
+                    PhotoFileImage(
+                        it.filePath,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                onImageClick.invoke()
+                            },
+                        effect = {}
+                    )
                 }
             }
-//            Spacer(modifier = Modifier.height(16.dp))
-//            Row(verticalAlignment = Alignment.CenterVertically) {
-//                Text(
-//                    "Privacy Setting",
-//                    fontSize = 12.sp,
-//                    color = Color.Gray,
-//                    modifier = Modifier.padding(start = 10.dp)
-//                )
-//                IconButton(onClick = {}, modifier = Modifier.size(20.dp)) {
-//                    Icon(
-//                        Icons.Outlined.Help,
-//                        contentDescription = null,
-//                        tint = MaterialTheme.colorScheme.onBackground,
-//                        modifier = Modifier.size(12.dp)
-//                    )
-//                }
-//            }
-//            Spacer(modifier = Modifier.height(16.dp))
-//            Row(
-//                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-//                horizontalArrangement = Arrangement.SpaceBetween
-//            ) {
-//                Text("Select PIN", fontSize = 17.sp, color = MaterialTheme.colorScheme.tertiary)
-//                Tabs()
-//            }
         }
-        Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            verticalArrangement = Arrangement.Bottom,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ){
-            if (viewModel.tribeDetailState.updateResponse is LoadResponse.Loading) {
-                CircularProgressIndicator(
-                    Modifier.padding(20.dp).size(20.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
-                )
-            }
-            CommonButton(
-                enabled = viewModel.tribeDetailState.saveButtonEnable,
-                text = "SAVE",
-                callback = {
-                    viewModel.updateUserInfo()
-                }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Bottom,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (viewModel.tribeDetailState.updateResponse is LoadResponse.Loading) {
+            CircularProgressIndicator(
+                Modifier
+                    .padding(20.dp)
+                    .size(20.dp),
+                color = Color.White,
+                strokeWidth = 2.dp
             )
         }
-        DesktopSphinxToast("Tribe Detail")
+        CommonButton(
+            enabled = viewModel.tribeDetailState.saveButtonEnable,
+            text = "SAVE",
+            callback = {
+                viewModel.updateUserInfo()
+            }
+        )
     }
+
+    DesktopSphinxToast("Tribe Detail")
 }
 
 @Composable
@@ -258,7 +222,7 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
                         onClick = {
                             showOptionMenu.value = false
-                            dashboardViewModel.toggleQRWindow(true, "TRIBE JOIN LINK", viewModel.tribeDetailState.shareTribeUrl)
+                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.QRDetail( "TRIBE JOIN LINK", viewModel.tribeDetailState.shareTribeUrl))
                         }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -278,8 +242,8 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
                         onClick = {
                             showOptionMenu.value = false
-                            dashboardViewModel.toggleTribeDetailWindow(false, null)
-                            dashboardViewModel.toggleCreateTribeWindow(true, chatId)
+                            dashboardViewModel.toggleTribeDetailSplitScreen(false, null)
+                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.CreateTribeScreen(chatId))
                         }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -298,8 +262,8 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         onClick = {
                             // TODO members V2
                             showOptionMenu.value = false
-                            dashboardViewModel.toggleTribeDetailWindow(false, null)
-                            dashboardViewModel.toggleTribeMembersWindow(true, chatId)
+                            dashboardViewModel.toggleTribeDetailSplitScreen(false, null)
+                            dashboardViewModel.toggleTribeMembersSplitScreen(true, chatId)
                         }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

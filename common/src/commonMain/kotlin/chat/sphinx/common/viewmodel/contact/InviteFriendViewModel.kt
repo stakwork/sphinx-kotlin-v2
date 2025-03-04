@@ -87,7 +87,7 @@ class InviteFriendViewModel(
                 sats = amount
             )
 
-            dashboardViewModel.toggleContactWindow(false, null)
+            dashboardViewModel.closeFullScreenView()
         }
     }
 
@@ -122,7 +122,7 @@ class InviteFriendViewModel(
     ) {
         scope.launch(dispatchers.mainImmediate) {
             sphinxNotificationManager.toast(
-                "Add New Friend",
+                "Sphinx",
                 message,
                 color.value,
                 delay

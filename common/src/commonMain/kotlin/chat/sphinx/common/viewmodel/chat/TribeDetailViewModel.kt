@@ -170,7 +170,7 @@ class TribeDetailViewModel(
 
     private fun updateFinished(response: Response<ChatDto, ResponseError>) {
         if (response is Response.Success) {
-            dashboardViewModel.toggleTribeDetailWindow(false, null)
+            dashboardViewModel.toggleTribeDetailSplitScreen(false, null)
         } else if (response is Response.Error) {
             loadTribeDetail()
         }
@@ -186,7 +186,7 @@ class TribeDetailViewModel(
                 }
 
                 chatRepository.exitAndDeleteTribe(chat)
-                dashboardViewModel.toggleTribeDetailWindow(false, null)
+                dashboardViewModel.toggleTribeDetailSplitScreen(false, null)
 
                 ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
             }
