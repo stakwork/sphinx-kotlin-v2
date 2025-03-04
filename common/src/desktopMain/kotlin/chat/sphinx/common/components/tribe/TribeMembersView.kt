@@ -44,120 +44,109 @@ fun TribeMembersView(
     tribeMembersViewModel: TribeMembersViewModel,
     dashboardViewModel: DashboardViewModel
 ) {
-    var isOpen by remember { mutableStateOf(true) }
     val tribeMembersListState = rememberLazyListState()
     val pendingTribeMembersListState = rememberLazyListState()
     val viewState = tribeMembersViewModel.tribeMembersViewState
 
-    if (isOpen) {
-        Window(
-            onCloseRequest = { dashboardViewModel.toggleTribeMembersWindow(false, null) },
-            title = "Tribe Members",
-            state = WindowState(
-                position = WindowPosition.Aligned(Alignment.Center),
-                size = getPreferredWindowSize(420, 700)
-            )
-        ) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        if (viewState.tribeMembersList.isEmpty() && viewState.pendingTribeMembersList.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                if (viewState.tribeMembersList.isEmpty() && viewState.pendingTribeMembersList.isEmpty()) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (viewState.pendingTribeMembersList.isNotEmpty()) {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(horizontal = 24.dp, vertical = 12.dp)
                     ) {
-                        CircularProgressIndicator()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "PENDING TRIBE MEMBERS",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.W500,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = "${viewState.pendingTribeMembersList.size}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.W500,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
                     }
-                } else {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        if (viewState.pendingTribeMembersList.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "PENDING TRIBE MEMBERS",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.W500,
-                                        color = MaterialTheme.colorScheme.onBackground
-                                    )
-                                    Text(
-                                        text = "${viewState.pendingTribeMembersList.size}",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.W500,
-                                        color = MaterialTheme.colorScheme.onBackground
-                                    )
-                                }
-                            }
 
-                            LazyColumn(
-                                state = pendingTribeMembersListState,
-                                contentPadding = PaddingValues(vertical = 8.dp)
-                            ) {
-                                items(viewState.pendingTribeMembersList.size) { index ->
-                                    viewState.pendingTribeMembersList[index].let { pendingMember ->
-                                        PendingMemberRow(pendingMember, tribeMembersViewModel)
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 24.dp, vertical = 12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "TRIBE MEMBERS",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.W500,
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                                Text(
-                                    text = "${viewState.tribeMembersList.size}",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.W500,
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
+                    LazyColumn(
+                        state = pendingTribeMembersListState,
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        items(viewState.pendingTribeMembersList.size) { index ->
+                            viewState.pendingTribeMembersList[index].let { pendingMember ->
+                                PendingMemberRow(pendingMember, tribeMembersViewModel)
                             }
                         }
+                    }
 
-                        LazyColumn(
-                            state = tribeMembersListState,
-                            contentPadding = PaddingValues(vertical = 8.dp)
-                        ) {
-                            items(viewState.tribeMembersList.size) { index ->
-                                viewState.tribeMembersList[index].let { tribeMember ->
-                                    TribeMemberRow(tribeMember, dashboardViewModel, tribeMembersViewModel)
-                                }
-                            }
-                            if (viewState.loadingMore) {
-                                item { LoadingRow() }
-                            }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "TRIBE MEMBERS",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.W500,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Text(
+                            text = "${viewState.tribeMembersList.size}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.W500,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+
+                LazyColumn(
+                    state = tribeMembersListState,
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(viewState.tribeMembersList.size) { index ->
+                        viewState.tribeMembersList[index].let { tribeMember ->
+                            TribeMemberRow(tribeMember, dashboardViewModel, tribeMembersViewModel)
                         }
+                    }
+                    if (viewState.loadingMore) {
+                        item { LoadingRow() }
                     }
                 }
             }
         }
     }
 }
+
 @Composable
 fun TribeMemberRow(
     tribeMember: TribeMember,

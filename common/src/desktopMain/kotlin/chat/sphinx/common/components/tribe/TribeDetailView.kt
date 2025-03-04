@@ -24,21 +24,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.WindowState
-import chat.sphinx.common.components.ImageLoadingView
 import chat.sphinx.common.components.PhotoFileImage
 import chat.sphinx.common.components.PhotoUrlImage
 import chat.sphinx.common.components.chat.KebabMenu
 import chat.sphinx.common.components.notifications.DesktopSphinxToast
 import chat.sphinx.common.state.ContentState
-import chat.sphinx.common.state.fullScreenImageState
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.chat.TribeDetailViewModel
-import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.response.LoadResponse
-import chat.sphinx.utils.getPreferredWindowSize
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.message.media.isImage
 import kotlinx.coroutines.launch
@@ -249,7 +242,7 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
                         onClick = {
                             showOptionMenu.value = false
-                            dashboardViewModel.toggleTribeDetailWindow(false, null)
+                            dashboardViewModel.toggleTribeDetailSplitScreen(false, null)
                             dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.CreateTribeScreen(chatId))
                         }
                     ) {
@@ -269,8 +262,8 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         onClick = {
                             // TODO members V2
                             showOptionMenu.value = false
-                            dashboardViewModel.toggleTribeDetailWindow(false, null)
-                            dashboardViewModel.toggleTribeMembersWindow(true, chatId)
+                            dashboardViewModel.toggleTribeDetailSplitScreen(false, null)
+                            dashboardViewModel.toggleTribeMembersSplitScreen(true, chatId)
                         }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

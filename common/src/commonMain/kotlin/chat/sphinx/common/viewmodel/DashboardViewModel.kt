@@ -57,6 +57,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class Threads(val chatId: ChatId): SplitContentType()
         data class Thread(val chatId: ChatId, val threadUUID: ThreadUUID, val fromThreadsScreen: Boolean): SplitContentType()
         data class TribeDetail(val chatId: ChatId): SplitContentType()
+        data class TribeMembers(val chatId: ChatId): SplitContentType()
     }
 
     sealed class FullScreenView {
@@ -194,7 +195,7 @@ class DashboardViewModel(): WindowFocusListener {
         _aboutSphinxStateFlow.value = open
     }
 
-    fun toggleTribeDetailWindow(open: Boolean, chatId: ChatId?) {
+    fun toggleTribeDetailSplitScreen(open: Boolean, chatId: ChatId?) {
         if (open && chatId != null) {
             toggleSplitScreen(true, SplitContentType.TribeDetail(chatId))
         } else {
@@ -202,15 +203,12 @@ class DashboardViewModel(): WindowFocusListener {
         }
     }
 
-    private val _tribeMembersStateFlow: MutableStateFlow<Pair<Boolean, ChatId?>> by lazy {
-        MutableStateFlow(Pair(false, null))
-    }
-
-    val tribeMembersStateFlow: StateFlow<Pair<Boolean, ChatId?>>
-        get() = _tribeMembersStateFlow.asStateFlow()
-
-    fun toggleTribeMembersWindow(open: Boolean, chatId: ChatId?) {
-        _tribeMembersStateFlow.value = Pair(open, chatId)
+    fun toggleTribeMembersSplitScreen(open: Boolean, chatId: ChatId?) {
+        if (open) {
+            toggleSplitScreen(true, SplitContentType.TribeMembers(chatId ?: return))
+        } else {
+            toggleSplitScreen(false, null)
+        }
     }
 
     private val _joinTribeStateFlow: MutableStateFlow<Pair<Boolean, TribeJoinLink?>> by lazy {

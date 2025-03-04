@@ -115,7 +115,7 @@ fun ConfirmationUI(
                                         confirmationType.alias,
                                         confirmationType.chatId
                                     )
-                                    dashboardViewModel.toggleTribeMembersWindow(false, null)
+                                    dashboardViewModel.toggleTribeMembersSplitScreen(false, null)
                                 }
                                 is ConfirmationType.ContactDelete -> {
                                     dashboardViewModel.deleteSelectedContact()
