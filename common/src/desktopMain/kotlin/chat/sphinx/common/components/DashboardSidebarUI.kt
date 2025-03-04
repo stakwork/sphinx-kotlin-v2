@@ -27,15 +27,11 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import chat.sphinx.common.components.tribe.JoinTribeView
-import chat.sphinx.common.components.tribe.TribeDetailView
-import chat.sphinx.common.components.tribe.TribeMembersView
+import chat.sphinx.common.components.tribe.JoinTribeScreen
 import chat.sphinx.common.state.AuthorizeViewState
 import chat.sphinx.common.state.ContactScreenState
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.WebAppViewModel
-import chat.sphinx.common.viewmodel.chat.TribeMembersViewModel
-import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.common.viewmodel.dashboard.ChatListViewModel
 import chat.sphinx.concepts.repository.connect_manager.model.NetworkStatus
 import chat.sphinx.utils.SphinxFonts
@@ -304,7 +300,6 @@ fun DashboardSidebarUI(
             }
 
             AboutSphinxWindow(dashboardViewModel)
-            JoinTribeWindow(dashboardViewModel)
             WebAppWindow(dashboardViewModel, webAppViewModel)
             AuthorizeWindow(webAppViewModel)
             ConfirmationWindow(dashboardViewModel)
@@ -532,18 +527,6 @@ fun ConfirmationWindow(
     if (confirmationState.first) {
         confirmationState.second?.let { confirmationType ->
             ConfirmationUI(dashboardViewModel, confirmationType)
-        }
-    }
-}
-
-@Composable
-fun JoinTribeWindow(
-    dashboardViewModel: DashboardViewModel
-) {
-    val joinTribeWindowState by dashboardViewModel.joinTribeStateFlow.collectAsState()
-    if (joinTribeWindowState.first) {
-        joinTribeWindowState.second?.let { joinTribeLink ->
-            JoinTribeView(dashboardViewModel, joinTribeLink)
         }
     }
 }

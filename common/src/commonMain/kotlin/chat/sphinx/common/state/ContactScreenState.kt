@@ -9,8 +9,4 @@ sealed class ContactScreenState {
     data class AlreadyOnSphinx(
         val pubKey: LightningNodeDescriptor? = null
     ) : ContactScreenState()
-    data class EditContact(
-        val contactId: ContactId? = null
-    ) : ContactScreenState()
-
 }

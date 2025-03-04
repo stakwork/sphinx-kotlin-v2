@@ -60,7 +60,6 @@ fun AddContactScreen(dashboardViewModel: DashboardViewModel, preferredSize: DpSi
                 is ContactScreenState.Choose -> AddContact(dashboardViewModel)
                 is ContactScreenState.NewToSphinx -> AddNewContactOnSphinx(dashboardViewModel)
                 is ContactScreenState.AlreadyOnSphinx -> ContactForm(dashboardViewModel, null, screenState.pubKey)
-                is ContactScreenState.EditContact -> ContactForm(dashboardViewModel, screenState.contactId)
                 else -> {}
             }
 

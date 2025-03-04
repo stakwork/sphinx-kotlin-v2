@@ -14,6 +14,7 @@ import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
+import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.dashboard.toContactId
 import chat.sphinx.wrapper.eeemmddhmma
@@ -58,6 +59,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class Thread(val chatId: ChatId, val threadUUID: ThreadUUID, val fromThreadsScreen: Boolean): SplitContentType()
         data class TribeDetail(val chatId: ChatId): SplitContentType()
         data class TribeMembers(val chatId: ChatId): SplitContentType()
+        data class EditContact(val contactId: ContactId?): SplitContentType()
     }
 
     sealed class FullScreenView {
@@ -69,6 +71,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class ContactScreen(val screen: ContactScreenState?) : FullScreenView()
         data class CreateTribeScreen(val chatId: ChatId?) : FullScreenView()
         data class QRDetail(val title: String?, val value: String?): FullScreenView()
+        data class TribeJoin(val tribeJoinLink: TribeJoinLink): FullScreenView()
 
         data class OwnerQRDetail(
             val title: String?,
@@ -204,22 +207,19 @@ class DashboardViewModel(): WindowFocusListener {
     }
 
     fun toggleTribeMembersSplitScreen(open: Boolean, chatId: ChatId?) {
-        if (open) {
-            toggleSplitScreen(true, SplitContentType.TribeMembers(chatId ?: return))
+        if (open && chatId != null) {
+            toggleSplitScreen(true, SplitContentType.TribeMembers(chatId))
         } else {
             toggleSplitScreen(false, null)
         }
     }
 
-    private val _joinTribeStateFlow: MutableStateFlow<Pair<Boolean, TribeJoinLink?>> by lazy {
-        MutableStateFlow(Pair(false, null))
-    }
-
-    val joinTribeStateFlow: StateFlow<Pair<Boolean, TribeJoinLink?>>
-        get() = _joinTribeStateFlow.asStateFlow()
-
-    fun toggleJoinTribeWindow(open: Boolean, tribeJoinLink: TribeJoinLink? = null) {
-        _joinTribeStateFlow.value = Pair(open, tribeJoinLink)
+    fun toggleEditContactSplitScreen(open: Boolean, contactId: ContactId?){
+        if (open && contactId != null) {
+            toggleSplitScreen(true, SplitContentType.EditContact(contactId))
+        } else {
+            toggleSplitScreen(false, null)
+        }
     }
 
     private val _confirmationStateFlow: MutableStateFlow<Pair<Boolean, ConfirmationType?>> by lazy {

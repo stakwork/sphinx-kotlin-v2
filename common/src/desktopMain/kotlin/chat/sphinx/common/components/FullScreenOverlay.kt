@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.components.profile.ProfileScreen
 import chat.sphinx.common.components.tribe.CreateTribeScreen
+import chat.sphinx.common.components.tribe.JoinTribeScreen
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.utils.getPreferredWindowSize
@@ -39,10 +40,9 @@ fun FullScreenOverlay(
             when (fullScreenView) {
                 is DashboardViewModel.FullScreenView.CreateInvoice,
                 is DashboardViewModel.FullScreenView.PayInvoice -> getPreferredWindowSize(420, 520)
-
                 is DashboardViewModel.FullScreenView.QRDetail -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.OwnerQRDetail -> getPreferredWindowSize(357, 550)
-
+                is DashboardViewModel.FullScreenView.TribeJoin -> getPreferredWindowSize(400, 800)
                 else -> getPreferredWindowSize(420, 830)
             }
         }
@@ -104,6 +104,9 @@ fun FullScreenOverlay(
                                 )
                                 QRDetailProfileScreen(dashboardViewModel, qrCodeViewModel)
                             }
+                        }
+                        is DashboardViewModel.FullScreenView.TribeJoin -> {
+                            JoinTribeScreen(dashboardViewModel, fullScreenView.tribeJoinLink, preferredSize)
                         }
                         else -> {}
                     }

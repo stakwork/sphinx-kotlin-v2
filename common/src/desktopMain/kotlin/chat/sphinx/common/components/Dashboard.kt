@@ -205,6 +205,9 @@ actual fun Dashboard(
                                                 val tribeMemberViewModel = remember { TribeMembersViewModel(screen.chatId) }
                                                 TribeMembersView(tribeMemberViewModel, dashboardViewModel)
                                             }
+                                            is DashboardViewModel.SplitContentType.EditContact -> {
+                                                ContactForm(dashboardViewModel, screen.contactId)
+                                            }
                                             else -> {}
                                         }
                                     }
@@ -376,7 +379,7 @@ fun SphinxChatDetailTopAppBar(
                                 if (dashboardChat.isTribe()) {
                                     chatViewModel?.chatId?.let { dashboardViewModel?.toggleTribeDetailSplitScreen(true, it) }
                                 } else {
-                                    dashboardViewModel?.showFullScreenView(DashboardViewModel.FullScreenView.ContactScreen(ContactScreenState.EditContact(contactId)))
+                                    dashboardViewModel?.toggleEditContactSplitScreen(true, contactId)
                                 }
                             }
                         )
@@ -800,6 +803,7 @@ fun SplitTopBar(
                 is DashboardViewModel.SplitContentType.Thread -> "Thread"
                 is DashboardViewModel.SplitContentType.TribeDetail -> "Tribe Info"
                 is DashboardViewModel.SplitContentType.TribeMembers -> "Tribe Members"
+                is DashboardViewModel.SplitContentType.EditContact -> "Contact Details"
                 else -> ""
             }
 

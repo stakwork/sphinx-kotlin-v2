@@ -1143,7 +1143,7 @@ abstract class ChatViewModel(
                             selectListRowFor(dashboardChat)
                         }
                     } ?: run {
-                        dashboardViewModel.toggleJoinTribeWindow(true, it)
+                        dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.TribeJoin(it))
                     }
                 }
             }
