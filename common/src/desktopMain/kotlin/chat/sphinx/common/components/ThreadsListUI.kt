@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import chat.sphinx.common.chatMesssageUI.BoostedFooter
+import chat.sphinx.common.chatMesssageUI.ChatOptionMenu
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.models.ThreadItem
 import chat.sphinx.common.viewmodel.DashboardViewModel
@@ -285,6 +287,7 @@ fun OverlappedAvatars(
         }
     }
 }
+
 @Composable
 fun ThreadHeaderUI(
     chatMessage: ChatMessage,
@@ -298,7 +301,7 @@ fun ThreadHeaderUI(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically // Center elements vertically
         ) {
             PhotoUrlImage(
                 photoUrl = chatMessage.contact?.photoUrl?.thumbnailUrl ?: chatMessage.message.senderPic?.thumbnailUrl,
@@ -312,7 +315,7 @@ fun ThreadHeaderUI(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = chatMessage.replyToMessageSenderAliasPreview,
@@ -337,6 +340,12 @@ fun ThreadHeaderUI(
                 }
 
                 Spacer(modifier = Modifier.height(2.dp))
+            }
+
+            // Three dots menu on the right
+            if (chatViewModel != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                ChatOptionMenu(chatMessage, chatViewModel)
             }
         }
 
@@ -398,6 +407,12 @@ fun ThreadHeaderUI(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        BoostedFooter(
+            chatMessage,
+            modifier = Modifier.fillMaxWidth(),
+            isThreadHeader = true
+        )
 
         Divider(
             modifier = Modifier.fillMaxWidth(),

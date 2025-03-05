@@ -53,7 +53,6 @@ import kotlinx.coroutines.launch
 import okio.Path
 import theme.badge_red
 import theme.primary_green
-import theme.primary_red
 import utils.deduceMediaType
 import utils.getRandomColorRes
 import java.io.IOException
@@ -305,7 +304,9 @@ abstract class ChatViewModel(
                         message,
                         colors,
                         accountOwner = { owner },
-                        boostMessage = {},
+                        boostMessage = {
+                            boostMessage(chat, message.uuid)
+                        },
                         flagMessage = {},
                         deleteMessage = {},
                         isSeparator = true,
@@ -614,18 +615,29 @@ abstract class ChatViewModel(
             val thread = threadUUID?.toThreadUUID()
 
             if (chat != null) {
-                messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread).distinctUntilChanged().collect { messages ->
-                    val originalMessage = messageRepository.getMessageByUUID(MessageUUID(thread?.value!!)).firstOrNull()
-                    val completeThread = listOf(originalMessage) + messages.reversed()
+                messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread)
+                    .collectLatest { messages ->
 
-                    processChatMessages(chat, completeThread.filterNotNull().toList(), true)
+                        val originalMessageUUID = thread?.value?.let { MessageUUID(it) }
 
-                    dashboardViewModel.toggleSplitScreen(true, DashboardViewModel.SplitContentType.Thread(
-                        chat.id,
-                        thread,
-                        fromThreadsScreen
-                    ))
-                }
+                        val originalMessageFlow = originalMessageUUID?.let { uuid ->
+                            messageRepository.getMessageByUUID(uuid).distinctUntilChanged()
+                        }
+
+                        val originalMessage = originalMessageFlow?.firstOrNull()
+
+                        val completeThread = listOf(originalMessage) + messages.reversed()
+
+                        processChatMessages(chat, completeThread.filterNotNull().toList(), true)
+
+                        dashboardViewModel.toggleSplitScreen(
+                            true, DashboardViewModel.SplitContentType.Thread(
+                                chat.id,
+                                thread!!,
+                                fromThreadsScreen
+                            )
+                        )
+                    }
             }
         }
     }

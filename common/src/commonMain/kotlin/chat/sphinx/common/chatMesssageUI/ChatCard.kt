@@ -165,12 +165,14 @@ fun ChatCard(
                             )
                         }
 
-                        BoostedFooter(
-                            chatMessage,
-                            modifier = Modifier.width(
-                                maxOf(rowWidth, 200.dp)
-                            ).padding(12.dp, 0.dp, 12.dp, 12.dp)
-                        )
+                        if (!isThread) {
+                            BoostedFooter(
+                                chatMessage,
+                                modifier = Modifier.width(
+                                    maxOf(rowWidth, 200.dp)
+                                ).padding(12.dp, 0.dp, 12.dp, 12.dp)
+                            )
+                        }
 
                         LinkPreviews(chatMessage, chatViewModel, uriHandler)
 
