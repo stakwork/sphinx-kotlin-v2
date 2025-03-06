@@ -40,7 +40,7 @@ import utils.deduceMediaType
 
 @Composable
 actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatId) {
-    val viewModel = TribeDetailViewModel(dashboardViewModel, chatId)
+    val viewModel = remember { TribeDetailViewModel(dashboardViewModel, chatId) }
     val scope = rememberCoroutineScope()
 
     Column(
