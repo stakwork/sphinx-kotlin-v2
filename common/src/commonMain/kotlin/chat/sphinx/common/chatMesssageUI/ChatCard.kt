@@ -207,6 +207,7 @@ fun MessageTextLabel(
     val topPadding = if (chatMessage.message.isPaidTextMessage && chatMessage.isSent) 44.dp else 12.dp
     val messageText = chatMessage.message.retrieveTextToShow()?.trim() ?: ""
     val isThreadHeader = chatMessage.isThreadHeader
+    val isTribeLink = SphinxLinkify.gatherLinks(text = messageText, mask = SphinxLinkify.TRIBE_LINK).isNotEmpty()
 
     if (messageText.isNotEmpty()) {
         val annotatedString = buildAnnotatedString {
@@ -237,7 +238,7 @@ fun MessageTextLabel(
             modifier = Modifier
                 .padding(12.dp, topPadding, 12.dp, 12.dp)
                 .wrapContentWidth(if (chatMessage.isSent) Alignment.End else Alignment.Start)
-                .then(if (isThreadHeader) Modifier.width(316.dp) else Modifier),
+                .then(if (isThreadHeader || isTribeLink) Modifier.width(316.dp) else Modifier),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ClickableText(
@@ -314,11 +315,7 @@ fun LinkPreviews(
             }
             is ChatMessage.LinkPreview.TribeLinkPreview -> {
                 (linkPreview.value as? ChatMessage.LinkPreview.TribeLinkPreview)?.let { tribeLinkPreview ->
-                    if (tribeLinkPreview.showBanner) {
-                        NewTribePreview(chatMessage, tribeLinkPreview, chatViewModel)
-                    } else {
-                        ExistingTribePreview(tribeLinkPreview, chatViewModel)
-                    }
+                    NewTribePreview(chatMessage, tribeLinkPreview, chatViewModel)
                 }
             }
             is ChatMessage.LinkPreview.HttpUrlPreview -> {
