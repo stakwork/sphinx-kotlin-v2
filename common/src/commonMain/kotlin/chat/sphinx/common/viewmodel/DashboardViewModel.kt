@@ -59,7 +59,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class Thread(val chatId: ChatId, val threadUUID: ThreadUUID, val fromThreadsScreen: Boolean): SplitContentType()
         data class TribeDetail(val chatId: ChatId): SplitContentType()
         data class TribeMembers(val chatId: ChatId): SplitContentType()
-        data class EditContact(val contactId: ContactId?): SplitContentType()
+        data class ContactDetails(val contactId: ContactId?): SplitContentType()
     }
 
     sealed class FullScreenView {
@@ -216,7 +216,7 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun toggleEditContactSplitScreen(open: Boolean, contactId: ContactId?){
         if (open && contactId != null) {
-            toggleSplitScreen(true, SplitContentType.EditContact(contactId))
+            toggleSplitScreen(true, SplitContentType.ContactDetails(contactId))
         } else {
             toggleSplitScreen(false, null)
         }

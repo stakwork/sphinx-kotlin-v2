@@ -205,7 +205,7 @@ actual fun Dashboard(
                                                 val tribeMemberViewModel = remember { TribeMembersViewModel(screen.chatId) }
                                                 TribeMembersView(tribeMemberViewModel, dashboardViewModel)
                                             }
-                                            is DashboardViewModel.SplitContentType.EditContact -> {
+                                            is DashboardViewModel.SplitContentType.ContactDetails -> {
                                                 ContactForm(dashboardViewModel, screen.contactId)
                                             }
                                             else -> {}
@@ -803,7 +803,7 @@ fun SplitTopBar(
                 is DashboardViewModel.SplitContentType.Thread -> "Thread"
                 is DashboardViewModel.SplitContentType.TribeDetail -> "Tribe Info"
                 is DashboardViewModel.SplitContentType.TribeMembers -> "Tribe Members"
-                is DashboardViewModel.SplitContentType.EditContact -> "Contact Details"
+                is DashboardViewModel.SplitContentType.ContactDetails -> "Contact Details"
                 else -> ""
             }
 

@@ -8,7 +8,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -304,96 +306,86 @@ fun ContactForm(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
             .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start
         ) {
             if (editMode) {
-                Box(modifier = Modifier.align(Alignment.Start).wrapContentSize()) {
-                    CommonButton(
-                        text = "DELETE CONTACT",
-                        enabled = true,
-                        customColor = primary_red,
-                        textButtonSize = 10.sp,
-                        fontWeight = FontWeight.W500,
-                        modifier = Modifier
-                            .width(110.dp)
-                            .height(42.dp),
-                        callback = {
-                            dashboardViewModel.toggleConfirmationWindow(open = true, ConfirmationType.ContactDelete)
-                            dashboardViewModel.closeFullScreenView()
-                        }
-                    )
-                }
-
                 Column(
-                    modifier = Modifier.fillMaxWidth().height(112.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     PhotoUrlImage(
                         photoUrl = viewModel.contactState.photoUrl,
-                        modifier = Modifier.size(96.dp).clip(CircleShape)
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(CircleShape)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = viewModel.contactState.contactAlias,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = Roboto,
+                        color = Color.White,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
                 }
             }
+
             Spacer(modifier = Modifier.height(18.dp))
 
-            Column {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "Nickname*",
+                    text = "Connected since",
                     fontSize = 12.sp,
                     fontFamily = Roboto,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
                 )
-                BasicTextField(
-                    value = viewModel.contactState.contactAlias,
-                    onValueChange = {
-                        viewModel.onNicknameTextChanged(it)
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
-                    singleLine = true,
-                    cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
-
-                )
-                Divider(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = Color.Gray)
             }
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            Column {
-                Text(
-                    text = "Address*",
-                    fontSize = 12.sp,
-                    fontFamily = Roboto,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                )
+            // Address Section Centered with QR Code
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 Row(
-                    modifier = Modifier.height(32.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    BasicTextField(
-                        value = viewModel.contactState.lightningNodePubKey,
-                        onValueChange = {
-                            viewModel.onAddressTextChanged(it)
-                        },
-                        enabled = !editMode,
-                        modifier = Modifier.weight(1f).padding(top = 8.dp),
-                        textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
-                        singleLine = true,
-                        cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
+                    Text(
+                        text = viewModel.contactState.lightningNodePubKey,
+                        fontSize = 12.sp,
+                        fontFamily = Roboto,
+                        maxLines = 1,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
                     )
-                    if(editMode) {
+                    if (editMode) {
                         IconButton(onClick = {
-                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.QRDetail( "PUBLIC KEY", viewModel.getNodeDescriptor() ?: ""))
-                        }
-                        ) {
+                            dashboardViewModel.showFullScreenView(
+                                DashboardViewModel.FullScreenView.QRDetail(
+                                    "PUBLIC KEY",
+                                    viewModel.getNodeDescriptor() ?: ""
+                                )
+                            )
+                        }) {
                             Icon(
                                 Icons.Default.QrCode,
                                 contentDescription = "",
@@ -403,70 +395,44 @@ fun ContactForm(
                         }
                     }
                 }
-                Divider(modifier = Modifier.padding(top = 4.dp), color = Color.Gray)
             }
+            Divider(
+                modifier = Modifier.padding(top = 4.dp),
+                color = Color.Black.copy(0.60f)
+            )
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
                     text = "Route Hint",
                     fontSize = 12.sp,
                     fontFamily = Roboto,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(end = 8.dp)
                 )
-                BasicTextField(
-                    value = viewModel.contactState.lightningRouteHint ?: "",
-                    onValueChange = {
-                        viewModel.onRouteHintTextChanged(it)
-                    },
-                    enabled = !editMode,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
-                    singleLine = true,
-                    cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
-
+                Text(
+                    text = viewModel.contactState.lightningRouteHint ?: "",
+                    fontSize = 12.sp,
+                    fontFamily = Roboto,
+                    maxLines = 1,
+                    color = Color.White,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.weight(1f)
                 )
-                Divider(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = Color.Gray)
             }
+            Divider(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp),
+                color = Color.Black.copy(0.60f)
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
-
-//            Column {
-//                Row(verticalAlignment = Alignment.CenterVertically) {
-//                    Text(
-//                        text = "Privacy Settings",
-//                        fontSize = 12.sp,
-//                        fontFamily = Roboto,
-//                        color = Color.Gray,
-//                    )
-//                    Icon(
-//                        Icons.Default.HelpOutline,
-//                        contentDescription = "Privacy Settings",
-//                        tint = Color.Gray,
-//                        modifier = Modifier.size(20.dp).padding(start = 4.dp)
-//                    )
-//                }
-//                Spacer(modifier = Modifier.height(4.dp))
-//
-//                Row(
-//                    verticalAlignment = Alignment.CenterVertically,
-//                    horizontalArrangement = Arrangement.SpaceBetween,
-//                    modifier = Modifier.fillMaxWidth()
-//                ) {
-//                    Text(
-//                        text = "Standard PIN / Privacy PIN",
-//                        fontSize = 18.sp,
-//                        fontFamily = Roboto,
-//                        color = Color.LightGray,
-//                    )
-//                    Switch(
-//                        checked = switchState.value,
-//                        onCheckedChange = { switchState.value = it },
-//                        enabled = false
-//                    )
-//                }
-//            }
 
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -474,7 +440,9 @@ fun ContactForm(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    Modifier.fillMaxWidth().height(40.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     if (viewModel.contactState.status is Response.Error) {
@@ -487,20 +455,32 @@ fun ContactForm(
                     }
                     if (viewModel.contactState.status is LoadResponse.Loading) {
                         CircularProgressIndicator(
-                            Modifier.padding(start = 8.dp).size(24.dp),
+                            Modifier
+                                .padding(start = 8.dp)
+                                .size(24.dp),
                             color = Color.White,
                             strokeWidth = 2.dp
                         )
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                CommonButton(
-                    enabled = viewModel.contactState.saveButtonEnabled,
-                    text = if (editMode) {
-                        "SAVE"}
-                    else {"SAVE TO CONTACTS"},
+
+                CommonMenuButton(
+                    text = "Remove Contact",
+                    enabled = true,
+                    customColor = primary_red.copy(0.20f),
+                    startIcon = Icons.Outlined.Delete,
+                    iconColor = primary_red,
+                    textButtonSize = 13.sp,
+                    fontWeight = FontWeight.W500,
+                    textColor = primary_red,
+                    centerContent = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(42.dp),
                     callback = {
-                        viewModel.saveContact()
+                        dashboardViewModel.toggleConfirmationWindow(open = true, ConfirmationType.ContactDelete)
+                        dashboardViewModel.closeFullScreenView()
                     }
                 )
             }
@@ -511,4 +491,3 @@ fun ContactForm(
         dashboardViewModel.closeFullScreenView()
     }
 }
-
