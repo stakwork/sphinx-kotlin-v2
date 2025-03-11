@@ -376,12 +376,10 @@ fun ContactForm(
                     )
                     if (editMode) {
                         IconButton(onClick = {
-                            dashboardViewModel.toggleSplitScreen(
-                                isOpen = true,
-                                type = DashboardViewModel.SplitContentType.QRDetail(
-                                    title = "Public Key",
-                                    value = viewModel.getNodeDescriptor() ?: ""
-                                )
+                            dashboardViewModel.toggleQRDetailSplitScreen(
+                                open = true,
+                                title = "Public Key",
+                                value = viewModel.getNodeDescriptor() ?: ""
                             )
                         }) {
                             Icon(

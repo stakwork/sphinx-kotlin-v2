@@ -778,6 +778,14 @@ fun SplitTopBar(
                 IconButton(
                     onClick = {
                         when (splitType) {
+                            is DashboardViewModel.SplitContentType.QRDetail -> {
+                                if (dashboardViewModel?.previousSplitType != null) {
+                                    dashboardViewModel.toggleSplitScreen(true, dashboardViewModel.previousSplitType)
+                                    dashboardViewModel.previousSplitType = null
+                                } else {
+                                    dashboardViewModel?.toggleSplitScreen(false, null)
+                                }
+                            }
                             is DashboardViewModel.SplitContentType.Thread -> {
                                 dashboardViewModel?.toggleSplitScreen(
                                     true,

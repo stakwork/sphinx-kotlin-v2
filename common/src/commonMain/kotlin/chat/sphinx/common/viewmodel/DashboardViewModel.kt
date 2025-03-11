@@ -223,8 +223,14 @@ class DashboardViewModel(): WindowFocusListener {
         }
     }
 
+    var previousSplitType: SplitContentType? = null
+
     fun toggleQRDetailSplitScreen(open: Boolean, title: String, value: String) {
         if (open) {
+            val currentType = _splitScreenStateFlow.value.type
+            if (currentType is SplitContentType.TribeDetail || currentType is SplitContentType.ContactDetails) {
+                previousSplitType = currentType
+            }
             toggleSplitScreen(true, SplitContentType.QRDetail(title, value))
         } else {
             toggleSplitScreen(false, null)
