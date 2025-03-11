@@ -347,7 +347,7 @@ fun ContactForm(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Connected since",
+                    text = "Connected since ${viewModel.contactState.createdAt}",
                     fontSize = 12.sp,
                     fontFamily = Roboto,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,

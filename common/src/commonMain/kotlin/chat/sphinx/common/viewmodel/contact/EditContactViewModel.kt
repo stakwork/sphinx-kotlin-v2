@@ -10,7 +10,9 @@ import chat.sphinx.response.ResponseError
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.ContactAlias
 import chat.sphinx.wrapper.dashboard.ContactId
+import chat.sphinx.wrapper.fullDateFormat
 import chat.sphinx.wrapper.lightning.toLightningRouteHint
+import chat.sphinx.wrapper.timeAgo
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +57,7 @@ class EditContactViewModel : ContactViewModel() {
                             lightningNodePubKey = contact.nodePubKey?.value ?: "",
                             lightningRouteHint = contact.routeHint?.value ?: "",
                             photoUrl = contact.photoUrl,
+                            createdAt = contact.createdAt.fullDateFormat()
                         )
                     }
                 }
