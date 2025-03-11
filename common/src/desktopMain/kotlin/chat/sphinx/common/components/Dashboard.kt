@@ -50,6 +50,7 @@ import chat.sphinx.common.viewmodel.chat.ChatContactViewModel
 import chat.sphinx.common.viewmodel.chat.ChatTribeViewModel
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.common.viewmodel.chat.TribeMembersViewModel
+import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.platform.imageResource
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
@@ -207,6 +208,10 @@ actual fun Dashboard(
                                             }
                                             is DashboardViewModel.SplitContentType.ContactDetails -> {
                                                 ContactForm(dashboardViewModel, screen.contactId)
+                                            }
+                                            is DashboardViewModel.SplitContentType.QRDetail -> {
+                                                val qrCodeViewModel = QRCodeViewModel(screen.title, screen.value)
+                                                QRDetailSplitScreen(dashboardViewModel, qrCodeViewModel)
                                             }
                                             else -> {}
                                         }
@@ -764,10 +769,12 @@ fun SplitTopBar(
                 .height(60.dp)
                 .fillMaxWidth()
                 .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
-                .padding(start = if (splitType is DashboardViewModel.SplitContentType.TribeDetail) 12.dp else 0.dp)
+                .padding(start = if (splitType is DashboardViewModel.SplitContentType.TribeDetail ||
+                    splitType is DashboardViewModel.SplitContentType.ContactDetails) 12.dp else 0.dp)
         ) {
 
-            if (splitType !is DashboardViewModel.SplitContentType.TribeDetail) {
+            if (splitType !is DashboardViewModel.SplitContentType.TribeDetail &&
+                splitType !is DashboardViewModel.SplitContentType.ContactDetails) {
                 IconButton(
                     onClick = {
                         when (splitType) {
@@ -804,6 +811,7 @@ fun SplitTopBar(
                 is DashboardViewModel.SplitContentType.TribeDetail -> "Tribe Info"
                 is DashboardViewModel.SplitContentType.TribeMembers -> "Tribe Members"
                 is DashboardViewModel.SplitContentType.ContactDetails -> "Contact Details"
+                is DashboardViewModel.SplitContentType.QRDetail -> splitType.title
                 else -> ""
             }
 

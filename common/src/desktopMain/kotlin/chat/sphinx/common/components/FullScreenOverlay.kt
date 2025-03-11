@@ -40,7 +40,7 @@ fun FullScreenOverlay(
             when (fullScreenView) {
                 is DashboardViewModel.FullScreenView.CreateInvoice,
                 is DashboardViewModel.FullScreenView.PayInvoice -> getPreferredWindowSize(420, 520)
-                is DashboardViewModel.FullScreenView.QRDetail -> getPreferredWindowSize(357, 550)
+                is DashboardViewModel.FullScreenView.QRDetailFullScreen -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.OwnerQRDetail -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.TribeJoin -> getPreferredWindowSize(400, 800)
                 else -> getPreferredWindowSize(420, 830)
@@ -88,7 +88,7 @@ fun FullScreenOverlay(
                         is DashboardViewModel.FullScreenView.CreateTribeScreen -> CreateTribeScreen(dashboardViewModel, fullScreenView.chatId, preferredSize)
                         is DashboardViewModel.FullScreenView.CreateInvoice -> CreateInvoiceScreen(dashboardViewModel, preferredSize)
                         is DashboardViewModel.FullScreenView.PayInvoice -> PayInvoiceScreen(dashboardViewModel, preferredSize)
-                        is DashboardViewModel.FullScreenView.QRDetail -> {
+                        is DashboardViewModel.FullScreenView.QRDetailFullScreen -> {
                             if (fullScreenView.title != null && fullScreenView.value != null) {
                                 val qrCodeViewModel = QRCodeViewModel(fullScreenView.title, fullScreenView.value)
                                 QRDetailScreen(dashboardViewModel, qrCodeViewModel, preferredSize)

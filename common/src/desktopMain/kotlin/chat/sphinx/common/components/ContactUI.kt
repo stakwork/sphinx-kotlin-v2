@@ -5,10 +5,8 @@ import Roboto
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.runtime.*
@@ -16,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -379,10 +376,11 @@ fun ContactForm(
                     )
                     if (editMode) {
                         IconButton(onClick = {
-                            dashboardViewModel.showFullScreenView(
-                                DashboardViewModel.FullScreenView.QRDetail(
-                                    "PUBLIC KEY",
-                                    viewModel.getNodeDescriptor() ?: ""
+                            dashboardViewModel.toggleSplitScreen(
+                                isOpen = true,
+                                type = DashboardViewModel.SplitContentType.QRDetail(
+                                    title = "Public Key",
+                                    value = viewModel.getNodeDescriptor() ?: ""
                                 )
                             )
                         }) {

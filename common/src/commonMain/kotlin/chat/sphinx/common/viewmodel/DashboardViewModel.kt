@@ -60,6 +60,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class TribeDetail(val chatId: ChatId): SplitContentType()
         data class TribeMembers(val chatId: ChatId): SplitContentType()
         data class ContactDetails(val contactId: ContactId?): SplitContentType()
+        data class QRDetail(val title: String, val value: String) : SplitContentType()
     }
 
     sealed class FullScreenView {
@@ -70,7 +71,7 @@ class DashboardViewModel(): WindowFocusListener {
         object PayInvoice : FullScreenView()
         data class ContactScreen(val screen: ContactScreenState?) : FullScreenView()
         data class CreateTribeScreen(val chatId: ChatId?) : FullScreenView()
-        data class QRDetail(val title: String?, val value: String?): FullScreenView()
+        data class QRDetailFullScreen(val title: String?, val value: String?): FullScreenView()
         data class TribeJoin(val tribeJoinLink: TribeJoinLink): FullScreenView()
 
         data class OwnerQRDetail(
@@ -217,6 +218,14 @@ class DashboardViewModel(): WindowFocusListener {
     fun toggleEditContactSplitScreen(open: Boolean, contactId: ContactId?){
         if (open && contactId != null) {
             toggleSplitScreen(true, SplitContentType.ContactDetails(contactId))
+        } else {
+            toggleSplitScreen(false, null)
+        }
+    }
+
+    fun toggleQRDetailSplitScreen(open: Boolean, title: String, value: String) {
+        if (open) {
+            toggleSplitScreen(true, SplitContentType.QRDetail(title, value))
         } else {
             toggleSplitScreen(false, null)
         }
@@ -383,7 +392,7 @@ class DashboardViewModel(): WindowFocusListener {
                 val invoiceAndHash = connectManagerRepository.createInvoice(requestPayment.amount, requestPayment.memo ?: "")
 
                 if (invoiceAndHash != null) {
-                    showFullScreenView(FullScreenView.QRDetail("Payment Request", invoiceAndHash.first))
+                    showFullScreenView(FullScreenView.QRDetailFullScreen("Payment Request", invoiceAndHash.first))
                     createInvoiceState = initialInvoiceState()
 
                 } else {

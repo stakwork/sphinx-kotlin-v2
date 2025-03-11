@@ -69,10 +69,10 @@ fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeView
                                 text = "DELETE INVITE",
                                 enabled = true,
                                 customColor = primary_red,
-                                textButtonSize = 12.sp,
+                                textButtonSize = 10.sp,
                                 fontWeight = FontWeight.W500,
                                 modifier = Modifier
-                                    .width(120.dp)
+                                    .width(80.dp)
                                     .height(40.dp),
                                 callback = {
                                     dashboardViewModel.deleteInvite(viewModel.contactQRCodeState.string)
@@ -296,118 +296,85 @@ fun QRDetailProfileScreen(
     }
 }
 
+@Composable
+fun QRDetailSplitScreen(
+    dashboardViewModel: DashboardViewModel,
+    viewModel: QRCodeViewModel
+) {
+    val clipboardManager: ClipboardManager = LocalClipboardManager.current
 
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(24.dp))
 
-//@Composable
-//fun QRDetailProfileScreen(
-//    dashboardViewModel: DashboardViewModel,
-//    viewModel: QRCodeViewModel,
-//    preferredSize: DpSize
-//) {
-//    val clipboardManager: ClipboardManager = LocalClipboardManager.current
-//
-//    Box(
-//        modifier = Modifier.fillMaxSize()
-//    ) {
-//        // Red Box (QR Content) - Lower zIndex so the blue box is above it
-//        Box(
-//            modifier = Modifier
-//                .size(preferredSize)
-//                .background(
-//                    Color.Red,
-//                    shape = RoundedCornerShape(16.dp)
-//                )
-//                .padding(top = 80.dp) // Ensures it's placed below the blue box
-//                .align(Alignment.TopCenter)
-//                .zIndex(1f) // Lower zIndex so blue box appears above it
-//        ) {
-//            Column(
-//                modifier = Modifier.fillMaxSize(),
-//                horizontalAlignment = Alignment.CenterHorizontally,
-//                verticalArrangement = Arrangement.Center
-//            ) {
-//                Spacer(Modifier.height(40.dp))
-//
-//                Text(
-//                    text = viewModel.contactQRCodeState.viewTitle,
-//                    fontWeight = FontWeight.Bold,
-//                    fontSize = 18.sp,
-//                    color = Color.White
-//                )
-//
-//                Spacer(Modifier.height(16.dp))
-//
-//                viewModel.contactQRCodeState.bitMatrix?.let { bitMatrix ->
-//                    val qrCodeSize = 200.dp
-//
-//                    Box(
-//                        modifier = Modifier
-//                            .size(qrCodeSize)
-//                            .clickable {
-//                                clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
-//                                viewModel.toast("Code copied to clipboard")
-//                            }
-//                    ) {
-//                        Canvas(modifier = Modifier.size(qrCodeSize)) {
-//                            val scaleX = size.width / bitMatrix.width
-//                            val scaleY = size.height / bitMatrix.height
-//
-//                            for (x in 0 until bitMatrix.width) {
-//                                for (y in 0 until bitMatrix.height) {
-//                                    drawRect(
-//                                        brush = SolidColor(if (bitMatrix.get(x, y)) Color.Black else Color.White),
-//                                        topLeft = Offset(x * scaleX, y * scaleY),
-//                                        size = Size(scaleX, scaleY)
-//                                    )
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
-//
-//                Spacer(Modifier.height(16.dp))
-//
-//                Text(
-//                    text = viewModel.contactQRCodeState.string,
-//                    fontSize = 12.sp,
-//                    color = Color.Gray,
-//                    maxLines = 1,
-//                    textAlign = TextAlign.Center,
-//                    modifier = Modifier.padding(horizontal = 20.dp)
-//                )
-//
-//                Spacer(Modifier.height(12.dp))
-//
-//                Button(
-//                    onClick = {
-//                        clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
-//                        viewModel.toast("Code copied to clipboard")
-//                    },
-//                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.DarkGray),
-//                    shape = RoundedCornerShape(8.dp),
-//                    modifier = Modifier.fillMaxWidth(0.6f)
-//                ) {
-//                    Text(text = "Copy", color = Color.White)
-//                }
-//            }
-//        }
-//
-//        // Blue Box (Title Bar) - Higher zIndex so it's above the red box
-//        Box(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .height(80.dp)
-//                .background(Color.Blue)
-//                .zIndex(2f), // Ensures it's above the red box
-//            contentAlignment = Alignment.Center
-//        ) {
-//            Text(
-//                text = "Profile QR Code",
-//                modifier = Modifier.padding(top = 64.dp),
-//                fontWeight = FontWeight.Bold,
-//                fontSize = 20.sp,
-//                color = Color.White
-//            )
-//        }
-//    }
-//}
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(end = 24.dp)
+        ) {
+            Icon(
+                Icons.Default.TouchApp,
+                contentDescription = "QR Code",
+                tint = Color.Gray,
+                modifier = Modifier.size(30.dp)
+            )
+
+            Text(
+                text = "CLICK TO COPY",
+                fontFamily = SphinxFonts.montserratFamily,
+                color = Color.Gray,
+                fontSize = 10.sp
+            )
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        viewModel.contactQRCodeState.bitMatrix?.let { bitMatrix ->
+            val qrCodeSize = 200.dp
+
+            Box(
+                modifier = Modifier
+                    .size(qrCodeSize)
+                    .clickable {
+                        clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
+                        viewModel.toast("Code copied to clipboard")
+                    }
+            ) {
+                Canvas(modifier = Modifier.size(qrCodeSize).clickable {
+                    clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
+                    viewModel.toast("Code copied to clipboard")
+                }) {
+                    val scaleX = size.width / bitMatrix.width
+                    val scaleY = size.height / bitMatrix.height
+
+                    for (x in 0 until bitMatrix.width) {
+                        for (y in 0 until bitMatrix.height) {
+                            drawRect(
+                                brush = SolidColor(if (bitMatrix.get(x, y)) Color.Black else Color.White),
+                                topLeft = Offset(x * scaleX, y * scaleY),
+                                size = Size(scaleX, scaleY)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Text(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            text = viewModel.contactQRCodeState.string,
+            fontFamily = SphinxFonts.montserratFamily,
+            color = Color.Gray,
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}

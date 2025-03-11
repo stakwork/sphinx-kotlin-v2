@@ -222,7 +222,11 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
                         onClick = {
                             showOptionMenu.value = false
-                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.QRDetail( "TRIBE JOIN LINK", viewModel.tribeDetailState.shareTribeUrl))
+                            dashboardViewModel.toggleQRDetailSplitScreen(
+                                open = true,
+                                title = "Share",
+                                value = viewModel.tribeDetailState.shareTribeUrl
+                            )
                         }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
