@@ -119,9 +119,10 @@ class TribeDetailViewModel(
                     filePath = filepath,
                     mediaType = mediaType,
                     fileName = filepath.name.toFileName(),
-                    isLocalFile = true
+                    isLocalFile = true,
                 ),
-                myPhotoUrl = null
+                myPhotoUrl = null,
+                saveButtonEnable = true
             )
         }
     }
@@ -133,7 +134,6 @@ class TribeDetailViewModel(
         }
 
         updateJob = scope.launch(dispatchers.mainImmediate) {
-            var response: Response<ChatDto, ResponseError>?
 
             setTribeDetailState {
                 copy(
@@ -141,30 +141,26 @@ class TribeDetailViewModel(
                 )
             }
 
+            val chatAlias = ChatAlias(tribeDetailState.userAlias)
+            val filePath = tribeDetailState.userPicture?.filePath
+            val mediaType = tribeDetailState.userPicture?.mediaType
+
+            val profilePic = if (filePath != null && mediaType != null) {
+                PublicAttachmentInfo(
+                    filePath,
+                    mediaType,
+                    tribeDetailState.userPicture!!.fileName?.value ?: "",
+                    null
+                )
+            } else {
+                null
+            }
+
             chatRepository.updateChatProfileInfo(
                 detailChatId,
-                ChatAlias(tribeDetailState.userAlias)
-            ).let { r ->
-                response = r
-            }
-
-            tribeDetailState.userPicture?.let {
-                chatRepository.updateChatProfileInfo(
-                    detailChatId,
-                    profilePic = PublicAttachmentInfo(
-                        tribeDetailState.userPicture!!.filePath,
-                        tribeDetailState.userPicture!!.mediaType,
-                        tribeDetailState.userPicture!!.fileName?.value ?: "",
-                        null
-                    )
-                ).let { r ->
-                    response = r
-                }
-            }
-
-            response?.let {
-                updateFinished(it)
-            }
+                chatAlias,
+                profilePic
+            )
         }
     }
 

@@ -82,10 +82,8 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
                         }
                     }
                 }
-
-                viewModel.tribeDetailState.myPhotoUrl?.let {
                     PhotoUrlImage(
-                        photoUrl = it,
+                        photoUrl = viewModel.tribeDetailState.myPhotoUrl,
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
@@ -93,10 +91,10 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
                                 onImageClick.invoke()
                             }
                     )
-                }
-                viewModel.tribeDetailState.userPicture?.let {
+
+                viewModel.tribeDetailState.userPicture?.filePath?.let {
                     PhotoFileImage(
-                        it.filePath,
+                        it,
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
@@ -131,6 +129,7 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
             text = "SAVE",
             callback = {
                 viewModel.updateUserInfo()
+                dashboardViewModel.toggleSplitScreen(false, null)
             }
         )
     }
