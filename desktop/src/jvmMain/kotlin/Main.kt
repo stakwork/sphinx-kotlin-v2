@@ -239,7 +239,7 @@ fun WebViewInitializing(
                         }
                         onInitialized {
                             dashboardViewModel.setWebViewState(DashboardViewModel.WebViewState.Initialized)
-                            toast("Finished loading WebView library")
+//                            toast("Finished loading WebView library")
                             initialized = true
                         }
                     }
