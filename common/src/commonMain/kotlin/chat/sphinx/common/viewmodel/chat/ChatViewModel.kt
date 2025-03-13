@@ -615,6 +615,14 @@ abstract class ChatViewModel(
             val thread = threadUUID?.toThreadUUID()
 
             if (chat != null) {
+                dashboardViewModel.toggleSplitScreen(
+                    true, DashboardViewModel.SplitContentType.Thread(
+                        chat.id,
+                        thread!!,
+                        fromThreadsScreen
+                    )
+                )
+
                 messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread)
                     .collectLatest { messages ->
 
@@ -629,14 +637,6 @@ abstract class ChatViewModel(
                         val completeThread = listOf(originalMessage) + messages.reversed()
 
                         processChatMessages(chat, completeThread.filterNotNull().toList(), true)
-
-                        dashboardViewModel.toggleSplitScreen(
-                            true, DashboardViewModel.SplitContentType.Thread(
-                                chat.id,
-                                thread!!,
-                                fromThreadsScreen
-                            )
-                        )
                     }
             }
         }

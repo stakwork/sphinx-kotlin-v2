@@ -836,9 +836,7 @@ fun SplitTopBar(
 
             IconButton(
                 onClick = {
-                    dashboardViewModel?.toggleSplitScreen(false, chatViewModel?.chatId?.let {
-                        DashboardViewModel.SplitContentType.Threads(it)
-                    })
+                    dashboardViewModel?.toggleSplitScreen(false, null)
                 }
             ) {
                 Icon(
