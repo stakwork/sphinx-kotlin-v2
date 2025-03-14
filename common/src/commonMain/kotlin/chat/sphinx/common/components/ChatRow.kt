@@ -6,13 +6,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -25,10 +22,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.isSecondaryPressed
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,26 +29,15 @@ import androidx.compose.ui.unit.sp
 import chat.sphinx.common.models.DashboardChat
 import chat.sphinx.wrapper.DateTime
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.window.Popup
 import chat.sphinx.common.Res
-import chat.sphinx.common.state.ConfirmationType
 import chat.sphinx.common.viewmodel.DashboardViewModel
-import chat.sphinx.common.viewmodel.SignUpViewModel
 import chat.sphinx.common.viewmodel.dashboard.ChatListViewModel
-import chat.sphinx.concepts.repository.connect_manager.model.NetworkStatus
 import chat.sphinx.platform.imageResource
-import chat.sphinx.utils.onKeyUp
-import chat.sphinx.wrapper.PhotoUrl
-import chat.sphinx.wrapper.invite.isDelivered
-import chat.sphinx.wrapper.invite.isExpired
 import chat.sphinx.wrapper.invite.isPaymentPending
-import chat.sphinx.wrapper.invite.isReady
 import chat.sphinx.wrapper.lightning.asFormattedString
 import chat.sphinx.wrapper.util.getInitials
 import chat.sphinx.wrapper_chat.isMuteChat
 import chat.sphinx.wrapper_chat.isOnlyMentions
-import okio.Path
 import theme.*
 
 
@@ -81,7 +63,7 @@ fun ChatRow(
                 if (dashboardChat is DashboardChat.Inactive.Invite) {
                     dashboardChat.invite.let { invite ->
                         dashboardViewModel.showFullScreenView(
-                            DashboardViewModel.FullScreenView.QRDetail("INVITE CODE", invite.inviteString.value))
+                            DashboardViewModel.FullScreenView.QRDetailFullScreen("INVITE CODE", invite.inviteString.value))
                     }
                     return@clickable
                 }

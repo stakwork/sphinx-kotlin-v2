@@ -40,7 +40,7 @@ import utils.deduceMediaType
 
 @Composable
 actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatId) {
-    val viewModel = TribeDetailViewModel(dashboardViewModel, chatId)
+    val viewModel = remember { TribeDetailViewModel(dashboardViewModel, chatId) }
     val scope = rememberCoroutineScope()
 
     Column(
@@ -82,10 +82,8 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
                         }
                     }
                 }
-
-                viewModel.tribeDetailState.myPhotoUrl?.let {
                     PhotoUrlImage(
-                        photoUrl = it,
+                        photoUrl = viewModel.tribeDetailState.myPhotoUrl,
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
@@ -93,10 +91,10 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
                                 onImageClick.invoke()
                             }
                     )
-                }
-                viewModel.tribeDetailState.userPicture?.let {
+
+                viewModel.tribeDetailState.userPicture?.filePath?.let {
                     PhotoFileImage(
-                        it.filePath,
+                        it,
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
@@ -131,6 +129,7 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
             text = "SAVE",
             callback = {
                 viewModel.updateUserInfo()
+                dashboardViewModel.toggleSplitScreen(false, null)
             }
         )
     }
@@ -222,7 +221,11 @@ fun TopHeader(dashboardViewModel: DashboardViewModel, viewModel: TribeDetailView
                         modifier = Modifier.height(40.dp).width(180.dp).clip(RoundedCornerShape(8.dp)),
                         onClick = {
                             showOptionMenu.value = false
-                            dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.QRDetail( "TRIBE JOIN LINK", viewModel.tribeDetailState.shareTribeUrl))
+                            dashboardViewModel.toggleQRDetailSplitScreen(
+                                open = true,
+                                title = "Share",
+                                value = viewModel.tribeDetailState.shareTribeUrl
+                            )
                         }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

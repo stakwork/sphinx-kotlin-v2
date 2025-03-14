@@ -2,6 +2,7 @@ package chat.sphinx.common.state
 
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.ResponseError
+import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.PhotoUrl
 
 data class ContactState(
@@ -11,4 +12,5 @@ data class ContactState(
     val photoUrl: PhotoUrl? = null,
     val status: LoadResponse<Any, ResponseError>? = null,
     val saveButtonEnabled: Boolean = false,
+    val createdAt: String = ""
 )

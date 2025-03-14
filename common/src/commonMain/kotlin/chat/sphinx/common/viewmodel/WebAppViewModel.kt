@@ -3,6 +3,7 @@ package chat.sphinx.common.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import chat.sphinx.common.components.toast
 import chat.sphinx.common.state.AuthorizeViewState
 import chat.sphinx.common.state.ChatPaymentState
 import chat.sphinx.concepts.network.query.contact.model.PersonDataDto
@@ -81,6 +82,27 @@ class WebAppViewModel {
     val webViewStateFlow: StateFlow<String?>
         get() = _webViewStateFlow.asStateFlow()
 
+    fun toggleWebAppWindow(
+        open: Boolean,
+        url: String?
+    ) {
+//        if (_webAppWindowStateFlow.value != open) {
+//            _webAppWindowStateFlow.value = open
+//        }
+//
+//        if (!open) {
+//            closeAuthorizeView()
+//            return
+//        }
+//
+//        viewModelScope.launch(dispatchers.io) {
+//            delay(1000L)
+//
+//            toggleWebViewWindow(url)
+//        }
+        toast("WebView is not available at the moment")
+    }
+
     val authorizeViewStateFlow: StateFlow<AuthorizeViewState>
         get() = _authorizeViewStateFlow.asStateFlow()
 
@@ -97,26 +119,6 @@ class WebAppViewModel {
 
     private fun setBudgetValue(budget: Int?) {
         budgetState = budget
-    }
-
-    fun toggleWebAppWindow(
-        open: Boolean,
-        url: String?
-    ) {
-        if (_webAppWindowStateFlow.value != open) {
-            _webAppWindowStateFlow.value = open
-        }
-
-        if (!open) {
-            closeAuthorizeView()
-            return
-        }
-
-        viewModelScope.launch(dispatchers.io) {
-            delay(1000L)
-
-            toggleWebViewWindow(url)
-        }
     }
 
     private fun openAuthorizeView() {

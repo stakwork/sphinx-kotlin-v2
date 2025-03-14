@@ -107,19 +107,17 @@ actual fun NewTribePreview(
                         fontSize = 17.sp,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
-                    linkPreview.description?.let { description ->
-                        Spacer(modifier = Modifier.height(5.dp))
-                        Row(horizontalArrangement = Arrangement.SpaceAround) {
-                            Text(
-                                description.value,
-                                color = MaterialTheme.colorScheme.tertiary.copy(0.5f),
-                                fontFamily = Roboto,
-                                fontWeight = FontWeight.Normal,
-                                fontSize = 12.sp,
-                                maxLines = 4,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Row(horizontalArrangement = Arrangement.SpaceAround) {
+                        Text(
+                            linkPreview.description?.value ?: "",
+                            color = MaterialTheme.colorScheme.tertiary.copy(0.5f),
+                            fontFamily = Roboto,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 12.sp,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }

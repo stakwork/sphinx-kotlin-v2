@@ -99,11 +99,10 @@ class TransactionsViewModel {
         val owner = getOwner()
         val transactionsList = mutableListOf<TransactionState>()
 
-        var chatsIdsMap: MutableMap<ChatId, ArrayList<Long>> = LinkedHashMap(transactions.size)
-        var originalMessageUUIDsMap: MutableMap<MessageUUID, Long> = LinkedHashMap(transactions.size)
-
-        var contactIdsMap: MutableMap<Long, ContactId> = LinkedHashMap(transactions.size)
-        var contactAliasMap: MutableMap<Long, SenderAlias> = LinkedHashMap(transactions.size)
+        val chatsIdsMap: MutableMap<ChatId, ArrayList<Long>> = LinkedHashMap(transactions.size)
+        val originalMessageUUIDsMap: MutableMap<MessageUUID, Long> = LinkedHashMap(transactions.size)
+        val contactIdsMap: MutableMap<Long, ContactId> = LinkedHashMap(transactions.size)
+        val contactAliasMap: MutableMap<Long, SenderAlias> = LinkedHashMap(transactions.size)
 
         for (transaction in transactions) {
             when {
@@ -136,7 +135,8 @@ class TransactionsViewModel {
             }
         }
 
-        val chatIds = chatsIdsMap.keys.map { it }
+        // Update the mapping for chat transactions.
+        val chatIds = chatsIdsMap.keys.toList()
         chatRepository.getAllChatsByIds(chatIds).let { response ->
             response.forEach { chat ->
                 if (
@@ -152,12 +152,11 @@ class TransactionsViewModel {
             }
         }
 
-        val originalMessageUUIDs = originalMessageUUIDsMap.keys.map { it }
+        val originalMessageUUIDs = originalMessageUUIDsMap.keys.toList()
         messageRepository.getAllMessagesByUUID(originalMessageUUIDs).let { response ->
             response.forEach { message ->
                 originalMessageUUIDsMap[message.uuid]?.let { transactionId ->
                     contactIdsMap[transactionId] = message.sender
-
                     message.senderAlias?.let { senderAlias ->
                         contactAliasMap[transactionId] = senderAlias
                     }
@@ -166,8 +165,7 @@ class TransactionsViewModel {
         }
 
         val contactsMap: MutableMap<Long, Contact> = LinkedHashMap(transactions.size)
-        val contactIds = contactIdsMap.values.map { it }
-
+        val contactIds = contactIdsMap.values.toList()
         contactRepository.getAllContactsByIds(contactIds).let { response ->
             response.forEach { contact ->
                 contactsMap[contact.id.value] = contact
@@ -176,66 +174,67 @@ class TransactionsViewModel {
 
         for (transaction in transactions) {
             try {
-            val senderId = contactIdsMap[transaction.id]
-            val senderAlias: String? =
-                contactAliasMap[transaction.id]?.value ?: contactsMap[senderId?.value]?.alias?.value
+                val senderId = contactIdsMap[transaction.id]
+                val senderAlias: String? =
+                    transaction.getSenderAlias()?.value
+                        ?: contactAliasMap[transaction.id]?.value
+                        ?: contactsMap[senderId?.value]?.alias?.value
 
-            val transactionAmount = transaction.amount.toString()
-            val date = transaction.date?.toDateTime()
-            val dateString = date?.localDateTimeString(DateTime.getFormateeemmddhmma())
-            val failedTransaction = transaction.error_message
+                val transactionAmount = transaction.amount.toString()
+                val date = transaction.date?.toDateTime()
+                val dateString = date?.localDateTimeString(DateTime.getFormateeemmddhmma())
+                val failedTransaction = transaction.error_message
 
-
-            if (transaction.isBountyPayment()) {
-                transactionsList.add(
-                    TransactionState(
-                        amount = transactionAmount,
-                        date = dateString ?: "",
-                        senderReceiverName = withContext(dispatchers.io) {
-                            URLDecoder.decode(
-                                transaction.message_content,
-                                StandardCharsets.UTF_8.toString()
-                            )
-                        } ?: "-",
-                        transactionType = TransactionType.Incoming,
-                        failedTransactionMessage = null
-                    )
-                )
-            } else {
-                if (!failedTransaction.isNullOrBlank()) {
+                if (transaction.isBountyPayment()) {
                     transactionsList.add(
                         TransactionState(
                             amount = transactionAmount,
                             date = dateString ?: "",
-                            senderReceiverName = senderAlias ?: "-",
-                            transactionType = TransactionType.Failed,
-                            failedTransactionMessage = failedTransaction
-                        )
-                    )
-                } else if (transaction.sender == owner.id.value) transactionsList.add(
-                    TransactionState(
-                        amount = transactionAmount,
-                        date = dateString ?: "",
-                        senderReceiverName = senderAlias ?: "-",
-                        transactionType = TransactionType.Outgoing,
-                        failedTransactionMessage = null
-
-                    )
-                ) else {
-                    transactionsList.add(
-                        TransactionState(
-                            amount = transactionAmount,
-                            date = dateString ?: "",
-                            senderReceiverName = senderAlias ?: "-",
+                            senderReceiverName = withContext(dispatchers.io) {
+                                URLDecoder.decode(
+                                    transaction.message_content,
+                                    StandardCharsets.UTF_8.toString()
+                                )
+                            } ?: "-",
                             transactionType = TransactionType.Incoming,
                             failedTransactionMessage = null
                         )
                     )
-
+                } else {
+                    if (!failedTransaction.isNullOrBlank()) {
+                        transactionsList.add(
+                            TransactionState(
+                                amount = transactionAmount,
+                                date = dateString ?: "",
+                                senderReceiverName = senderAlias ?: "-",
+                                transactionType = TransactionType.Failed,
+                                failedTransactionMessage = failedTransaction
+                            )
+                        )
+                    } else if (transaction.sender == owner.id.value) {
+                        transactionsList.add(
+                            TransactionState(
+                                amount = transactionAmount,
+                                date = dateString ?: "",
+                                senderReceiverName = senderAlias ?: "-",
+                                transactionType = TransactionType.Outgoing,
+                                failedTransactionMessage = null
+                            )
+                        )
+                    } else {
+                        transactionsList.add(
+                            TransactionState(
+                                amount = transactionAmount,
+                                date = dateString ?: "",
+                                senderReceiverName = senderAlias ?: "-",
+                                transactionType = TransactionType.Incoming,
+                                failedTransactionMessage = null
+                            )
+                        )
+                    }
                 }
+            } catch (_: Exception) { }
         }
-        } catch (_: Exception){ }
-    }
 
         val list = transactionViewState.transactionsList.toMutableList()
         list.addAll(transactionsList)

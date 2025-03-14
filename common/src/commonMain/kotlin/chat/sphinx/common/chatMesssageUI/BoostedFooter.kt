@@ -25,7 +25,8 @@ import chat.sphinx.wrapper.util.getInitials
 @Composable
 fun BoostedFooter(
     chatMessage: ChatMessage,
-    modifier: Modifier
+    modifier: Modifier,
+    isThreadHeader: Boolean = false
 ) {
     chatMessage.boostsLayoutState?.let { boostReactionsState ->
         Spacer(modifier = Modifier.height(8.dp))
@@ -84,6 +85,9 @@ fun BoostedFooter(
                     modifier = Modifier.padding(start = 4.dp)
                 )
             }
+        }
+        if (isThreadHeader) {
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

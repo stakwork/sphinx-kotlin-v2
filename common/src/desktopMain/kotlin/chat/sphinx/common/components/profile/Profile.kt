@@ -10,7 +10,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.MaterialTheme
@@ -32,7 +31,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
-import chat.sphinx.common.DesktopResource
 import chat.sphinx.common.components.PhotoUrlImage
 import chat.sphinx.common.components.TopHeaderContainer
 import chat.sphinx.common.components.notifications.DesktopSphinxConfirmAlert
@@ -44,7 +42,6 @@ import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.ProfileViewModel
 import chat.sphinx.common.viewmodel.ResetPinViewModel
 import chat.sphinx.common.viewmodel.dashboard.PinExportKeysViewModel
-import chat.sphinx.platform.imageResource
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.utils.SphinxFonts
@@ -342,7 +339,7 @@ fun BasicTab(viewModel: ProfileViewModel, dashboardViewModel: DashboardViewModel
                         cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.secondary)
                     )
                     IconButton(onClick = {
-                        dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.QRDetail( "PUBLIC KEY", viewModel.profileState.nodeDescription))
+                        dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.QRDetailFullScreen( "PUBLIC KEY", viewModel.profileState.nodeDescription))
                     }
                     ) {
                         Icon(
