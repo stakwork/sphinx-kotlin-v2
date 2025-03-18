@@ -308,6 +308,12 @@ actual fun Dashboard(
 
             ImageFullScreen(fullScreenImageState)
 
+
+            DetachedWindow(
+                dashboardViewModel = dashboardViewModel,
+                chatViewModel = chatViewModel,
+            )
+
             val restoreState by dashboardViewModel.restoreProgressStateFlow.collectAsState()
             restoreState?.let { restoreState ->
                 if (restoreState.restoring && !dashboardViewModel.isRestoreCancelledState) {
@@ -789,7 +795,7 @@ fun SplitTopBar(
                             is DashboardViewModel.SplitContentType.Thread -> {
                                 dashboardViewModel?.toggleSplitScreen(
                                     true,
-                                    chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it)}
+                                    chatViewModel?.chatId?.let { DashboardViewModel.SplitContentType.Threads(it) }
                                 )
                             }
 
@@ -833,6 +839,21 @@ fun SplitTopBar(
             )
 
             Spacer(modifier = Modifier.weight(1f))
+
+            if (splitType is DashboardViewModel.SplitContentType.Threads || splitType is DashboardViewModel.SplitContentType.Thread) {
+                IconButton(
+                    onClick = {
+                        dashboardViewModel?.detachSection(splitType)
+                        dashboardViewModel?.toggleSplitScreen(false, null)
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.OpenInNew,
+                        contentDescription = "Detach",
+                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            }
 
             IconButton(
                 onClick = {

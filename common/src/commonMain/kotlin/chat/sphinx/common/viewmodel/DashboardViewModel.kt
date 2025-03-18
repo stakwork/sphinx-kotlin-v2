@@ -116,6 +116,22 @@ class DashboardViewModel(): WindowFocusListener {
         _fullScreenViewStateFlow.value = FullScreenView.None
     }
 
+    private val _detachedWindowStateFlow = MutableStateFlow<SplitContentType?>(null)
+    val detachedWindowStateFlow: StateFlow<SplitContentType?> = _detachedWindowStateFlow.asStateFlow()
+
+    fun detachSection(splitContentType: SplitContentType?) {
+        when (splitContentType) {
+            is SplitContentType.Threads, is SplitContentType.Thread -> {
+                _detachedWindowStateFlow.value = splitContentType
+            }
+            else -> {}
+        }
+    }
+
+    fun closeDetachedWindow() {
+        _detachedWindowStateFlow.value = null
+    }
+
     private val webViewState: MutableStateFlow<WebViewState> by lazy {
         MutableStateFlow(WebViewState.NonInitialized)
     }
