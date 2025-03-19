@@ -23,12 +23,15 @@ import chat.sphinx.wrapper.lightning.NodeBalanceAll
 import chat.sphinx.wrapper.lightning.toSat
 import chat.sphinx.wrapper.message.media.MediaType
 import chat.sphinx.wrapper.message.media.toFileName
+import chat.sphinx.wrapper.mqtt.ConnectManagerError
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import okio.Path
 import theme.badge_red
+import theme.primary_green
 
 class SignUpViewModel : PinAuthenticationViewModel() {
 
@@ -46,6 +49,7 @@ class SignUpViewModel : PinAuthenticationViewModel() {
         scope.launch(dispatchers.mainImmediate) {
             listenToOwnerRegistered()
             clearDatabase()
+            showToastDebug()
         }
     }
     fun clearDatabase() {
@@ -53,6 +57,13 @@ class SignUpViewModel : PinAuthenticationViewModel() {
             queries.transaction {
                 deleteAll(queries)
             }
+        }
+    }
+
+
+    suspend fun showToastDebug() {
+        connectManagerRepository.debugRestoreState.collect { debug ->
+            toast(debug.toString(), primary_green)
         }
     }
 
