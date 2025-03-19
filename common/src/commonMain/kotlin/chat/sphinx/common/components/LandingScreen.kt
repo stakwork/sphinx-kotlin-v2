@@ -57,7 +57,7 @@ fun LandingScreen() {
             SelectNetworkDialog(
                 onDismiss = { signUpViewModel.showSelectNetworkDialog.value = false },
                 onRegtestSelected = {
-                    signUpViewModel.onNetworkTypeSelected(true)
+//                    signUpViewModel.onNetworkTypeSelected(true)
                 },
                 onBitcoinSelected = {
                     signUpViewModel.onNetworkTypeSelected(false)
