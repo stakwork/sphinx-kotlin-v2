@@ -365,7 +365,6 @@ fun ContactForm(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Address Section Centered with QR Code
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
@@ -461,7 +460,6 @@ fun ContactForm(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Timezone Dropdown Menu
             Text(
                 text = "Timezone",
                 fontSize = 12.sp,
