@@ -3,12 +3,15 @@ package chat.sphinx.common.components
 import CommonButton
 import Roboto
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +37,7 @@ import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.lightning.LightningNodeDescriptor
 import theme.badge_red
 import theme.light_divider
+import theme.primary_blue
 import theme.primary_red
 
 @Composable
@@ -302,10 +306,15 @@ fun ContactForm(
         (viewModel as? EditContactViewModel)?.loadContact(contactId)
     }
 
+    var isDropdownExpanded by remember { mutableStateOf(false) }
+    val timezoneOptions = listOf("Use Computer Settings", "UTC", "PST", "EST", "CET", "IST")
+    var selectedTimezone by remember { mutableStateOf(timezoneOptions[0]) }
+    var isShareTimezoneChecked by remember { mutableStateOf(true) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+            .background(color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
     ) {
         Column(
             modifier = Modifier
@@ -428,6 +437,92 @@ fun ContactForm(
                 color = Color.Black.copy(0.60f)
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Share Timezone Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Share Timezone",
+                    fontSize = 16.sp,
+                    fontFamily = Roboto,
+                    fontWeight = FontWeight.W500,
+                    color = Color.White
+                )
+                Switch(
+                    checked = isShareTimezoneChecked,
+                    onCheckedChange = { isShareTimezoneChecked = it },
+                    colors = SwitchDefaults.colors(checkedThumbColor = primary_blue)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Timezone Dropdown Menu
+            Text(
+                text = "Timezone",
+                fontSize = 12.sp,
+                fontFamily = Roboto,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = selectedTimezone,
+                    onValueChange = {},
+                    readOnly = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isDropdownExpanded = true },
+                    trailingIcon = {
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = "Dropdown Arrow",
+                            tint = Color.White,
+                            modifier = Modifier.clickable { isDropdownExpanded = true }
+                        )
+                    },
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        textColor = Color.White,
+                        cursorColor = Color.White,
+                        focusedBorderColor = Color.Gray,
+                        unfocusedBorderColor = Color.Gray
+                    )
+                )
+
+                DropdownMenu(
+                    expanded = isDropdownExpanded,
+                    onDismissRequest = { isDropdownExpanded = false },
+                    modifier = Modifier
+                        .width(IntrinsicSize.Min)
+                        .heightIn(max = 200.dp)
+                        .background(androidx.compose.material3.MaterialTheme.colorScheme.background),
+                ) {
+                    timezoneOptions.forEach { timezone ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    timezone,
+                                    fontSize = 14.sp,
+                                    color = Color.White
+                                )
+                            },
+                            onClick = {
+                                selectedTimezone = timezone
+                                isDropdownExpanded = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             Column(
@@ -435,32 +530,6 @@ fun ContactForm(
                 verticalArrangement = Arrangement.Bottom,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(40.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (viewModel.contactState.status is Response.Error) {
-                        Text(
-                            text = "There was an error, please try again later",
-                            fontSize = 12.sp,
-                            fontFamily = Roboto,
-                            color = badge_red,
-                        )
-                    }
-                    if (viewModel.contactState.status is LoadResponse.Loading) {
-                        CircularProgressIndicator(
-                            Modifier
-                                .padding(start = 8.dp)
-                                .size(24.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-
                 CommonMenuButton(
                     text = "Remove Contact",
                     enabled = true,
