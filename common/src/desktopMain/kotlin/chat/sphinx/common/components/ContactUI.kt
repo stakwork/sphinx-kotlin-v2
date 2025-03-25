@@ -34,6 +34,7 @@ import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.utils.SphinxFonts
 import chat.sphinx.wrapper.dashboard.ContactId
+import chat.sphinx.wrapper.dashboard.toChatId
 import chat.sphinx.wrapper.lightning.LightningNodeDescriptor
 import theme.badge_red
 import theme.light_divider
@@ -291,7 +292,6 @@ fun ContactForm(
     contactId: ContactId?,
     pubKey: LightningNodeDescriptor? = null
 ) {
-
     val editMode = (contactId != null)
 
     val viewModel = if (editMode) {
@@ -307,7 +307,7 @@ fun ContactForm(
     }
 
     var isDropdownExpanded by remember { mutableStateOf(false) }
-    val timezoneOptions = listOf("Use Computer Settings", "UTC", "PST", "EST", "CET", "IST")
+    val timezoneOptions = remember { dashboardViewModel.getAllTimezones() }
     var selectedTimezone by remember { mutableStateOf(timezoneOptions[0]) }
     var isShareTimezoneChecked by remember { mutableStateOf(true) }
 
@@ -453,7 +453,15 @@ fun ContactForm(
                 )
                 Switch(
                     checked = isShareTimezoneChecked,
-                    onCheckedChange = { isShareTimezoneChecked = it },
+                    onCheckedChange = {
+                        isShareTimezoneChecked = it
+                        dashboardViewModel.updateTimezoneStatus(
+                            isTimezoneEnabled = it,
+                            timezoneIdentifier = selectedTimezone,
+                            timezoneUpdated = true,
+                            chatId = contactId?.value?.toChatId()
+                        )
+                    },
                     colors = SwitchDefaults.colors(checkedThumbColor = primary_blue)
                 )
             }
@@ -512,6 +520,13 @@ fun ContactForm(
                             onClick = {
                                 selectedTimezone = timezone
                                 isDropdownExpanded = false
+
+                                dashboardViewModel.updateTimezoneStatus(
+                                    isTimezoneEnabled = isShareTimezoneChecked,
+                                    timezoneIdentifier = timezone,
+                                    timezoneUpdated = true,
+                                    chatId = contactId?.value?.toChatId()
+                                )
                             },
                             modifier = Modifier
                                 .fillMaxWidth()

@@ -34,6 +34,7 @@ import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.chat.TribeDetailViewModel
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.wrapper.dashboard.ChatId
+import chat.sphinx.wrapper.dashboard.toChatId
 import chat.sphinx.wrapper.message.media.isImage
 import kotlinx.coroutines.launch
 import theme.badge_red
@@ -46,7 +47,7 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
     val scope = rememberCoroutineScope()
 
     var isDropdownExpanded by remember { mutableStateOf(false) }
-    val timezoneOptions = listOf("Use Computer Settings", "UTC", "PST", "EST", "CET", "IST")
+    val timezoneOptions = remember { dashboardViewModel.getAllTimezones() }
     var selectedTimezone by remember { mutableStateOf(timezoneOptions[0]) }
     var isShareTimezoneChecked by remember { mutableStateOf(true) }
 
@@ -130,7 +131,15 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
             )
             Switch(
                 checked = isShareTimezoneChecked,
-                onCheckedChange = { isShareTimezoneChecked = it },
+                onCheckedChange = {
+                    isShareTimezoneChecked = it
+                    dashboardViewModel.updateTimezoneStatus(
+                        isTimezoneEnabled = it,
+                        timezoneIdentifier = selectedTimezone,
+                        timezoneUpdated = true,
+                        chatId = chatId
+                    )
+                },
                 colors = SwitchDefaults.colors(checkedThumbColor = primary_blue)
             )
         }
@@ -189,6 +198,13 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
                         onClick = {
                             selectedTimezone = timezone
                             isDropdownExpanded = false
+
+                            dashboardViewModel.updateTimezoneStatus(
+                                isTimezoneEnabled = isShareTimezoneChecked,
+                                timezoneIdentifier = timezone,
+                                timezoneUpdated = true,
+                                chatId = chatId
+                            )
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -215,14 +231,16 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
                 strokeWidth = 2.dp
             )
         }
-        CommonButton(
-            enabled = viewModel.tribeDetailState.saveButtonEnable,
-            text = "SAVE",
-            callback = {
-                viewModel.updateUserInfo()
-                dashboardViewModel.toggleSplitScreen(false, null)
-            }
-        )
+        if (viewModel.tribeDetailState.saveButtonEnable) {
+            CommonButton(
+                enabled = true,
+                text = "SAVE",
+                callback = {
+                    viewModel.updateUserInfo()
+                    dashboardViewModel.toggleSplitScreen(false, null)
+                }
+            )
+        }
     }
 
     DesktopSphinxToast("Tribe Detail")
