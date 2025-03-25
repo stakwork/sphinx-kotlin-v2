@@ -48,8 +48,12 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
 
     var isDropdownExpanded by remember { mutableStateOf(false) }
     val timezoneOptions = remember { dashboardViewModel.getAllTimezones() }
-    var selectedTimezone by remember { mutableStateOf(timezoneOptions[0]) }
-    var isShareTimezoneChecked by remember { mutableStateOf(true) }
+    val selectedTimezoneInitial = remember {
+        val index = timezoneOptions.indexOfFirst { it == viewModel.tribeDetailState.timezoneIdentifier }
+        if (index >= 0) timezoneOptions[index] else timezoneOptions.first()
+    }
+    var selectedTimezone by remember { mutableStateOf(selectedTimezoneInitial) }
+    var isShareTimezoneChecked by remember { mutableStateOf(viewModel.tribeDetailState.timezoneEnabled) }
 
     Column(
         modifier = Modifier

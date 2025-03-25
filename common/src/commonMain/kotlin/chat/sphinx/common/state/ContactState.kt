@@ -12,5 +12,7 @@ data class ContactState(
     val photoUrl: PhotoUrl? = null,
     val status: LoadResponse<Any, ResponseError>? = null,
     val saveButtonEnabled: Boolean = false,
-    val createdAt: String = ""
+    val createdAt: String = "",
+    val timezoneEnabled: Boolean = true,
+    val timezoneIdentifier: String = ""
 )
