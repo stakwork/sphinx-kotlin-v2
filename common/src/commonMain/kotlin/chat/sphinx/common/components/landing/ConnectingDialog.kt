@@ -18,12 +18,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.Res
+import chat.sphinx.common.viewmodel.SignUpViewModel
 import chat.sphinx.platform.imageResource
 import chat.sphinx.utils.SphinxFonts
 import kotlin.math.roundToInt
 
 @Composable
-fun ConnectingDialog() {
+fun ConnectingDialog(signUpViewModel: SignUpViewModel) {
     var connectingContent = ""
     val infiniteConnectingTransition = rememberInfiniteTransition()
     val alfa by infiniteConnectingTransition.animateFloat(initialValue = 0f, targetValue = 3f,
