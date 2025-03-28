@@ -19,5 +19,7 @@ data class TribeDetailState(
     val showQrCode: Boolean = false,
     val shareTribeUrl: String = "",
     val saveButtonEnable: Boolean = false,
-    val updateResponse: LoadResponse<Any, ResponseError>? = null
+    val updateResponse: LoadResponse<Any, ResponseError>? = null,
+    val timezoneEnabled: Boolean = true,
+    val timezoneIdentifier: String = ""
 )

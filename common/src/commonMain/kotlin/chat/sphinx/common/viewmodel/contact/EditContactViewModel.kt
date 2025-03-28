@@ -8,15 +8,12 @@ import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.ResponseError
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
+import chat.sphinx.wrapper.chat.toBoolean
 import chat.sphinx.wrapper.contact.ContactAlias
 import chat.sphinx.wrapper.dashboard.ContactId
+import chat.sphinx.wrapper.dashboard.toChatId
 import chat.sphinx.wrapper.fullDateFormat
 import chat.sphinx.wrapper.lightning.toLightningRouteHint
-import chat.sphinx.wrapper.timeAgo
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
@@ -24,6 +21,7 @@ class EditContactViewModel : ContactViewModel() {
 
     private val sphinxNotificationManager = createSphinxNotificationManager()
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
+    private val chatRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).chatRepository
 //    private val subscriptionRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).subscriptionRepository
 
     override var contactState: ContactState by mutableStateOf(initialState())
@@ -44,6 +42,7 @@ class EditContactViewModel : ContactViewModel() {
         if (this.contactId != contactId) {
             this.contactId = contactId
             loadContact()
+            loadTimezone()
         }
     }
 
@@ -60,6 +59,20 @@ class EditContactViewModel : ContactViewModel() {
                             createdAt = contact.createdAt.fullDateFormat()
                         )
                     }
+                }
+            }
+        }
+    }
+
+    private fun loadTimezone() {
+        scope.launch(dispatchers.mainImmediate) {
+            contactId?.value?.toChatId()?.let {
+                val chat = chatRepository.getChatById(it)
+                setContactState {
+                    copy(
+                        timezoneIdentifier = chat?.timezoneIdentifier?.value ?: "",
+                        timezoneEnabled = chat?.timezoneEnabled?.toBoolean() ?: true
+                    )
                 }
             }
         }

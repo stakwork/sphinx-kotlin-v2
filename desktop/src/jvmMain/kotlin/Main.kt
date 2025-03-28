@@ -16,9 +16,9 @@ import chat.sphinx.common.components.chat.FilePickerMode
 import chat.sphinx.common.components.notifications.DesktopSphinxConfirmAlert
 import chat.sphinx.common.components.notifications.DesktopSphinxNotifications
 import chat.sphinx.common.components.notifications.DesktopSphinxToast
-import chat.sphinx.common.components.toast
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
+import chat.sphinx.common.viewmodel.SignUpViewModel
 import chat.sphinx.common.viewmodel.SphinxStore
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.platform.imageResource
@@ -126,6 +126,8 @@ fun main() = application {
             }
         }
         ScreenType.LandingScreen -> {
+            val signUpViewModel = remember { SignUpViewModel() }
+
             Window(
                 onCloseRequest = {},
                 title = "Sphinx",
@@ -143,7 +145,7 @@ fun main() = application {
                     }
                 }
                 AppTheme(useDarkTheme = true) {
-                    LandingScreen()
+                    LandingScreen(signUpViewModel)
                     DesktopSphinxToast("Sphinx")
                 }
             }

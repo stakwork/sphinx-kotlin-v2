@@ -3,8 +3,6 @@ package chat.sphinx.common.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import chat.sphinx.common.components.landing.*
 import chat.sphinx.common.state.LandingScreenState
@@ -14,9 +12,7 @@ import theme.primary_green
 
 
 @Composable
-fun LandingScreen() {
-    val signUpViewModel = remember { SignUpViewModel() }
-
+fun LandingScreen(signUpViewModel: SignUpViewModel) {
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -31,7 +27,7 @@ fun LandingScreen() {
                 RestoreExistingUserScreen(signUpViewModel)
             }
             LandingScreenType.Loading -> {
-                ConnectingDialog()
+                ConnectingDialog(signUpViewModel)
             }
             LandingScreenType.SignupLocked -> {
                 OnBoardSignupLocked(signUpViewModel)

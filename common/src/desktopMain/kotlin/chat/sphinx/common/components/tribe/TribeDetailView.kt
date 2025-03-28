@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -33,15 +34,26 @@ import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.chat.TribeDetailViewModel
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.wrapper.dashboard.ChatId
+import chat.sphinx.wrapper.dashboard.toChatId
 import chat.sphinx.wrapper.message.media.isImage
 import kotlinx.coroutines.launch
 import theme.badge_red
+import theme.primary_blue
 import utils.deduceMediaType
 
 @Composable
 actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatId) {
     val viewModel = remember { TribeDetailViewModel(dashboardViewModel, chatId) }
     val scope = rememberCoroutineScope()
+
+    var isDropdownExpanded by remember { mutableStateOf(false) }
+    val timezoneOptions = remember { dashboardViewModel.getAllTimezones() }
+    val selectedTimezoneInitial = remember {
+        val index = timezoneOptions.indexOfFirst { it == viewModel.tribeDetailState.timezoneIdentifier }
+        if (index >= 0) timezoneOptions[index] else timezoneOptions.first()
+    }
+    var selectedTimezone by remember { mutableStateOf(selectedTimezoneInitial) }
+    var isShareTimezoneChecked by remember { mutableStateOf(viewModel.tribeDetailState.timezoneEnabled) }
 
     Column(
         modifier = Modifier
@@ -82,15 +94,15 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
                         }
                     }
                 }
-                    PhotoUrlImage(
-                        photoUrl = viewModel.tribeDetailState.myPhotoUrl,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable {
-                                onImageClick.invoke()
-                            }
-                    )
+                PhotoUrlImage(
+                    photoUrl = viewModel.tribeDetailState.myPhotoUrl,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            onImageClick.invoke()
+                        }
+                )
 
                 viewModel.tribeDetailState.userPicture?.filePath?.let {
                     PhotoFileImage(
@@ -102,6 +114,105 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
                                 onImageClick.invoke()
                             },
                         effect = {}
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Share Timezone",
+                fontSize = 16.sp,
+                fontFamily = Roboto,
+                fontWeight = FontWeight.W500,
+                color = Color.White
+            )
+            Switch(
+                checked = isShareTimezoneChecked,
+                onCheckedChange = {
+                    isShareTimezoneChecked = it
+                    dashboardViewModel.updateTimezoneStatus(
+                        isTimezoneEnabled = it,
+                        timezoneIdentifier = selectedTimezone,
+                        timezoneUpdated = true,
+                        chatId = chatId
+                    )
+                },
+                colors = SwitchDefaults.colors(checkedThumbColor = primary_blue)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Timezone",
+            fontSize = 12.sp,
+            fontFamily = Roboto,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = selectedTimezone,
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isDropdownExpanded = true },
+                trailingIcon = {
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = "Dropdown Arrow",
+                        tint = Color.White,
+                        modifier = Modifier.clickable { isDropdownExpanded = true }
+                    )
+                },
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    textColor = Color.White,
+                    cursorColor = Color.White,
+                    focusedBorderColor = Color.Gray,
+                    unfocusedBorderColor = Color.Gray
+                )
+            )
+
+            DropdownMenu(
+                expanded = isDropdownExpanded,
+                onDismissRequest = { isDropdownExpanded = false },
+                modifier = Modifier
+                    .width(IntrinsicSize.Min)
+                    .heightIn(max = 200.dp)
+                    .background(androidx.compose.material3.MaterialTheme.colorScheme.background),
+            ) {
+                timezoneOptions.forEach { timezone ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                timezone,
+                                fontSize = 14.sp,
+                                color = Color.White
+                            )
+                        },
+                        onClick = {
+                            selectedTimezone = timezone
+                            isDropdownExpanded = false
+
+                            dashboardViewModel.updateTimezoneStatus(
+                                isTimezoneEnabled = isShareTimezoneChecked,
+                                timezoneIdentifier = timezone,
+                                timezoneUpdated = true,
+                                chatId = chatId
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
                     )
                 }
             }
@@ -124,14 +235,16 @@ actual fun TribeDetailView(dashboardViewModel: DashboardViewModel, chatId: ChatI
                 strokeWidth = 2.dp
             )
         }
-        CommonButton(
-            enabled = viewModel.tribeDetailState.saveButtonEnable,
-            text = "SAVE",
-            callback = {
-                viewModel.updateUserInfo()
-                dashboardViewModel.toggleSplitScreen(false, null)
-            }
-        )
+        if (viewModel.tribeDetailState.saveButtonEnable) {
+            CommonButton(
+                enabled = true,
+                text = "SAVE",
+                callback = {
+                    viewModel.updateUserInfo()
+                    dashboardViewModel.toggleSplitScreen(false, null)
+                }
+            )
+        }
     }
 
     DesktopSphinxToast("Tribe Detail")

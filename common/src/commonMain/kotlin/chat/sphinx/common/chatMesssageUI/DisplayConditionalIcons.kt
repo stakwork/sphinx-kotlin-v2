@@ -35,6 +35,9 @@ fun DisplayConditionalIcons(
     val isPaymentTypeSent = isPaymentPaid && chatMessage.isSent
     val isUnpaidReceivedInvoice = chatMessage.isReceived && chatMessage.message.type.isInvoice() && !isPaidInvoice
     val isUnpaidSentInvoice = chatMessage.isSent && chatMessage.message.type.isInvoice() && !isPaidInvoice
+    val timezoneString =  chatMessage.message.remoteTimezoneIdentifier?.value?.let {
+        DateTime.getLocalTimeFor(it, null)
+    }
 
     if (
         chatMessage.background !is BubbleBackground.First
@@ -82,6 +85,8 @@ fun DisplayConditionalIcons(
             )
         }
 
+
+
         if (chatMessage.showSendingIcon) {
             CircularProgressIndicator(
                 modifier = Modifier.height(14.dp).width(14.dp).padding(end = 4.dp, bottom = 2.dp),
@@ -120,6 +125,17 @@ fun DisplayConditionalIcons(
             fontSize = 10.sp,
             textAlign = if (chatMessage.isSent) TextAlign.End else TextAlign.Start,
         )
+
+        if (!timezoneString.isNullOrEmpty() && chatMessage.isReceived) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "/ $timezoneString",
+                fontSize = 10.sp,
+                fontFamily = Roboto,
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
 
         if (chatMessage.showLockIcon && chatMessage.isReceived ||
             (isUnpaidReceivedInvoice || isPaidSentInvoice || isPaymentTypeReceived))

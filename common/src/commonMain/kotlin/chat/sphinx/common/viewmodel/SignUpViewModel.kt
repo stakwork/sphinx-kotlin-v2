@@ -23,6 +23,7 @@ import chat.sphinx.wrapper.lightning.NodeBalanceAll
 import chat.sphinx.wrapper.lightning.toSat
 import chat.sphinx.wrapper.message.media.MediaType
 import chat.sphinx.wrapper.message.media.toFileName
+import chat.sphinx.wrapper.mqtt.ConnectManagerError
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
@@ -43,11 +44,11 @@ class SignUpViewModel : PinAuthenticationViewModel() {
     private val lightningRepository = repositoryModule.lightningRepository
 
     init {
-        scope.launch(dispatchers.mainImmediate) {
-            listenToOwnerRegistered()
-            clearDatabase()
-        }
+        scope.launch(dispatchers.mainImmediate) { listenToOwnerRegistered() }
+        scope.launch(dispatchers.mainImmediate) { clearDatabase() }
+        scope.launch(dispatchers.mainImmediate) { collectConnectManagerErrorState() }
     }
+
     fun clearDatabase() {
         SphinxContainer.appModule.coreDBImpl.getSphinxDatabaseQueriesOrNull()?.let { queries: SphinxDatabaseQueries ->
             queries.transaction {
@@ -507,6 +508,28 @@ class SignUpViewModel : PinAuthenticationViewModel() {
         toast(error)
     }
 
+    private suspend fun collectConnectManagerErrorState() {
+        connectManagerRepository.connectManagerErrorState.collect { connectManagerError ->
+            val message = when (connectManagerError) {
+                is ConnectManagerError.GenerateXPubError -> "Error generating extended public key."
+                is ConnectManagerError.GenerateMnemonicError -> "Error trying to generate mnemonic."
+                is ConnectManagerError.ProcessInviteError -> "Error processing invite."
+                is ConnectManagerError.MqttConnectError -> "Error connecting to MQTT server. Cause: ${connectManagerError.error}."
+                is ConnectManagerError.SubscribeOwnerError -> "Error subscribing to owner topic."
+                is ConnectManagerError.MqttClientError -> "Error with MQTT client."
+                is ConnectManagerError.MqttInitError -> "Error: ${connectManagerError.logs}"
+                is ConnectManagerError.FetchMessageError -> "Error fetching message."
+                is ConnectManagerError.FetchFirstMessageError -> "Error fetching the first message."
+                is ConnectManagerError.InternetConnectionError -> "No internet connection. Please check and try again."
+                else -> null
+            }
+            message?.let {
+                toast(it)
+            }
+        }
+    }
+
+
     fun toast(
         message: String,
         color: Color = badge_red,
@@ -530,6 +553,7 @@ class SignUpViewModel : PinAuthenticationViewModel() {
             )
         }
     }
+
 
     fun reloadAccountData() {
         scope.launch(dispatchers.mainImmediate) {

@@ -67,7 +67,7 @@ class TribeDetailViewModel(
                     chat?.let {
                         currentChat = chat
                         val tribeOwner = chat.isTribeOwnedByAccount(owner.nodePubKey)
-                        val showTribeQrCode = chat.isTribeOwnedByAccount(owner.nodePubKey) || !chat.privateTribe.isTrue()
+                        val showTribeQrCode = chat.isTribeOwnedByAccount(owner.nodePubKey) || !chat.privateTribe.toBoolean()
                         val shareTribeUrl = "sphinx.chat://?action=tribeV2&pubkey=${chat.uuid.value}&host=${tribeDefaultServerUrl}"
                         val createdAtDate = chat.createdAt.localDateTimeString(DateTime.getFormateeemmddhmma())
 
@@ -84,7 +84,11 @@ class TribeDetailViewModel(
                                 showQrCode = showTribeQrCode,
                                 shareTribeUrl = shareTribeUrl,
                                 saveButtonEnable = false,
-                                updateResponse = null
+                                updateResponse = null,
+                                timezoneEnabled = chat.timezoneEnabled?.toBoolean() ?: true,
+                                timezoneIdentifier = chat.timezoneIdentifier?.value ?: ""
+
+
                             )
                         }
                     }

@@ -11,7 +11,11 @@ import chat.sphinx.database.core.SphinxDatabaseQueries
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.features.repository.util.deleteAll
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
+import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.PhotoUrl
+import chat.sphinx.wrapper.chat.toTimezoneEnabled
+import chat.sphinx.wrapper.chat.toTimezoneIdentifier
+import chat.sphinx.wrapper.chat.toTimezoneUpdated
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.ContactId
@@ -41,6 +45,7 @@ class DashboardViewModel(): WindowFocusListener {
     private val sphinxNotificationManager = createSphinxNotificationManager()
     private val repositoryDashboard = SphinxContainer.repositoryModule(sphinxNotificationManager).repositoryDashboard
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
+    private val chatRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).chatRepository
     private val lightningRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).lightningRepository
     private val messageRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).messageRepository
     private val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
@@ -297,6 +302,34 @@ class DashboardViewModel(): WindowFocusListener {
         }
         return owner.nodePubKey
     }
+
+    fun getAllTimezones(): List<String> {
+        return listOf("Use Computer Settings") + DateTime.getValidTimeZoneIds()
+    }
+
+    fun updateTimezoneStatus(
+        isTimezoneEnabled: Boolean,
+        timezoneIdentifier: String?,
+        timezoneUpdated: Boolean,
+        chatId: ChatId?
+    ) {
+        if (chatId == null) return
+
+        scope.launch(dispatchers.mainImmediate) {
+            chatRepository.updateTimezoneEnabledStatus(
+                isTimezoneEnabled = isTimezoneEnabled.toTimezoneEnabled(), chatId = chatId
+            )
+
+            chatRepository.updateTimezoneIdentifier(
+                timezoneIdentifier = timezoneIdentifier?.toTimezoneIdentifier(), chatId = chatId
+            )
+
+            chatRepository.updateTimezoneUpdated(
+                timezoneUpdated = timezoneUpdated.toTimezoneUpdated(), chatId = chatId
+            )
+        }
+    }
+
 
     fun triggerOwnerQRCode() {
         val owner = accountOwnerStateFlow.value

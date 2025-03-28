@@ -55,6 +55,7 @@ import chat.sphinx.platform.imageResource
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.utils.onKeyUp
+import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.lightning.asFormattedString
@@ -428,6 +429,22 @@ fun SphinxChatDetailTopAppBar(
                     }
 
                     chatViewModel?.let {
+                        val chat = (dashboardChat as? DashboardChat.Active)?.chat
+                        val timezone =  chat?.remoteTimezoneIdentifier?.value?.let {
+                            DateTime.getLocalTimeFor(it, null)
+                        }
+
+                        if (!timezone.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = timezone,
+                                fontSize = 11.sp,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                                )
+                        }
+                    }
+
+                    chatViewModel?.let {
                         val chat by chatViewModel.chatSharedFlow.collectAsState(
                             (dashboardChat as? DashboardChat.Active)?.chat
                         )
@@ -444,7 +461,6 @@ fun SphinxChatDetailTopAppBar(
                         }
                     }
                 }
-                // TODO: Lighting Indicator...
             },
             backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
             contentColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
