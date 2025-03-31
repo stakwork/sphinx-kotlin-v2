@@ -210,29 +210,7 @@ fun MessageTextLabel(
     val isTribeLink = SphinxLinkify.gatherLinks(text = messageText, mask = SphinxLinkify.TRIBE_LINK).isNotEmpty()
 
     if (messageText.isNotEmpty()) {
-        val annotatedString = buildAnnotatedString {
-            append(messageText)
-
-            SphinxLinkify.gatherLinks(text = messageText, mask = SphinxLinkify.ALL).forEach { link ->
-                val start = messageText.indexOf(link.url)
-                if (start != -1) {
-                    addStyle(
-                        style = SpanStyle(
-                            color = primary_blue,
-                            textDecoration = TextDecoration.Underline
-                        ),
-                        start = start,
-                        end = start + link.url.length
-                    )
-                    addStringAnnotation(
-                        tag = "URL",
-                        annotation = link.url,
-                        start = start,
-                        end = start + link.url.length
-                    )
-                }
-            }
-        }
+        val annotatedString = messageText.toAnnotatedString()
 
         Row(
             modifier = Modifier
@@ -251,9 +229,11 @@ fun MessageTextLabel(
                 ),
                 maxLines = if (isThread) 2 else Int.MAX_VALUE,
                 onClick = { offset ->
-                    annotatedString.getStringAnnotations("URL", start = offset, end = offset)
+                    annotatedString.getStringAnnotations(start = offset, end = offset)
                         .firstOrNull()?.let { annotation ->
-                            uriHandler.openUri(annotation.item)
+                            if (annotation.tag == "URL") {
+                                uriHandler.openUri(annotation.item)
+                            }
                         }
                 }
             )
@@ -283,6 +263,7 @@ fun MessageTextLabel(
         )
     }
 }
+
 @Composable
 fun LinkPreviews(
     chatMessage: ChatMessage,
