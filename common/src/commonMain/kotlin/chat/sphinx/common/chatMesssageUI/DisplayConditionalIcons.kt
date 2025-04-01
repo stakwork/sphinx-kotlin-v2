@@ -35,8 +35,11 @@ fun DisplayConditionalIcons(
     val isPaymentTypeSent = isPaymentPaid && chatMessage.isSent
     val isUnpaidReceivedInvoice = chatMessage.isReceived && chatMessage.message.type.isInvoice() && !isPaidInvoice
     val isUnpaidSentInvoice = chatMessage.isSent && chatMessage.message.type.isInvoice() && !isPaidInvoice
-    val timezoneString =  chatMessage.message.remoteTimezoneIdentifier?.value?.let {
-        DateTime.getLocalTimeFor(it, chatMessage.message.date)
+    val timezoneString = if (chatMessage.chat.isTribe() && chatMessage.isReceived) {
+        val alias = chatMessage.message.senderAlias?.value
+        alias?.let { chatMessage.timezoneMap[it] }?.let { DateTime.getLocalTimeFor(it, chatMessage.message.date) }
+    } else {
+        null
     }
 
     if (
