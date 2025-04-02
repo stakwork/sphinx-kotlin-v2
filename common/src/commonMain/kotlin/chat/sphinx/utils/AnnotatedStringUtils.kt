@@ -36,7 +36,7 @@ fun String.toAnnotatedString(): AnnotatedString {
 
     // Define regex patterns
     val boldRegex = "\\*\\*(.*?)\\*\\*".toRegex()  // Matches text wrapped in ** (bold)
-    val highlightRegex = "(.*?)".toRegex()         // Matches any text (non-greedy)
+    val highlightRegex = "`([^`]*)`".toRegex()
 
     // Find all matches for bold and highlighted text, associating each with its type
     val matches = (boldRegex.findAll(this).map { it to "bold" } +

@@ -276,6 +276,16 @@ abstract class ChatViewModel(
 
         val messagesList = filterAndSortMessagesIfNecessary(chat, messages)
 
+        val timezoneMap = mutableMapOf<String, String>()
+
+        messagesList.forEach { message ->
+            val alias = message.senderAlias?.value
+            val tz = message.remoteTimezoneIdentifier?.value
+            if (!alias.isNullOrEmpty() && !tz.isNullOrEmpty()) {
+                timezoneMap[alias] = tz
+            }
+        }
+
         messagesList.withIndex().forEach { (index, message) ->
 
             val colors = getColorsMapFor(message, contactColorInt, tribeAdmin)
@@ -303,6 +313,7 @@ abstract class ChatViewModel(
                         contact,
                         message,
                         colors,
+                        timezoneMap,
                         accountOwner = { owner },
                         boostMessage = {
                             boostMessage(chat, message.uuid)
@@ -322,6 +333,7 @@ abstract class ChatViewModel(
                     contact,
                     message,
                     colors,
+                    timezoneMap,
                     accountOwner = { owner },
                     boostMessage = {
                         boostMessage(chat, message.uuid)

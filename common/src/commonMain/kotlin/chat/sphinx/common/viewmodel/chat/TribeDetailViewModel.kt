@@ -87,8 +87,6 @@ class TribeDetailViewModel(
                                 updateResponse = null,
                                 timezoneEnabled = chat.timezoneEnabled?.toBoolean() ?: true,
                                 timezoneIdentifier = chat.timezoneIdentifier?.value ?: ""
-
-
                             )
                         }
                     }
