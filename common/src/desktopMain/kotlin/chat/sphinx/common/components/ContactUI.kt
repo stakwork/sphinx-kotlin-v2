@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -17,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,7 +65,7 @@ fun AddContactScreen(dashboardViewModel: DashboardViewModel, preferredSize: DpSi
             when (screenState) {
                 is ContactScreenState.Choose -> AddContact(dashboardViewModel)
                 is ContactScreenState.NewToSphinx -> AddNewContactOnSphinx(dashboardViewModel)
-                is ContactScreenState.AlreadyOnSphinx -> ContactForm(dashboardViewModel, null, screenState.pubKey)
+                is ContactScreenState.AlreadyOnSphinx -> ContactForm(dashboardViewModel, null, screenState.pubKey, true)
                 else -> {}
             }
 
@@ -290,7 +292,21 @@ fun AddNewContactOnSphinx(dashboardViewModel: DashboardViewModel) {
 fun ContactForm(
     dashboardViewModel: DashboardViewModel,
     contactId: ContactId?,
-    pubKey: LightningNodeDescriptor? = null
+    pubKey: LightningNodeDescriptor? = null,
+    isAddFriend: Boolean = false
+) {
+    if (isAddFriend) {
+        ContactFormAddFriend(dashboardViewModel, contactId, pubKey)
+    } else {
+        ContactFormWithShareTime(dashboardViewModel, contactId, pubKey)
+    }
+}
+
+@Composable
+fun ContactFormWithShareTime(
+    dashboardViewModel: DashboardViewModel,
+    contactId: ContactId?,
+    pubKey: LightningNodeDescriptor? = null,
 ) {
     val editMode = (contactId != null)
 
@@ -573,3 +589,144 @@ fun ContactForm(
         dashboardViewModel.closeFullScreenView()
     }
 }
+
+@Composable
+fun ContactFormAddFriend(
+    dashboardViewModel: DashboardViewModel,
+    contactId: ContactId?,
+    pubKey: LightningNodeDescriptor? = null
+) {
+
+    val viewModel = remember { AddContactViewModel() }
+
+
+    (viewModel as? AddContactViewModel)?.fillPubKey(pubKey?.value)
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+            .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.Start
+        ) {
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Column {
+                Text(
+                    text = "Nickname*",
+                    fontSize = 12.sp,
+                    fontFamily = Roboto,
+                    color = Color.Gray,
+                )
+                BasicTextField(
+                    value = viewModel.contactState.contactAlias,
+                    onValueChange = {
+                        viewModel.onNicknameTextChanged(it)
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
+                    singleLine = true,
+                    cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.secondary)
+
+                )
+                Divider(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = Color.Gray)
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Column {
+                Text(
+                    text = "Address*",
+                    fontSize = 12.sp,
+                    fontFamily = Roboto,
+                    color = Color.Gray,
+                )
+                Row(
+                    modifier = Modifier.height(32.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BasicTextField(
+                        value = viewModel.contactState.lightningNodePubKey,
+                        onValueChange = {
+                            viewModel.onAddressTextChanged(it)
+                        },
+                        enabled = true,
+                        modifier = Modifier.weight(1f).padding(top = 8.dp),
+                        textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
+                        singleLine = true,
+                        cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.secondary)
+                    )
+                }
+                Divider(modifier = Modifier.padding(top = 4.dp), color = Color.Gray)
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Column {
+                Text(
+                    text = "Route Hint",
+                    fontSize = 12.sp,
+                    fontFamily = Roboto,
+                    color = Color.Gray,
+                )
+                BasicTextField(
+                    value = viewModel.contactState.lightningRouteHint ?: "",
+                    onValueChange = {
+                        viewModel.onRouteHintTextChanged(it)
+                    },
+                    enabled = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    textStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = Roboto),
+                    singleLine = true,
+                    cursorBrush = SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.secondary)
+
+                )
+                Divider(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = Color.Gray)
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Bottom,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    Modifier.fillMaxWidth().height(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (viewModel.contactState.status is Response.Error) {
+                        Text(
+                            text = "There was an error, please try again later",
+                            fontSize = 12.sp,
+                            fontFamily = Roboto,
+                            color = badge_red,
+                        )
+                    }
+                    if (viewModel.contactState.status is LoadResponse.Loading) {
+                        CircularProgressIndicator(
+                            Modifier.padding(start = 8.dp).size(24.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                CommonButton(
+                    enabled = viewModel.contactState.saveButtonEnabled,
+                    text = "SAVE TO CONTACTS",
+                    callback = {
+                        viewModel.saveContact()
+                        dashboardViewModel.closeFullScreenView()
+                    }
+                )
+            }
+        }
+    }
+
+}
+
+
