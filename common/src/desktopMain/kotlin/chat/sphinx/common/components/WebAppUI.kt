@@ -93,9 +93,8 @@ fun WebAppUI(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
-                    webViewState?.let { url ->
                         MaterialTheme {
-                            val webViewState = rememberWebViewState(url)
+                            val webViewState = rememberWebViewState("https://www.google.com")
                             val webViewNavigator = webAppViewModel.customWebViewNavigator
                             val jsBridge = webAppViewModel.customJsBridge
 
@@ -111,7 +110,6 @@ fun WebAppUI(
                                 )
                             }
                         }
-                    }
                 }
             }
         }
