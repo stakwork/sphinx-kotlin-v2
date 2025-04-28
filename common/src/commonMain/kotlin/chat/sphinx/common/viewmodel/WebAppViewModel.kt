@@ -86,20 +86,20 @@ class WebAppViewModel {
         open: Boolean,
         url: String?
     ) {
-//        if (_webAppWindowStateFlow.value != open) {
-//            _webAppWindowStateFlow.value = open
-//        }
-//
-//        if (!open) {
-//            closeAuthorizeView()
-//            return
-//        }
-//
-//        viewModelScope.launch(dispatchers.io) {
-//            delay(1000L)
-//
-//            toggleWebViewWindow(url)
-//        }
+        if (_webAppWindowStateFlow.value != open) {
+            _webAppWindowStateFlow.value = open
+        }
+
+        if (!open) {
+            closeAuthorizeView()
+            return
+        }
+
+        viewModelScope.launch(dispatchers.io) {
+            delay(1000L)
+
+            toggleWebViewWindow(url)
+        }
         toast("WebView is not available at the moment")
     }
 
