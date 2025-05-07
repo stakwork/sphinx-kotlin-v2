@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import chat.sphinx.common.components.toast
 import chat.sphinx.common.state.AuthorizeViewState
-import chat.sphinx.common.state.ChatPaymentState
 import chat.sphinx.concepts.network.query.contact.model.PersonDataDto
 import chat.sphinx.concepts.network.query.lightning.model.lightning.*
 import chat.sphinx.concepts.network.query.message.model.PutPaymentRequestDto
@@ -25,11 +24,9 @@ import com.multiplatform.webview.jsbridge.JsMessage
 import com.multiplatform.webview.jsbridge.WebViewJsBridge
 import com.multiplatform.webview.web.WebViewNavigator
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import theme.badge_red
 
 class WebAppViewModel {
     val scope = SphinxContainer.appModule.applicationScope
@@ -39,6 +36,9 @@ class WebAppViewModel {
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
     private val lightningRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).lightningRepository
     private val messageRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).messageRepository
+
+    private val _receivedMessages = MutableStateFlow<List<String>>(emptyList())
+    val receivedMessages: StateFlow<List<String>> = _receivedMessages.asStateFlow()
 
     companion object {
         const val APPLICATION_NAME = "Sphinx"
@@ -155,6 +155,8 @@ class WebAppViewModel {
     ) {
         this.callback = callback
 
+        _receivedMessages.value = _receivedMessages.value + message.toString()
+
         println("MESSAGE RECEIVED: $message")
 
         viewModelScope.launch(dispatchers.mainImmediate) {
@@ -238,7 +240,7 @@ class WebAppViewModel {
         }
     }
 
-    fun authorizeApp() {
+    fun processAuthorize() {
         closeAuthorizeView()
 
         viewModelScope.launch(dispatchers.mainImmediate) {

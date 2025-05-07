@@ -4,6 +4,7 @@ import CommonButton
 import Roboto
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -38,6 +39,8 @@ fun WebAppUI(
     dashboardViewModel: DashboardViewModel,
     webAppViewModel: WebAppViewModel
 ) {
+    val messages by webAppViewModel.receivedMessages.collectAsState()
+
     when (dashboardViewModel.getWebViewState()) {
         DashboardViewModel.WebViewState.Loading -> {
             toast("WebView Library is loading, please try again in a few minutes", badge_red)
@@ -93,23 +96,43 @@ fun WebAppUI(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
+                    webViewState?.let { url ->
                         MaterialTheme {
-                            val webViewState = rememberWebViewState("https://www.google.com")
+                            val urlWebViewState = rememberWebViewState(url)
                             val webViewNavigator = webAppViewModel.customWebViewNavigator
                             val jsBridge = webAppViewModel.customJsBridge
 
-                            initWebView(webViewState)
+                            initWebView(urlWebViewState)
                             initJsBridge(jsBridge, webAppViewModel)
 
                             Column(Modifier.fillMaxSize()) {
                                 WebView(
-                                    state = webViewState,
+                                    state = urlWebViewState,
                                     modifier = Modifier.fillMaxSize(),
                                     navigator = webViewNavigator,
                                     webViewJsBridge = jsBridge
                                 )
                             }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth()
+                                    .background(Color.Black)
+                                    .padding(10.dp)
+                            ) {
+                                LazyColumn {
+                                    items(messages.size) { index ->
+                                        Text(
+                                            text = messages[index],
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            modifier = Modifier.padding(vertical = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
+                    }
                 }
             }
         }
@@ -243,7 +266,7 @@ fun AuthorizeViewUI(
                             if (budgetField) {
                                 webAppViewModel.authorizeBudget()
                             } else {
-                                webAppViewModel.authorizeApp()
+                                webAppViewModel.processAuthorize()
                             }
                         }
                     }
