@@ -77,60 +77,67 @@ fun WebAppUI(
             ),
             icon = sphinxIcon
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize()
-                    .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
-            ) {
-                Text(
-                    text = "Loading. Please wait...",
-                    maxLines = 1,
-                    fontSize = 14.sp,
-                    fontFamily = Roboto,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Top part: WebView content
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
                 ) {
-                    val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
-                    webViewState?.let { url ->
-                        MaterialTheme {
-                            val urlWebViewState = rememberWebViewState(url)
-                            val webViewNavigator = webAppViewModel.customWebViewNavigator
-                            val jsBridge = webAppViewModel.customJsBridge
+                    Text(
+                        text = "Loading. Please wait...",
+                        maxLines = 1,
+                        fontSize = 14.sp,
+                        fontFamily = Roboto,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
 
-                            initWebView(urlWebViewState)
-                            initJsBridge(jsBridge, webAppViewModel)
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
+                        webViewState?.let { url ->
+                            MaterialTheme {
+                                val urlWebViewState = rememberWebViewState(url)
+                                val webViewNavigator = webAppViewModel.customWebViewNavigator
+                                val jsBridge = webAppViewModel.customJsBridge
 
-                            Column(Modifier.fillMaxSize()) {
-                                WebView(
-                                    state = urlWebViewState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    navigator = webViewNavigator,
-                                    webViewJsBridge = jsBridge
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth()
-                                    .background(Color.Black)
-                                    .padding(10.dp)
-                            ) {
-                                LazyColumn {
-                                    items(messages.size) { index ->
-                                        Text(
-                                            text = messages[index],
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            modifier = Modifier.padding(vertical = 4.dp)
-                                        )
-                                    }
+                                initWebView(urlWebViewState)
+                                initJsBridge(jsBridge, webAppViewModel)
+
+                                Column(Modifier.fillMaxSize()) {
+                                    WebView(
+                                        state = urlWebViewState,
+                                        modifier = Modifier.fillMaxSize(),
+                                        navigator = webViewNavigator,
+                                        webViewJsBridge = jsBridge
+                                    )
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Bottom part: Log message viewer
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(Color.Black)
+                        .padding(10.dp)
+                ) {
+                    LazyColumn {
+                        items(messages.size) { index ->
+                            Text(
+                                text = messages[index],
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
                         }
                     }
                 }
