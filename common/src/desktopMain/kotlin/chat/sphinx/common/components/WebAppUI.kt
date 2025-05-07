@@ -32,6 +32,7 @@ import com.multiplatform.webview.jsbridge.WebViewJsBridge
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.WebViewState
 import com.multiplatform.webview.web.rememberWebViewState
+import com.multiplatform.webview.web.rememberWebViewStateWithHTMLData
 import theme.*
 
 @Composable
@@ -64,6 +65,35 @@ fun WebAppUI(
 
     var isOpen by remember { mutableStateOf(true) }
     val sphinxIcon = imageResource(DesktopResource.drawable.sphinx_icon)
+
+    val testHtml = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>JS Bridge Test</title>
+        <script>
+    function sendMessage() {
+        const message = {
+            method: "sphinx-bridge",
+            params: JSON.stringify({ foo: "bar" })
+        };
+
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers["sphinx-bridge"]) {
+            window.webkit.messageHandlers["sphinx-bridge"].postMessage(message);
+        } else if (window.sphinxBridge) {
+            window.sphinxBridge.postMessage(JSON.stringify(message));
+        } else {
+            console.error("No JS bridge available.");
+        }
+    }
+</script>
+    </head>
+    <body>
+        <h1>JS Bridge Test</h1>
+        <button onclick="sendMessage()">Send Message to Android</button>
+    </body>
+    </html>
+""".trimIndent()
 
     if (isOpen) {
         Window(
@@ -102,7 +132,7 @@ fun WebAppUI(
                         val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
                         webViewState?.let { url ->
                             MaterialTheme {
-                                val urlWebViewState = rememberWebViewState(url)
+                                val urlWebViewState = rememberWebViewStateWithHTMLData(testHtml)
                                 val webViewNavigator = webAppViewModel.customWebViewNavigator
                                 val jsBridge = webAppViewModel.customJsBridge
 
