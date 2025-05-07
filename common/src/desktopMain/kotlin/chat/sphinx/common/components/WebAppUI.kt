@@ -68,31 +68,33 @@ fun WebAppUI(
 
     val testHtml = """
     <!DOCTYPE html>
-    <html>
-    <head>
-        <title>JS Bridge Test</title>
-        <script>
-    function sendMessage() {
-        const message = {
-            method: "sphinx-bridge",
-            params: JSON.stringify({ foo: "bar" })
-        };
-
-        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers["sphinx-bridge"]) {
-            window.webkit.messageHandlers["sphinx-bridge"].postMessage(message);
-        } else if (window.sphinxBridge) {
-            window.sphinxBridge.postMessage(JSON.stringify(message));
-        } else {
-            console.error("No JS bridge available.");
+<html>
+<head>
+    <title>JS Bridge Test</title>
+    <script>
+        function sendMessage() {
+            const message = {
+                foo: "bar"
+            };
+            if (window.kmpJsBridge && window.kmpJsBridge.callNative) {
+                window.kmpJsBridge.callNative(
+                    "sphinx-bridge",                    // method name
+                    JSON.stringify(message),           // params as JSON string
+                    function(responseJson) {           // optional callback
+                        console.log("Native replied:", responseJson);
+                    }
+                );
+            } else {
+                console.error("kmpJsBridge is not available.");
+            }
         }
-    }
-</script>
-    </head>
-    <body>
-        <h1>JS Bridge Test</h1>
-        <button onclick="sendMessage()">Send Message to Android</button>
-    </body>
-    </html>
+    </script>
+</head>
+<body>
+    <h1>JS Bridge Test</h1>
+    <button onclick="sendMessage()">Send Message to Native</button>
+</body>
+</html>
 """.trimIndent()
 
     if (isOpen) {
