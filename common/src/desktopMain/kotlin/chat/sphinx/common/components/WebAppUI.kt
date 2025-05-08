@@ -241,9 +241,9 @@ fun AuthorizeViewUI(
                     ) {
                         CommonButton("AUTHORIZE", fontWeight = FontWeight.W500) {
                             if (budgetField) {
-                                webAppViewModel.authorizeBudget()
+                                webAppViewModel.processSetBudget()
                             } else {
-                                webAppViewModel.authorizeApp()
+                                webAppViewModel.processAuthorize()
                             }
                         }
                     }
