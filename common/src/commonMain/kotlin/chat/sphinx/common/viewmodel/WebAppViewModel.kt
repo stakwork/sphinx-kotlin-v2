@@ -14,12 +14,16 @@ import chat.sphinx.crypto.common.clazzes.PasswordGenerator
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.response.*
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
+import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.bridge.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.lightning.Bolt11
 import chat.sphinx.wrapper.lightning.LightningNodePubKey
+import chat.sphinx.wrapper.lightning.getLspPubKey
 import chat.sphinx.wrapper.lightning.toLightningPaymentRequestOrNull
-import chat.sphinx.wrapper.lsat.toLsatIssuer
+import chat.sphinx.wrapper.lsat.*
+import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
+import chat.sphinx.wrapper.toDateTime
 import com.multiplatform.webview.jsbridge.IJsMessageHandler
 import com.multiplatform.webview.jsbridge.JsMessage
 import com.multiplatform.webview.jsbridge.WebViewJsBridge
@@ -29,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
+import uniffi.sphinxrs.makeInvite
 
 class WebAppViewModel {
     val scope = SphinxContainer.appModule.applicationScope
@@ -40,6 +45,7 @@ class WebAppViewModel {
     private val messageRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).messageRepository
     private val chatRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).chatRepository
     private val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
+    private val networkQueryContact = SphinxContainer.repositoryModule(sphinxNotificationManager).networkQueryContact
 
     companion object {
         const val APPLICATION_NAME = "Sphinx"
@@ -198,13 +204,13 @@ class WebAppViewModel {
 
             message.params.toBridgeLSatMessageOrNull()?.let {
                 if (it.type == TYPE_LSAT) {
-                    payLSat(it)
+                    processLsat(it)
                 }
             }
 
             message.params.toBridgeUpdateLSatMessageOrNull()?.let {
                 if (it.type == TYPE_UPDATELSAT) {
-                    updateLSat(it)
+                    processUpdateLsat(it)
                 }
             }
 
@@ -371,6 +377,7 @@ class WebAppViewModel {
             callback = null
         }
     }
+
 
 //    private fun sendActiveLSAT(
 //        activeLSatDto: ActiveLsatDto?,
@@ -581,50 +588,227 @@ class WebAppViewModel {
         }
     }
 
+    private suspend fun processLsat(lSatMessage: BridgeLSatMessage) {
+        val macaroon = lSatMessage.macaroon
+        val issuer = lSatMessage.issuer
+
+        val paymentRequest = lSatMessage.paymentRequest.toLightningPaymentRequestOrNull()?.let {
+            Bolt11.decode(it)
+        }
+        val isBudgetSufficient = paymentRequest?.getSatsAmount()?.value?.toInt()?.let { checkCanPay(it) } ?: false
+
+        if (isBudgetSufficient) {
+            val identifier = connectManagerRepository.getIdFromMacaroon(macaroon)?.toLsatIdentifier()
+
+            identifier?.let { lspIdentifier ->
+                val identifierDbRecord = chatRepository.getLsatByIdentifier(lspIdentifier).firstOrNull()
+
+                if (identifierDbRecord == null) {
+                    val invoice = connectManagerRepository.getInvoiceInfo(lSatMessage.paymentRequest)?.toInvoiceBolt11()
+                    val invoiceAmount = invoice?.getSatsAmount()?.value
+                    val invoicePubKey = invoice?.getPubKey()
+                    val paymentHash = invoice?.payment_hash
+
+                    if (invoicePubKey != null && paymentHash != null && invoiceAmount != null) {
+                        val routerUrl = connectManagerRepository.retrieveRouterUrl()
+
+                        if (routerUrl != null) {
+                            viewModelScope.launch {
+                                if (invoice.retrieveLspPubKey() == contactRepository.accountOwner.value?.routeHint?.getLspPubKey()) {
+                                    val nnPaymentRequest =
+                                        lSatMessage.paymentRequest.toLightningPaymentRequestOrNull() ?: return@launch
+
+                                    connectManagerRepository.payInvoice(
+                                        paymentRequest = nnPaymentRequest,
+                                        null,
+                                        null,
+                                        milliSatAmount = convertToMilliSat(invoiceAmount),
+                                        paymentHash = paymentHash,
+                                    )
+                                    connectManagerRepository.webViewPreImage.collect { preimage ->
+                                        if (preimage?.isNotEmpty() == true) {
+
+                                            val lsatToSave = Lsat(
+                                                paymentRequest = nnPaymentRequest,
+                                                macaroon = macaroon.toMacaroon()!!,
+                                                issuer = issuer.toLsatIssuer(),
+                                                id = lspIdentifier,
+                                                preimage = preimage.toLsatPreImage(),
+                                                status = LsatStatus.Active,
+                                                createdAt = DateTime.nowUTC().toDateTime(),
+                                                paths = null,
+                                                metaData = null
+                                            )
+
+                                            chatRepository.upsertLsat(lsatToSave)
+                                            connectManagerRepository.clearWebViewPreImage()
+
+                                            sendLsatSuccess(macaroon, preimage)
+                                        }
+                                    }
+                                } else {
+                                    networkQueryContact.getRoutingNodes(
+                                        routerUrl,
+                                        invoicePubKey,
+                                        convertToMilliSat(invoiceAmount)
+                                    ).collect { response ->
+                                        when (response) {
+                                            is LoadResponse.Loading -> {}
+                                            is Response.Error -> {}
+                                            is Response.Success -> {
+                                                try {
+                                                    val routerPubKey = connectManagerRepository.retrieveRouterPubKey()
+
+                                                    val nnPaymentRequest =
+                                                        lSatMessage.paymentRequest.toLightningPaymentRequestOrNull()
+                                                            ?: return@collect
+
+                                                    connectManagerRepository.payInvoice(
+                                                        paymentRequest = nnPaymentRequest,
+                                                        response.value,
+                                                        routerPubKey,
+                                                        milliSatAmount = convertToMilliSat(
+                                                            invoiceAmount
+                                                        ),
+                                                        paymentHash = paymentHash,
+                                                    )
+                                                    connectManagerRepository.webViewPreImage.collect { preimage ->
+                                                        if (preimage?.isNotEmpty() == true) {
+
+                                                            val lsatToSave = Lsat(
+                                                                paymentRequest = lSatMessage.paymentRequest.toLightningPaymentRequestOrNull(),
+                                                                macaroon = macaroon.toMacaroon()!!,
+                                                                issuer = issuer.toLsatIssuer()!!,
+                                                                id = lspIdentifier,
+                                                                preimage = preimage.toLsatPreImage(),
+                                                                status = LsatStatus.Active,
+                                                                createdAt = DateTime.nowUTC().toDateTime(),
+                                                                paths = null,
+                                                                metaData = null
+                                                            )
+
+                                                            chatRepository.upsertLsat(lsatToSave)
+                                                            connectManagerRepository.clearWebViewPreImage()
+
+                                                            sendLsatSuccess(macaroon, preimage)
+                                                        }
+                                                    }
+                                                } catch (e: Exception) {
+                                                    // Handle exception
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            sendLsatFailure()
+                        }
+                    } else {
+                        sendLsatFailure()
+                    }
+                } else {
+                    sendLsatFailure()
+                }
+            } ?: sendLsatFailure()
+        } else {
+            sendLsatFailure()
+        }
+    }
+
+    private fun sendLsatSuccess(macaroon: String, preimage: String) {
+        val message = SendLSatMessage(
+            TYPE_LSAT,
+            APPLICATION_NAME,
+            1,
+            budget,
+            password,
+            lsat = retrieveLsatString(macaroon, preimage)
+        ).toJson()
+        callback?.invoke(message)
+        callback = null
+    }
+
+    private fun sendLsatFailure() {
+        val message = SendLSatFailedMessage(
+            TYPE_LSAT,
+            APPLICATION_NAME,
+            0,
+            password
+        ).toJson()
+        callback?.invoke(message)
+        callback = null
+    }
+
+    private suspend fun processUpdateLsat(updateLSatMessage: BridgeUpdateLSatMessage) {
+        if (updateLSatMessage.status == LsatStatus.EXPIRED_STRING) {
+            val identifier = updateLSatMessage.identifier.toLsatIdentifier()
+            val lsatOnDb = identifier?.let { chatRepository.getLsatByIdentifier(it).firstOrNull() }
+
+            if (lsatOnDb != null) {
+                chatRepository.updateLsatStatus(identifier, LsatStatus.Expired)
+
+                val message = SendUpdateLSatMessage(
+                    TYPE_UPDATELSAT,
+                    APPLICATION_NAME,
+                    password,
+                    1,
+                    retrieveLsatString(lsatOnDb.macaroon.value, lsatOnDb.preimage?.value),
+                ).toJson()
+
+                callback?.let {
+                    it(message)
+                }
+                callback = null
+            }
+        }
+    }
+
+
     private fun sendLSat(
         lSatMessage: BridgeLSatMessage,
         lsat: String?,
         success: Boolean
     ) {
-        if (lsat != null && success) {
-            this.password = generatePassword()
-
-            val message = SendLSatMessage(
-                TYPE_LSAT,
-                APPLICATION_NAME,
-                password,
-                lSatMessage.paymentRequest,
-                lSatMessage.macaroon,
-                lSatMessage.issuer,
-                lsat,
-                budget,
-                true
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        } else {
-            this.password = generatePassword()
-
-            val message = SendLSatFailedMessage(
-                TYPE_LSAT,
-                APPLICATION_NAME,
-                password,
-                lSatMessage.paymentRequest,
-                lSatMessage.macaroon,
-                lSatMessage.issuer,
-                false
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        }
+//        if (lsat != null && success) {
+//            this.password = generatePassword()
+//
+//            val message = SendLSatMessage(
+//                TYPE_LSAT,
+//                APPLICATION_NAME,
+//                password,
+//                lSatMessage.paymentRequest,
+//                lSatMessage.macaroon,
+//                lSatMessage.issuer,
+//                lsat,
+//                budget,
+//                true
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        } else {
+//            this.password = generatePassword()
+//
+//            val message = SendLSatFailedMessage(
+//                TYPE_LSAT,
+//                APPLICATION_NAME,
+//                password,
+//                lSatMessage.paymentRequest,
+//                lSatMessage.macaroon,
+//                lSatMessage.issuer,
+//                false
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        }
     }
 
     private suspend fun updateLSat(updateLSatMessage: BridgeUpdateLSatMessage) {
@@ -658,42 +842,42 @@ class WebAppViewModel {
         lsat: String?,
         success: Boolean
     ) {
-        if (lsat != null && success) {
-            this.password = generatePassword()
-
-            val message = SendUpdateLSatMessage(
-                TYPE_UPDATELSAT,
-                APPLICATION_NAME,
-                password,
-                updateLSatMessage.identifier,
-                updateLSatMessage.status,
-                lsat,
-                true
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        } else {
-            this.password = generatePassword()
-
-            val message = SendUpdateLSatFailedMessage(
-                TYPE_UPDATELSAT,
-                APPLICATION_NAME,
-                password,
-                updateLSatMessage.identifier,
-                updateLSatMessage.status,
-                success
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        }
+//        if (lsat != null && success) {
+//            this.password = generatePassword()
+//
+//            val message = SendUpdateLSatMessage(
+//                TYPE_UPDATELSAT,
+//                APPLICATION_NAME,
+//                password,
+//                updateLSatMessage.identifier,
+//                updateLSatMessage.status,
+//                lsat,
+//                true
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        } else {
+//            this.password = generatePassword()
+//
+//            val message = SendUpdateLSatFailedMessage(
+//                TYPE_UPDATELSAT,
+//                APPLICATION_NAME,
+//                password,
+//                updateLSatMessage.identifier,
+//                updateLSatMessage.status,
+//                success
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        }
     }
 
     private suspend fun sendPayment(bridgePaymentMessage: BridgePaymentMessage) {
@@ -862,6 +1046,13 @@ class WebAppViewModel {
                 resolvedOwner!!
             }
         }
+    }
+    private fun convertToMilliSat(amount: Long): Long {
+        return amount * 1000
+    }
+
+    private fun retrieveLsatString(macaroon: String?, preimage: String?): String {
+        return "LSAT $macaroon:$preimage"
     }
 }
 
