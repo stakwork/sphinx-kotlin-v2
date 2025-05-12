@@ -29,10 +29,8 @@ import chat.sphinx.common.viewmodel.WebAppViewModel
 import chat.sphinx.platform.imageResource
 import chat.sphinx.utils.getPreferredWindowSize
 import com.multiplatform.webview.jsbridge.WebViewJsBridge
-import com.multiplatform.webview.web.WebView
-import com.multiplatform.webview.web.WebViewState
-import com.multiplatform.webview.web.rememberWebViewState
-import com.multiplatform.webview.web.rememberWebViewStateWithHTMLData
+import com.multiplatform.webview.jsbridge.rememberWebViewJsBridge
+import com.multiplatform.webview.web.*
 import theme.*
 
 @Composable
@@ -135,11 +133,11 @@ fun WebAppUI(
                         webViewState?.let { url ->
                             MaterialTheme {
                                 val urlWebViewState = rememberWebViewStateWithHTMLData(testHtml)
-                                val webViewNavigator = webAppViewModel.customWebViewNavigator
-                                val jsBridge = webAppViewModel.customJsBridge
+                                val webViewNavigator = remember { WebViewNavigator(webAppViewModel.viewModelScope) }
+                                val jsBridge = rememberWebViewJsBridge(webViewNavigator)
 
-                                initWebView(urlWebViewState)
                                 initJsBridge(jsBridge, webAppViewModel)
+                                initWebView(urlWebViewState)
 
                                 Column(Modifier.fillMaxSize()) {
                                     WebView(
