@@ -107,15 +107,29 @@ fun WebAppUI(
                         webViewState?.let { url ->
                             MaterialTheme {
                                 val urlWebViewState = rememberWebViewState("https://machinelearning.sphinx.chat/")
-                                initWebView(urlWebViewState)
+                                var webViewInitialized by remember { mutableStateOf(false) }
+
+                                LaunchedEffect(Unit) {
+                                    kotlinx.coroutines.delay(1000L)
+                                    initWebView(urlWebViewState)
+                                    webViewInitialized = true
+                                }
 
                                 Column(Modifier.fillMaxSize()) {
-                                    WebView(
-                                        state = urlWebViewState,
-                                        modifier = Modifier.fillMaxSize(),
-                                        navigator = webViewNavigator,
-                                        webViewJsBridge = jsBridge
-                                    )
+                                    if (webViewInitialized) {
+                                        WebView(
+                                            state = urlWebViewState,
+                                            modifier = Modifier.fillMaxSize(),
+                                            navigator = webViewNavigator,
+                                            webViewJsBridge = jsBridge
+                                        )
+                                    } else {
+                                        Text(
+                                            "Initializing WebView...",
+                                            color = Color.Gray,
+                                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                                        )
+                                    }
                                 }
                             }
                         }
