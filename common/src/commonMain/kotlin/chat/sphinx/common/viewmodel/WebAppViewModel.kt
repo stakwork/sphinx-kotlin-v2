@@ -326,44 +326,44 @@ class WebAppViewModel {
         activeLSatDto: ActiveLsatDto?,
         success: Boolean
     ) {
-        activeLSatDto?.let {
-            this.password = generatePassword()
-
-            val message = SendActiveLSatMessage(
-                TYPE_GETLSAT,
-                APPLICATION_NAME,
-                password,
-                it.macaroon,
-                it.paymentRequest,
-                it.preimage,
-                it.identifier,
-                it.issuer,
-                success,
-                it.status,
-                it.paths ?: ""
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        } ?: run {
-            this.password = generatePassword()
-
-            val message = SendActiveLSatFailedMessage(
-                TYPE_GETLSAT,
-                APPLICATION_NAME,
-                password,
-                success
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        }
+//        activeLSatDto?.let {
+//            this.password = generatePassword()
+//
+//            val message = SendActiveLSatMessage(
+//                TYPE_GETLSAT,
+//                APPLICATION_NAME,
+//                password,
+//                it.macaroon,
+//                it.paymentRequest,
+//                it.preimage,
+//                it.identifier,
+//                it.issuer,
+//                success,
+//                it.status,
+//                it.paths ?: ""
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        } ?: run {
+//            this.password = generatePassword()
+//
+//            val message = SendActiveLSatFailedMessage(
+//                TYPE_GETLSAT,
+//                APPLICATION_NAME,
+//                password,
+//                success
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        }
     }
 
     private suspend fun signChallenge(
@@ -467,38 +467,38 @@ class WebAppViewModel {
         signChallengeDto: SignChallengeDto?,
         success: Boolean
     ) {
-        signChallengeDto?.let {
-            this.password = generatePassword()
-
-            val message = SendSignMessage(
-                TYPE_SIGN,
-                APPLICATION_NAME,
-                password,
-                it.sig,
-                success
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        } ?: run {
-            this.password = generatePassword()
-
-            val message = SendFailedSignMessage(
-                TYPE_SIGN,
-                APPLICATION_NAME,
-                password,
-                false
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        }
+//        signChallengeDto?.let {
+//            this.password = generatePassword()
+//
+//            val message = SendSignMessage(
+//                TYPE_SIGN,
+//                APPLICATION_NAME,
+//                password,
+//                it.sig,
+//                success
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        } ?: run {
+//            this.password = generatePassword()
+//
+//            val message = SendFailedSignMessage(
+//                TYPE_SIGN,
+//                APPLICATION_NAME,
+//                password,
+//                false
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        }
     }
 
     private suspend fun payLSat(lSatMessage: BridgeLSatMessage) {
@@ -540,41 +540,41 @@ class WebAppViewModel {
         if (lsat != null && success) {
             this.password = generatePassword()
 
-            val message = SendLSatMessage(
-                TYPE_LSAT,
-                APPLICATION_NAME,
-                password,
-                lSatMessage.paymentRequest,
-                lSatMessage.macaroon,
-                lSatMessage.issuer,
-                lsat,
-                budget,
-                true
-            ).toJson()
+//            val message = SendLSatMessage(
+//                TYPE_LSAT,
+//                APPLICATION_NAME,
+//                password,
+//                lSatMessage.paymentRequest,
+//                lSatMessage.macaroon,
+//                lSatMessage.issuer,
+//                lsat,
+//                budget,
+//                true
+//            ).toJson()
 
-            callback?.let {
-                it(message)
-            }
+//            callback?.let {
+//                it(message)
+//            }
 
             callback = null
         } else {
             this.password = generatePassword()
 
-            val message = SendLSatFailedMessage(
-                TYPE_LSAT,
-                APPLICATION_NAME,
-                password,
-                lSatMessage.paymentRequest,
-                lSatMessage.macaroon,
-                lSatMessage.issuer,
-                false
-            ).toJson()
+//            val message = SendLSatFailedMessage(
+//                TYPE_LSAT,
+//                APPLICATION_NAME,
+//                password,
+//                lSatMessage.paymentRequest,
+//                lSatMessage.macaroon,
+//                lSatMessage.issuer,
+//                false
+//            ).toJson()
 
-            callback?.let {
-                it(message)
-            }
+//            callback?.let {
+//                it(message)
+//            }
 
-            callback = null
+//            callback = null
         }
     }
 
@@ -609,42 +609,42 @@ class WebAppViewModel {
         lsat: String?,
         success: Boolean
     ) {
-        if (lsat != null && success) {
-            this.password = generatePassword()
-
-            val message = SendUpdateLSatMessage(
-                TYPE_UPDATELSAT,
-                APPLICATION_NAME,
-                password,
-                updateLSatMessage.identifier,
-                updateLSatMessage.status,
-                lsat,
-                true
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        } else {
-            this.password = generatePassword()
-
-            val message = SendUpdateLSatFailedMessage(
-                TYPE_UPDATELSAT,
-                APPLICATION_NAME,
-                password,
-                updateLSatMessage.identifier,
-                updateLSatMessage.status,
-                success
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        }
+//        if (lsat != null && success) {
+//            this.password = generatePassword()
+//
+//            val message = SendUpdateLSatMessage(
+//                TYPE_UPDATELSAT,
+//                APPLICATION_NAME,
+//                password,
+//                updateLSatMessage.identifier,
+//                updateLSatMessage.status,
+//                lsat,
+//                true
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        } else {
+//            this.password = generatePassword()
+//
+//            val message = SendUpdateLSatFailedMessage(
+//                TYPE_UPDATELSAT,
+//                APPLICATION_NAME,
+//                password,
+//                updateLSatMessage.identifier,
+//                updateLSatMessage.status,
+//                success
+//            ).toJson()
+//
+//            callback?.let {
+//                it(message)
+//            }
+//
+//            callback = null
+//        }
     }
 
     private suspend fun sendPayment(bridgePaymentMessage: BridgePaymentMessage) {
