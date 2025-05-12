@@ -40,6 +40,11 @@ fun WebAppUI(
 ) {
     val messages by webAppViewModel.receivedMessages.collectAsState()
 
+    val webViewNavigator = remember { WebViewNavigator(webAppViewModel.viewModelScope) }
+    val jsBridge = rememberWebViewJsBridge(webViewNavigator)
+
+    initJsBridge(jsBridge, webAppViewModel)
+
     when (dashboardViewModel.getWebViewState()) {
         DashboardViewModel.WebViewState.Loading -> {
             toast("WebView Library is loading, please try again in a few minutes", badge_red)
@@ -63,37 +68,6 @@ fun WebAppUI(
 
     var isOpen by remember { mutableStateOf(true) }
     val sphinxIcon = imageResource(DesktopResource.drawable.sphinx_icon)
-
-    val testHtml = """
-    <!DOCTYPE html>
-<html>
-<head>
-    <title>JS Bridge Test</title>
-    <script>
-        function sendMessage() {
-            const message = {
-                foo: "bar"
-            };
-            if (window.kmpJsBridge && window.kmpJsBridge.callNative) {
-                window.kmpJsBridge.callNative(
-                    "sphinx-bridge",                    // method name
-                    JSON.stringify(message),           // params as JSON string
-                    function(responseJson) {           // optional callback
-                        console.log("Native replied:", responseJson);
-                    }
-                );
-            } else {
-                console.error("kmpJsBridge is not available.");
-            }
-        }
-    </script>
-</head>
-<body>
-    <h1>JS Bridge Test</h1>
-    <button onclick="sendMessage()">Send Message to Native</button>
-</body>
-</html>
-""".trimIndent()
 
     if (isOpen) {
         Window(
@@ -132,11 +106,7 @@ fun WebAppUI(
                         val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
                         webViewState?.let { url ->
                             MaterialTheme {
-                                val webViewNavigator = remember { WebViewNavigator(webAppViewModel.viewModelScope) }
-                                val jsBridge = rememberWebViewJsBridge(webViewNavigator)
                                 val urlWebViewState = rememberWebViewState("https://machinelearning.sphinx.chat/")
-
-                                initJsBridge(jsBridge, webAppViewModel)
                                 initWebView(urlWebViewState)
 
                                 Column(Modifier.fillMaxSize()) {
