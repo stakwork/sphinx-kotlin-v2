@@ -132,9 +132,9 @@ fun WebAppUI(
                         val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
                         webViewState?.let { url ->
                             MaterialTheme {
-                                val urlWebViewState = rememberWebViewStateWithHTMLData(testHtml)
                                 val webViewNavigator = remember { WebViewNavigator(webAppViewModel.viewModelScope) }
                                 val jsBridge = rememberWebViewJsBridge(webViewNavigator)
+                                val urlWebViewState = rememberWebViewState("https://machinelearning.sphinx.chat/")
 
                                 initJsBridge(jsBridge, webAppViewModel)
                                 initWebView(urlWebViewState)
