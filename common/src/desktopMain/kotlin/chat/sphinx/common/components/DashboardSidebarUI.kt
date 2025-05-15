@@ -213,6 +213,7 @@ fun DashboardSidebarUI(
                 elevation = 4.dp,
                 actions = {
                     IconButton(onClick = {
+                        dashboardViewModel.toggleSidebarVisibility()
                     }) {
                         Icon(
                             Icons.Default.ChevronLeft,

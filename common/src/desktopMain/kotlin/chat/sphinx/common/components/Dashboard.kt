@@ -87,6 +87,7 @@ actual fun Dashboard(
     val webAppViewModel = remember { WebAppViewModel() }
     val splitScreenState by dashboardViewModel.splitScreenStateFlow.collectAsState()
     val fullScreenViewState by dashboardViewModel.fullScreenViewStateFlow.collectAsState()
+    val isSidebarHidden by dashboardViewModel.isSidebarHiddenFlow.collectAsState()
 
     when (DashboardScreenState.screenState()) {
         DashboardScreenType.Unlocked -> {
@@ -106,22 +107,25 @@ actual fun Dashboard(
                     is ChatDetailData.SelectedChatDetailData.SelectedContactDetail -> {
                         ChatContactViewModel(null, chatDetailState.contactId!!, dashboardViewModel)
                     }
+
                     is ChatDetailData.SelectedChatDetailData.SelectedContactChatDetail -> {
                         ChatContactViewModel(chatDetailState.chatId!!, chatDetailState.contactId!!, dashboardViewModel)
                     }
+
                     is ChatDetailData.SelectedChatDetailData.SelectedTribeChatDetail -> {
                         ChatTribeViewModel(chatDetailState.chatId!!, dashboardViewModel)
                     }
+
                     else -> {
                         null
                     }
                 }
 
-                first(300.dp) {
+                first(if (isSidebarHidden) 0.dp else 300.dp) {
                     DashboardSidebarUI(dashboardViewModel, webAppViewModel)
                 }
 
-                second(700.dp) {
+                second(if (isSidebarHidden) 1000.dp else 700.dp) {
                     if (splitScreenState.isOpen) {
                         HorizontalSplitPane {
 
@@ -131,7 +135,12 @@ actual fun Dashboard(
                                 Scaffold(
                                     scaffoldState = scaffoldState,
                                     topBar = {
-                                        SphinxChatDetailTopAppBar(dashboardChat, chatViewModel, dashboardViewModel, webAppViewModel)
+                                        SphinxChatDetailTopAppBar(
+                                            dashboardChat,
+                                            chatViewModel,
+                                            dashboardViewModel,
+                                            webAppViewModel
+                                        )
                                     },
                                     bottomBar = {
                                         SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
@@ -173,7 +182,11 @@ actual fun Dashboard(
                                     bottomBar = {
                                         val screen = splitScreenState.type
                                         if (screen is DashboardViewModel.SplitContentType.Thread) {
-                                            SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel, screen.threadUUID)
+                                            SphinxChatDetailBottomAppBar(
+                                                dashboardChat,
+                                                chatViewModel,
+                                                screen.threadUUID
+                                            )
                                         }
                                     }
                                 ) { innerPadding ->
@@ -185,7 +198,13 @@ actual fun Dashboard(
                                     ) {
                                         when (val screen = splitScreenState.type) {
                                             is DashboardViewModel.SplitContentType.Threads -> {
-                                                val threadsViewModel = remember { ThreadsViewModel(screen.chatId, dashboardViewModel, chatViewModel) }
+                                                val threadsViewModel = remember {
+                                                    ThreadsViewModel(
+                                                        screen.chatId,
+                                                        dashboardViewModel,
+                                                        chatViewModel
+                                                    )
+                                                }
 
                                                 ThreadsListUI(
                                                     threadsViewModel = threadsViewModel,
@@ -193,27 +212,38 @@ actual fun Dashboard(
                                                     chatViewModel = chatViewModel
                                                 )
                                             }
+
                                             is DashboardViewModel.SplitContentType.Thread -> {
                                                 chatViewModel?.let {
-                                                    MessageListUI(it,dashboardViewModel, dashboardChat, true)
-                                                    AttachmentPreview(chatViewModel, Modifier.padding(innerPadding), true)
+                                                    MessageListUI(it, dashboardViewModel, dashboardChat, true)
+                                                    AttachmentPreview(
+                                                        chatViewModel,
+                                                        Modifier.padding(innerPadding),
+                                                        true
+                                                    )
 
                                                 }
                                             }
+
                                             is DashboardViewModel.SplitContentType.TribeDetail -> {
                                                 TribeDetailView(dashboardViewModel, screen.chatId)
                                             }
+
                                             is DashboardViewModel.SplitContentType.TribeMembers -> {
-                                                val tribeMemberViewModel = remember { TribeMembersViewModel(screen.chatId) }
+                                                val tribeMemberViewModel =
+                                                    remember { TribeMembersViewModel(screen.chatId) }
                                                 TribeMembersView(tribeMemberViewModel, dashboardViewModel)
                                             }
+
                                             is DashboardViewModel.SplitContentType.ContactDetails -> {
                                                 ContactForm(dashboardViewModel, screen.contactId)
                                             }
+
                                             is DashboardViewModel.SplitContentType.QRDetail -> {
                                                 val qrCodeViewModel = QRCodeViewModel(screen.title, screen.value)
                                                 QRDetailSplitScreen(dashboardViewModel, qrCodeViewModel)
                                             }
+
                                             else -> {}
                                         }
                                     }
@@ -245,7 +275,12 @@ actual fun Dashboard(
                         Scaffold(
                             scaffoldState = scaffoldState,
                             topBar = {
-                                SphinxChatDetailTopAppBar(dashboardChat, chatViewModel, dashboardViewModel, webAppViewModel)
+                                SphinxChatDetailTopAppBar(
+                                    dashboardChat,
+                                    chatViewModel,
+                                    dashboardViewModel,
+                                    webAppViewModel
+                                )
                             },
                             bottomBar = {
                                 SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
@@ -259,6 +294,29 @@ actual fun Dashboard(
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                if (isSidebarHidden) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                            .padding(paddingValues)
+                                    ) {
+                                        IconButton(
+                                            onClick = { dashboardViewModel.toggleSidebarVisibility() },
+                                            modifier = Modifier
+                                                .align(Alignment.TopStart)
+                                                .padding(start = 0.dp, top = 16.dp, 0.dp, bottom = 16.dp)
+                                        ) {
+                                            androidx.compose.material.Icon(
+                                                Icons.Default.ChevronRight,
+                                                contentDescription = "Hide",
+                                                tint = Color.White.copy(alpha = 0.6f),
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
                                 chatViewModel?.let { chatViewModel ->
                                     MessageListUI(chatViewModel, dashboardViewModel, dashboardChat)
                                 }
@@ -325,6 +383,7 @@ actual fun Dashboard(
                 }
             }
         }
+
         DashboardScreenType.Locked -> {
             val lockedDashboardViewModel = remember { LockedDashboardViewModel() }
             Row(
@@ -389,7 +448,12 @@ fun SphinxChatDetailTopAppBar(
                             text = chatName, fontSize = 16.sp, fontWeight = FontWeight.W700,
                             modifier = Modifier.clickable {
                                 if (dashboardChat.isTribe()) {
-                                    chatViewModel?.chatId?.let { dashboardViewModel?.toggleTribeDetailSplitScreen(true, it) }
+                                    chatViewModel?.chatId?.let {
+                                        dashboardViewModel?.toggleTribeDetailSplitScreen(
+                                            true,
+                                            it
+                                        )
+                                    }
                                 } else {
                                     dashboardViewModel?.toggleEditContactSplitScreen(true, contactId)
                                 }
@@ -411,9 +475,11 @@ fun SphinxChatDetailTopAppBar(
                                 is LoadResponse.Loading -> {
                                     androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                                 }
+
                                 is Response.Error -> {
                                     sphinx_orange
                                 }
+
                                 is Response.Success -> {
                                     primary_green
                                 }
@@ -430,7 +496,7 @@ fun SphinxChatDetailTopAppBar(
 
                     chatViewModel?.let {
                         val chat = (dashboardChat as? DashboardChat.Active)?.chat
-                        val timezone =  chat?.remoteTimezoneIdentifier?.value?.let {
+                        val timezone = chat?.remoteTimezoneIdentifier?.value?.let {
                             DateTime.getLocalTimeFor(it, null)
                         }
 
@@ -440,7 +506,7 @@ fun SphinxChatDetailTopAppBar(
                                 text = timezone,
                                 fontSize = 11.sp,
                                 color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-                                )
+                            )
                         }
                     }
 
@@ -453,7 +519,12 @@ fun SphinxChatDetailTopAppBar(
                             if (nnChat.isTribe()) {
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Price per message: ${nnChat.pricePerMessage?.asFormattedString(' ', false) ?: 0} - Amount to stake: ${nnChat.escrowAmount?.asFormattedString(' ', false) ?: 0}",
+                                    text = "Price per message: ${
+                                        nnChat.pricePerMessage?.asFormattedString(
+                                            ' ',
+                                            false
+                                        ) ?: 0
+                                    } - Amount to stake: ${nnChat.escrowAmount?.asFormattedString(' ', false) ?: 0}",
                                     fontSize = 11.sp,
                                     color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                                 )
@@ -719,11 +790,13 @@ fun SphinxChatDetailBottomAppBar(
                                     } else {
                                         chatViewModel?.onMessageTextChanged(newValue)
                                     }
-                                } else {}
+                                } else {
+                                }
                             },
-                            value = textValue ,
+                            value = textValue,
                             cursorBrush = primary_blue,
-                            enabled = !(dashboardChat?.getChatOrNull()?.isPrivateTribe() == true && dashboardChat?.getChatOrNull()?.status?.isPending() == true)
+                            enabled = !(dashboardChat?.getChatOrNull()
+                                ?.isPrivateTribe() == true && dashboardChat?.getChatOrNull()?.status?.isPending() == true)
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                     }
@@ -791,12 +864,16 @@ fun SplitTopBar(
                 .height(60.dp)
                 .fillMaxWidth()
                 .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
-                .padding(start = if (splitType is DashboardViewModel.SplitContentType.TribeDetail ||
-                    splitType is DashboardViewModel.SplitContentType.ContactDetails) 12.dp else 0.dp)
+                .padding(
+                    start = if (splitType is DashboardViewModel.SplitContentType.TribeDetail ||
+                        splitType is DashboardViewModel.SplitContentType.ContactDetails
+                    ) 12.dp else 0.dp
+                )
         ) {
 
             if (splitType !is DashboardViewModel.SplitContentType.TribeDetail &&
-                splitType !is DashboardViewModel.SplitContentType.ContactDetails) {
+                splitType !is DashboardViewModel.SplitContentType.ContactDetails
+            ) {
                 IconButton(
                     onClick = {
                         when (splitType) {
@@ -808,6 +885,7 @@ fun SplitTopBar(
                                     dashboardViewModel?.toggleSplitScreen(false, null)
                                 }
                             }
+
                             is DashboardViewModel.SplitContentType.Thread -> {
                                 dashboardViewModel?.toggleSplitScreen(
                                     true,
@@ -821,6 +899,7 @@ fun SplitTopBar(
                                     DashboardViewModel.SplitContentType.TribeDetail(splitType.chatId)
                                 )
                             }
+
                             else -> {
                                 dashboardViewModel?.toggleSplitScreen(false, null)
                             }
@@ -893,6 +972,7 @@ fun SplitTopBar(
                         ThreadHeaderUI(threadHeader, chatViewModel)
                     }
                 }
+
                 else -> {}
             }
         }
@@ -918,38 +998,39 @@ fun SuggestedAliasListBar(
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Column() {
                     chatViewModel.aliasMatcherState.suggestedAliasAndPicList.forEachIndexed() { index, suggestedList ->
-                        val backgroundColor = if (index == chatViewModel.aliasMatcherState.selectedItem) androidx.compose.material3.MaterialTheme.colorScheme.background else androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer
-                            Row(
+                        val backgroundColor =
+                            if (index == chatViewModel.aliasMatcherState.selectedItem) androidx.compose.material3.MaterialTheme.colorScheme.background else androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer
+                        Row(
+                            modifier = Modifier
+                                .height(40.dp)
+                                .fillMaxWidth()
+                                .background(backgroundColor)
+                                .padding(start = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val color = suggestedList.third
+
+                            PhotoUrlImage(
+                                photoUrl = suggestedList.second?.thumbnailUrl,
                                 modifier = Modifier
-                                    .height(40.dp)
-                                    .fillMaxWidth()
-                                    .background(backgroundColor)
-                                    .padding(start = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val color = suggestedList.third
+                                    .size(26.dp)
+                                    .clip(CircleShape),
+                                color = if (color != null) Color(color) else null,
+                                firstNameLetter = suggestedList.first.getInitials(),
+                                fontSize = 12
+                            )
 
-                                PhotoUrlImage(
-                                    photoUrl = suggestedList.second?.thumbnailUrl,
-                                    modifier = Modifier
-                                        .size(26.dp)
-                                        .clip(CircleShape),
-                                    color = if (color != null) Color(color) else null,
-                                    firstNameLetter = suggestedList.first.getInitials(),
-                                    fontSize = 12
-                                )
+                            Spacer(Modifier.width(8.dp))
 
-                                Spacer(Modifier.width(8.dp))
-
-                                Text(
-                                    suggestedList.first,
-                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                                    fontSize = 12.sp,
-                                    fontFamily = Roboto,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                            Divider(color = light_divider)
+                            Text(
+                                suggestedList.first,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+                                fontSize = 12.sp,
+                                fontFamily = Roboto,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Divider(color = light_divider)
                     }
                 }
             }
@@ -1070,7 +1151,10 @@ fun RestoreProgressUI(
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .background(SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant), RoundedCornerShape(10.dp))
+                .background(
+                    SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant),
+                    RoundedCornerShape(10.dp)
+                )
                 .width(300.dp),
         ) {
             Spacer(modifier = Modifier.height(32.dp))
