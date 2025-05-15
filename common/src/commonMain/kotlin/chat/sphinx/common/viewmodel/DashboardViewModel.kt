@@ -291,6 +291,13 @@ class DashboardViewModel(): WindowFocusListener {
         _changePinWindowStateFlow.value = open
     }
 
+    private val _isSidebarHiddenFlow = MutableStateFlow(false)
+    val isSidebarHiddenFlow: StateFlow<Boolean> = _isSidebarHiddenFlow
+
+    fun toggleSidebarVisibility() {
+        _isSidebarHiddenFlow.value = !_isSidebarHiddenFlow.value
+    }
+
     val unseenTribeMessagesCount: StateFlow<Long?> = repositoryDashboard.getUnseenTribeMessagesCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), 0L)
 

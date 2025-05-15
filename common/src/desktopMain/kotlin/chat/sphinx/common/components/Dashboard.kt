@@ -87,6 +87,7 @@ actual fun Dashboard(
     val webAppViewModel = remember { WebAppViewModel() }
     val splitScreenState by dashboardViewModel.splitScreenStateFlow.collectAsState()
     val fullScreenViewState by dashboardViewModel.fullScreenViewStateFlow.collectAsState()
+    val isSidebarHidden by dashboardViewModel.isSidebarHiddenFlow.collectAsState()
 
     when (DashboardScreenState.screenState()) {
         DashboardScreenType.Unlocked -> {
@@ -117,14 +118,13 @@ actual fun Dashboard(
                     }
                 }
 
-                first(300.dp) {
+                first(if (isSidebarHidden) 0.dp else 300.dp) {
                     DashboardSidebarUI(dashboardViewModel, webAppViewModel)
                 }
 
-                second(700.dp) {
+                second(if (isSidebarHidden) 1000.dp else 700.dp) {
                     if (splitScreenState.isOpen) {
                         HorizontalSplitPane {
-
                             first(500.dp) {
                                 val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
 
@@ -251,6 +251,7 @@ actual fun Dashboard(
                                 SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
                             }
                         ) { paddingValues ->
+
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -259,6 +260,29 @@ actual fun Dashboard(
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                if (isSidebarHidden) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                            .padding(paddingValues)
+                                    ) {
+                                        IconButton(
+                                            onClick = { dashboardViewModel.toggleSidebarVisibility() },
+                                            modifier = Modifier
+                                                .align(Alignment.TopStart)
+                                                .padding(start = 0.dp, top = 16.dp, 0.dp, bottom = 16.dp)
+                                        ) {
+                                            androidx.compose.material.Icon(
+                                                Icons.Default.ChevronRight,
+                                                contentDescription = "Hide",
+                                                tint = Color.White.copy(alpha = 0.6f),
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
                                 chatViewModel?.let { chatViewModel ->
                                     MessageListUI(chatViewModel, dashboardViewModel, dashboardChat)
                                 }
