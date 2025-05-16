@@ -287,6 +287,14 @@ class DashboardViewModel(): WindowFocusListener {
     val changePinWindowStateFlow: StateFlow<Boolean>
         get() = _changePinWindowStateFlow.asStateFlow()
 
+    private val _isSidebarHiddenFlow = MutableStateFlow(false)
+    val isSidebarHiddenFlow: StateFlow<Boolean> = _isSidebarHiddenFlow
+
+    fun toggleSidebarVisibility() {
+        _isSidebarHiddenFlow.value = !_isSidebarHiddenFlow.value
+    }
+
+
     fun toggleChangePinWindow(open: Boolean) {
         _changePinWindowStateFlow.value = open
     }

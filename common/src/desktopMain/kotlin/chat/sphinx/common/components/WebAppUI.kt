@@ -93,9 +93,8 @@ fun WebAppUI(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
-                    webViewState?.let { url ->
                         MaterialTheme {
-                            val webViewState = rememberWebViewState(url)
+                            val webViewState = rememberWebViewState("https://www.google.com")
                             val webViewNavigator = webAppViewModel.customWebViewNavigator
                             val jsBridge = webAppViewModel.customJsBridge
 
@@ -111,7 +110,6 @@ fun WebAppUI(
                                 )
                             }
                         }
-                    }
                 }
             }
         }
@@ -243,9 +241,9 @@ fun AuthorizeViewUI(
                     ) {
                         CommonButton("AUTHORIZE", fontWeight = FontWeight.W500) {
                             if (budgetField) {
-                                webAppViewModel.authorizeBudget()
+                                webAppViewModel.processSetBudget()
                             } else {
-                                webAppViewModel.authorizeApp()
+                                webAppViewModel.processAuthorize()
                             }
                         }
                     }
