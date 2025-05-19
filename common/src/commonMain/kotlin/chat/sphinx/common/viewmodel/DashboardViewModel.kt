@@ -66,6 +66,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class TribeMembers(val chatId: ChatId): SplitContentType()
         data class ContactDetails(val contactId: ContactId?): SplitContentType()
         data class QRDetail(val title: String, val value: String) : SplitContentType()
+        data class Podcast(val chatId: ChatId?): SplitContentType() // <-- new
     }
 
     sealed class FullScreenView {
@@ -255,6 +256,14 @@ class DashboardViewModel(): WindowFocusListener {
             toggleSplitScreen(true, SplitContentType.QRDetail(title, value))
         } else {
             toggleSplitScreen(false, null)
+        }
+    }
+
+    fun togglePodcastSplitScreen(open: Boolean, chatId: ChatId?) {
+        if (open) {
+            toggleSplitScreen(true, SplitContentType.Podcast(chatId))
+        } else {
+            toggleSplitScreen(false)
         }
     }
 

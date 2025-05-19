@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
@@ -42,10 +43,7 @@ import chat.sphinx.common.components.tribe.TribeDetailView
 import chat.sphinx.common.components.tribe.TribeMembersView
 import chat.sphinx.common.models.DashboardChat
 import chat.sphinx.common.state.*
-import chat.sphinx.common.viewmodel.DashboardViewModel
-import chat.sphinx.common.viewmodel.LockedDashboardViewModel
-import chat.sphinx.common.viewmodel.ThreadsViewModel
-import chat.sphinx.common.viewmodel.WebAppViewModel
+import chat.sphinx.common.viewmodel.*
 import chat.sphinx.common.viewmodel.chat.ChatContactViewModel
 import chat.sphinx.common.viewmodel.chat.ChatTribeViewModel
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
@@ -244,6 +242,11 @@ actual fun Dashboard(
                                                 QRDetailSplitScreen(dashboardViewModel, qrCodeViewModel)
                                             }
 
+                                            is DashboardViewModel.SplitContentType.Podcast -> {
+                                                val podcastViewModel = remember { PodcastViewModel(screen.chatId) }
+                                                PodcastSplitScreen(dashboardViewModel, podcastViewModel)
+                                            }
+
                                             else -> {}
                                         }
                                     }
@@ -424,7 +427,7 @@ fun SphinxChatDetailTopAppBar(
                 .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
         ) {
             Text(
-                modifier = Modifier.padding(16.dp, 0.dp),
+                modifier = Modifier.padding(16.dp, 0.dp).clickable{dashboardViewModel?.togglePodcastSplitScreen(true, null)},
                 text = "Open a conversation to start using Sphinx",
                 fontFamily = Roboto,
                 fontSize = 16.sp,
@@ -872,7 +875,8 @@ fun SplitTopBar(
         ) {
 
             if (splitType !is DashboardViewModel.SplitContentType.TribeDetail &&
-                splitType !is DashboardViewModel.SplitContentType.ContactDetails
+                splitType !is DashboardViewModel.SplitContentType.ContactDetails &&
+                splitType !is DashboardViewModel.SplitContentType.Podcast
             ) {
                 IconButton(
                     onClick = {
@@ -921,6 +925,7 @@ fun SplitTopBar(
                 is DashboardViewModel.SplitContentType.TribeMembers -> "Tribe Members"
                 is DashboardViewModel.SplitContentType.ContactDetails -> "Contact Details"
                 is DashboardViewModel.SplitContentType.QRDetail -> splitType.title
+                is DashboardViewModel.SplitContentType.Podcast -> "Podcast"
                 else -> ""
             }
 
