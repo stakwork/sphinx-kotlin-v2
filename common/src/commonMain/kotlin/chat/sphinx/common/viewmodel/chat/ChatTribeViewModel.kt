@@ -2,11 +2,13 @@ package chat.sphinx.common.viewmodel.chat
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
+import chat.sphinx.common.viewmodel.TribeFeedViewModel
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.ResponseError
 import chat.sphinx.utils.ServersUrlsHelper
@@ -27,7 +29,7 @@ import kotlinx.coroutines.launch
 
 class ChatTribeViewModel(
     chatId: ChatId,
-    dashboardViewModel: DashboardViewModel
+    dashboardViewModel: DashboardViewModel,
 ): ChatViewModel(
     chatId,
     dashboardViewModel
@@ -48,6 +50,8 @@ class ChatTribeViewModel(
         replay = 1,
     )
 
+    private val tribeFeedViewModel = TribeFeedViewModel(this, dashboardViewModel)
+
     override var pinMessageState: PinMessageState by mutableStateOf(initialPinMessageState())
 
     // TODO V2 fetch pin message
@@ -64,6 +68,16 @@ class ChatTribeViewModel(
 
                 chatRepository.updateTribeInfo(chat, isProductionEnvironment)?.let { tribeData ->
 
+                    val tribeDataToFetch = TribeData(
+                        chat.host ?: return@launch,
+                        chat.uuid,
+                        tribeData.app_url?.toAppUrl(),
+                        tribeData.feed_url?.toFeedUrl(),
+                        tribeData.feed_type?.toFeedType() ?: FeedType.Podcast,
+                        tribeData.second_brain_url?.toSecondBrainUrl(),
+                    )
+
+
                     _tribeDataStateFlow.value = TribeData(
                         chat.host ?: return@launch,
                         chat.uuid,
@@ -72,6 +86,10 @@ class ChatTribeViewModel(
                         tribeData.feed_type?.toFeedType() ?: FeedType.Podcast,
                         tribeData.second_brain_url?.toSecondBrainUrl(),
                     )
+
+                    if (tribeData?.feed_url?.isNotEmpty() == true) {
+                        tribeFeedViewModel.handleTribeData(tribeDataToFetch)
+                    }
 
                     updatePinnedMessageState(chat, tribeData.pin?.toMessageUUID())
                 }

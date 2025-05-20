@@ -7,13 +7,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import chat.sphinx.common.viewmodel.DashboardViewModel
-import chat.sphinx.common.viewmodel.PodcastViewModel
+import chat.sphinx.common.viewmodel.TribeFeedViewModel
 
 @Composable
 fun PodcastSplitScreen(
-    dashboardViewModel: DashboardViewModel,
-    podcastViewModel: PodcastViewModel
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
