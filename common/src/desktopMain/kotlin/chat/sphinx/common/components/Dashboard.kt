@@ -243,7 +243,7 @@ actual fun Dashboard(
 
                                             is DashboardViewModel.SplitContentType.Podcast -> {
                                                 chatViewModel?.let { nnChatViewModel ->
-                                                    PodcastSplitScreen()
+                                                    PodcastSplitScreen(screen.podcast)
                                                 }
                                             }
 
@@ -427,7 +427,7 @@ fun SphinxChatDetailTopAppBar(
                 .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
         ) {
             Text(
-                modifier = Modifier.padding(16.dp, 0.dp).clickable{dashboardViewModel?.togglePodcastSplitScreen(true, null)},
+                modifier = Modifier.padding(16.dp, 0.dp),
                 text = "Open a conversation to start using Sphinx",
                 fontFamily = Roboto,
                 fontSize = 16.sp,

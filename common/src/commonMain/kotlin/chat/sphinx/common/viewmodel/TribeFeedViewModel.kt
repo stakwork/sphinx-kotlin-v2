@@ -45,7 +45,12 @@ class TribeFeedViewModel(
                         delay(500L)
 
                         feedRepository.getPodcastByChatId(chatViewModel.chatId).collect { podcast ->
-                            dashboardViewModel.toggleSplitScreen(true, DashboardViewModel.SplitContentType.Podcast)
+                            podcast?.let { nnPodcast ->
+                                dashboardViewModel.toggleSplitScreen(
+                                    true,
+                                    DashboardViewModel.SplitContentType.Podcast(nnPodcast)
+                                )
+                            }
                         }
                     }
                 }

@@ -27,6 +27,7 @@ import chat.sphinx.wrapper.message.Message
 import chat.sphinx.wrapper.message.MessageType
 import chat.sphinx.wrapper.message.SenderAlias
 import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
+import chat.sphinx.wrapper.podcast.Podcast
 import chat.sphinx.wrapper.toDateTime
 import chat.sphinx.wrapper.tribe.TribeJoinLink
 import chat.sphinx.wrapper_message.ThreadUUID
@@ -66,7 +67,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class TribeMembers(val chatId: ChatId): SplitContentType()
         data class ContactDetails(val contactId: ContactId?): SplitContentType()
         data class QRDetail(val title: String, val value: String) : SplitContentType()
-        object Podcast: SplitContentType() // <-- new
+        data class Podcast(val podcast: chat.sphinx.wrapper.podcast.Podcast): SplitContentType() // <-- new
     }
 
     sealed class FullScreenView {
@@ -259,13 +260,13 @@ class DashboardViewModel(): WindowFocusListener {
         }
     }
 
-    fun togglePodcastSplitScreen(open: Boolean, chatId: ChatId?) {
-        if (open) {
-            toggleSplitScreen(true, SplitContentType.Podcast)
-        } else {
-            toggleSplitScreen(false)
-        }
-    }
+//    fun togglePodcastSplitScreen(open: Boolean, chatId: ChatId?) {
+//        if (open) {
+//            toggleSplitScreen(true, SplitContentType.Podcast())
+//        } else {
+//            toggleSplitScreen(false)
+//        }
+//    }
 
     private val _confirmationStateFlow: MutableStateFlow<Pair<Boolean, ConfirmationType?>> by lazy {
         MutableStateFlow(Pair(false, null))

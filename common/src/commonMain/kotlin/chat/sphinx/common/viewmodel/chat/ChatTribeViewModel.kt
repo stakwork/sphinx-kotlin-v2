@@ -65,7 +65,6 @@ class ChatTribeViewModel(
     init {
         scope.launch(dispatchers.mainImmediate) {
             chatRepository.getChatById(chatId)?.let { chat ->
-
                 chatRepository.updateTribeInfo(chat, isProductionEnvironment)?.let { tribeData ->
 
                     val tribeDataToFetch = TribeData(
@@ -78,15 +77,7 @@ class ChatTribeViewModel(
                     )
 
 
-                    _tribeDataStateFlow.value = TribeData(
-                        chat.host ?: return@launch,
-                        chat.uuid,
-                        tribeData.app_url?.toAppUrl(),
-                        tribeData.feed_url?.toFeedUrl(),
-                        tribeData.feed_type?.toFeedType() ?: FeedType.Podcast,
-                        tribeData.second_brain_url?.toSecondBrainUrl(),
-                    )
-
+                    _tribeDataStateFlow.value = tribeDataToFetch
                     if (tribeData?.feed_url?.isNotEmpty() == true) {
                         tribeFeedViewModel.handleTribeData(tribeDataToFetch)
                     }
