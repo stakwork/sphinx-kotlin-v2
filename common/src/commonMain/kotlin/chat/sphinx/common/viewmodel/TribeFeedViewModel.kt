@@ -8,6 +8,7 @@ import chat.sphinx.wrapper.chat.TribeData
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.isPodcast
 import chat.sphinx.wrapper.feed.toSubscribed
+import chat.sphinx.wrapper.podcast.PodcastEpisode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -57,5 +58,25 @@ class TribeFeedViewModel(
             }
         }
     }
+
+//    private fun retrieveEpisodeDuration(
+//        episode: PodcastEpisode
+//    ): Long {
+//        val duration = episode.localFile?.let {
+//            Uri.fromFile(it).getMediaDuration(true)
+//        } ?: Uri.parse(episode.episodeUrl).getMediaDuration(false)
+//
+//        viewModelScope.launch(io) {
+//            feedRepository.updateContentEpisodeStatus(
+//                feedId = episode.podcastId,
+//                itemId = episode.id,
+//                FeedItemDuration(duration / 1000),
+//                FeedItemDuration(episode.currentTimeSeconds)
+//            )
+//        }
+//
+//        return duration
+//    }
+
 
 }
