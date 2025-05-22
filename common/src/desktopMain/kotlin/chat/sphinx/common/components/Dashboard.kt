@@ -930,7 +930,7 @@ fun SplitTopBar(
             }
 
             Text(
-                modifier = Modifier.padding(start = 8.dp),
+                modifier = Modifier.padding(start = if (splitType is DashboardViewModel.SplitContentType.Podcast) 16.dp else 8.dp),
                 text = titleText,
                 fontFamily = Roboto,
                 fontSize = 16.sp,

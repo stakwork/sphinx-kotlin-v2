@@ -48,6 +48,7 @@ kotlin {
                 implementation("com.soywiz.korlibs.korio:korio:$korioVersion")
                 implementation("com.soywiz.korlibs.korau:korau:$korauVersion")
                 implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
+                implementation("uk.co.caprica:vlcj:4.7.1")
                 api("io.github.kevinnzou:compose-webview-multiplatform:1.8.0")
             }
         }
