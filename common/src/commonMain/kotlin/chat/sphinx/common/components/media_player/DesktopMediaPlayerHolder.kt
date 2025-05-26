@@ -1,11 +1,16 @@
 package chat.sphinx.common.components.media_player
 
 import chat.sphinx.concepts.repository.feed.FeedRepository
+import chat.sphinx.di.container.SphinxContainer
+import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.lightning.Sat
 
-class DesktopMediaPlayerHolder(
-    private val feedRepository: FeedRepository
-) {
+class DesktopMediaPlayerHolder() {
+    val scope = SphinxContainer.appModule.applicationScope
+    val dispatchers = SphinxContainer.appModule.dispatchers
+    private val sphinxNotificationManager = createSphinxNotificationManager()
+    private val feedRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).feedRepository
+
     private val mediaPlayerController = MediaPlayerControllerImpl()
     var currentState: MediaPlayerServiceState = MediaPlayerServiceState.ServiceInactive
         private set

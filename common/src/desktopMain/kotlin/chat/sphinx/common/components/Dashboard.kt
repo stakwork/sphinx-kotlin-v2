@@ -35,6 +35,7 @@ import chat.sphinx.common.Res
 import chat.sphinx.common.components.chat.AttachmentPreview
 import chat.sphinx.common.components.chat.MessagePinnedFullContent
 import chat.sphinx.common.components.chat.MessagePinnedPopUp
+import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.menu.ChatAction
 import chat.sphinx.common.components.pin.PINScreen
 import chat.sphinx.common.components.tribe.NotificationLevel
@@ -243,7 +244,19 @@ actual fun Dashboard(
 
                                             is DashboardViewModel.SplitContentType.Podcast -> {
                                                 chatViewModel?.let { nnChatViewModel ->
-                                                    PodcastSplitScreen(screen.podcast)
+                                                    val podcast = screen.podcast
+                                                    val chatId = nnChatViewModel.chatId
+                                                    val mediaPlayerHolder = remember { DesktopMediaPlayerHolder() }
+
+                                                    if (chatId != null) {
+                                                        PodcastSplitScreen(
+                                                            podcast = podcast,
+                                                            chatId = chatId,
+                                                            mediaPlayerHolder = mediaPlayerHolder
+                                                        )
+                                                    } else {
+                                                        Text("Missing chat context", modifier = Modifier.padding(16.dp))
+                                                    }
                                                 }
                                             }
 
