@@ -14,15 +14,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.Res
 import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
+import chat.sphinx.common.components.media_player.MediaPlayerServiceState
 import chat.sphinx.common.components.media_player.UserAction
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.podcast.Podcast
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import theme.primary_blue
 import theme.primary_green
@@ -46,12 +50,29 @@ fun PodcastMainPlayer(
     chatId: ChatId,
     mediaPlayerHolder: DesktopMediaPlayerHolder
 ) {
-    val episode = podcast.getCurrentEpisode()
-    val duration = podcast.episodeDuration ?: 0L
-    val currentTime = podcast.currentTime.toLong()
-    val progress = if (duration > 0) (currentTime.toFloat() / duration.toFloat()) else 0f
+    val mediaState by mediaPlayerHolder.mediaState.collectAsState()
+    var isPlaying by remember { mutableStateOf(false) }
+
+    LaunchedEffect(mediaState) {
+        isPlaying = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing
+    }
 
     val scope = rememberCoroutineScope()
+
+    var currentTime by remember { mutableStateOf(0L) }
+    var duration by remember { mutableStateOf(0L) }
+
+    // Live playback time updater
+    LaunchedEffect(isPlaying) {
+        while (isPlaying) {
+            currentTime = mediaPlayerHolder.getCurrentPlaybackPosition()
+            duration = mediaPlayerHolder.getTotalDuration()
+            delay(1000)
+        }
+    }
+
+    val episode = podcast.getCurrentEpisode()
+    val progress = if (duration > 0) (currentTime.toFloat() / duration.toFloat()) else 0f
 
     Column(
         modifier = Modifier
@@ -78,7 +99,7 @@ fun PodcastMainPlayer(
             }
             Slider(
                 value = podcast.satsPerMinute.toFloat(),
-                onValueChange = {}, // Optional: hook up future adjustment
+                onValueChange = {},
                 valueRange = 0f..500f,
                 enabled = false,
                 modifier = Modifier.fillMaxWidth()
@@ -88,7 +109,7 @@ fun PodcastMainPlayer(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "#${episode.id.value} - ${episode.title.value}",
+            text = episode.title.value,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             color = Color.White,
@@ -98,18 +119,31 @@ fun PodcastMainPlayer(
         Spacer(modifier = Modifier.height(8.dp))
 
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Slider(
-                value = progress * 100f,
-                onValueChange = {},
-                valueRange = 0f..100f,
-                enabled = false,
-                modifier = Modifier.fillMaxWidth(),
-                colors = SliderDefaults.colors(
-                    thumbColor = primary_blue,
-                    activeTrackColor = primary_blue,
-                    inactiveTrackColor = Color.Gray
+            var sliderWidth by remember { mutableStateOf(1) }
+            val progressPx = remember(sliderWidth, progress) { (progress * sliderWidth).toInt() }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { layoutCoordinates ->
+                        sliderWidth = layoutCoordinates.size.width
+                    }
+            ) {
+                // Floating current time label over slider thumb
+                Slider(
+                    value = progress * 100f,
+                    onValueChange = {},
+                    valueRange = 0f..100f,
+                    enabled = false,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = primary_blue,
+                        activeTrackColor = primary_blue,
+                        inactiveTrackColor = Color.Gray
+                    )
                 )
-            )
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -134,7 +168,7 @@ fun PodcastMainPlayer(
 
             IconButton(onClick = {
                 scope.launch {
-                    val newTime = (podcast.currentTime.toLong() - 10_000).coerceAtLeast(0L)
+                    val newTime = (currentTime - 10_000).coerceAtLeast(0L)
                     mediaPlayerHolder.processUserAction(
                         UserAction.ServiceAction.Seek(
                             chatId,
@@ -151,12 +185,7 @@ fun PodcastMainPlayer(
                     currentSpeed = podcast.speed.toFloat(),
                     onSpeedChange = { speed ->
                         scope.launch {
-//                            mediaPlayerHolder.processUserAction(
-//                                UserAction.AdjustSpeed(
-//                                    chatId,
-//                                    podcast.getUpdatedContentFeedStatus(playerSpeed = speed.toDouble())
-//                                )
-//                            )
+                            // Optional: Implement playback speed change
                         }
                     }
                 )
@@ -169,7 +198,7 @@ fun PodcastMainPlayer(
                 ) {
                     IconButton(onClick = {
                         scope.launch {
-                            if (podcast.isPlaying) {
+                            if (isPlaying) {
                                 mediaPlayerHolder.processUserAction(
                                     UserAction.ServiceAction.Pause(chatId, episode.id.value)
                                 )
@@ -186,7 +215,7 @@ fun PodcastMainPlayer(
                         }
                     }) {
                         Icon(
-                            if (podcast.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             "Play/Pause",
                             tint = Color.White,
                             modifier = Modifier.size(36.dp)
@@ -197,13 +226,8 @@ fun PodcastMainPlayer(
 
             IconButton(onClick = {
                 scope.launch {
-                    val newTime = podcast.currentTime.toLong() + 30_000
-//                    mediaPlayerHolder.processUserAction(
-//                        UserAction.ServiceAction.Seek(
-//                            chatId,
-//                            podcast.getUpdatedContentEpisodeStatus(newTime)
-//                        )
-//                    )
+                    val newTime = currentTime + 30_000
+                    // Optional: Implement forward seek
                 }
             }) {
                 Icon(Icons.Filled.Forward30, "Forward 30s", tint = Color.White, modifier = Modifier.size(28.dp))

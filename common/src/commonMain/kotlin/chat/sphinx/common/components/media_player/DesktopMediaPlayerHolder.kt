@@ -3,7 +3,11 @@ package chat.sphinx.common.components.media_player
 import chat.sphinx.concepts.repository.feed.FeedRepository
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
+import chat.sphinx.wrapper.ItemId
+import chat.sphinx.wrapper.feed.FeedId
+import chat.sphinx.wrapper.feed.FeedItemDuration
 import chat.sphinx.wrapper.lightning.Sat
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class DesktopMediaPlayerHolder() {
     val scope = SphinxContainer.appModule.applicationScope
@@ -17,6 +21,8 @@ class DesktopMediaPlayerHolder() {
 
     private var currentData: PodcastDataHolder? = null
 
+    val mediaState = MutableStateFlow<MediaPlayerServiceState>(MediaPlayerServiceState.ServiceInactive)
+
     fun getPlayingContent(): Triple<String, String, Boolean>? {
         return currentData?.takeIf { mediaPlayerController.isPlaying() }?.let {
             Triple(it.podcastId, it.episodeId, true)
@@ -26,20 +32,33 @@ class DesktopMediaPlayerHolder() {
     suspend fun processUserAction(userAction: UserAction) {
         when (userAction) {
             is UserAction.ServiceAction.Play -> {
-                currentData = PodcastDataHolder.instantiate(
-                    userAction.chatId,
-                    userAction.contentFeedStatus.feedId.value,
-                    userAction.contentEpisodeStatus.itemId.value,
-                    userAction.contentFeedStatus.satsPerMinute ?: Sat(0),
-                    userAction.contentFeedStatus.playerSpeed?.value ?: 1.0,
-                    userAction.contentFeedStatus.feedUrl,
-                    userAction.contentFeedStatus.subscriptionStatus
-                )
+                val isNewEpisode = currentData?.episodeId != userAction.contentEpisodeStatus.itemId.value
+
+                val resumeTime = if (
+                    currentData?.episodeId == userAction.contentEpisodeStatus.itemId.value
+                ) {
+                    mediaPlayerController.getCurrentPosition()
+                } else {
+                    userAction.contentEpisodeStatus.currentTime.value * 1000L
+                }
+
+                if (isNewEpisode) {
+                    mediaPlayerController.stop()
+                    currentData = PodcastDataHolder.instantiate(
+                        userAction.chatId,
+                        userAction.contentFeedStatus.feedId.value,
+                        userAction.contentEpisodeStatus.itemId.value,
+                        userAction.contentFeedStatus.satsPerMinute ?: Sat(0),
+                        userAction.contentFeedStatus.playerSpeed?.value ?: 1.0,
+                        userAction.contentFeedStatus.feedUrl,
+                        userAction.contentFeedStatus.subscriptionStatus
+                    )
+                }
 
                 mediaPlayerController.setPlaybackSpeed(currentData!!.speed)
                 mediaPlayerController.play(
                     userAction.episodeUrl,
-                    userAction.contentEpisodeStatus.currentTime.value * 1000L
+                    resumeTime
                 )
 
                 feedRepository.updateContentFeedStatus(
@@ -60,6 +79,7 @@ class DesktopMediaPlayerHolder() {
                     mediaPlayerController.getDuration(),
                     currentData!!.speed
                 )
+                mediaState.value = currentState
             }
 
             is UserAction.ServiceAction.Pause -> {
@@ -71,6 +91,14 @@ class DesktopMediaPlayerHolder() {
                     mediaPlayerController.getCurrentPosition(),
                     mediaPlayerController.getDuration(),
                     currentData?.speed ?: 1.0
+                )
+                mediaState.value = currentState
+
+                feedRepository.updateContentEpisodeStatus(
+                    FeedId(currentData?.podcastId ?: ""),
+                    FeedId(currentData?.episodeId!!),
+                    FeedItemDuration(mediaPlayerController.getDuration() / 1000),
+                    FeedItemDuration(value = mediaPlayerController.getCurrentPosition() / 1000)
                 )
             }
 
@@ -130,5 +158,13 @@ class DesktopMediaPlayerHolder() {
         currentState = MediaPlayerServiceState.ServiceInactive
         mediaPlayerController.stop()
         currentData = null
+    }
+
+    fun getCurrentPlaybackPosition(): Long {
+        return mediaPlayerController.getCurrentPosition()
+    }
+
+    fun getTotalDuration(): Long {
+        return mediaPlayerController.getDuration()
     }
 }
