@@ -55,7 +55,7 @@ class DesktopMediaPlayerHolder() {
                     )
                 }
 
-                mediaPlayerController.setPlaybackSpeed(currentData!!.speed)
+                currentData?.let { mediaPlayerController.setPlaybackSpeed(it.speed) }
                 mediaPlayerController.play(
                     userAction.episodeUrl,
                     resumeTime
