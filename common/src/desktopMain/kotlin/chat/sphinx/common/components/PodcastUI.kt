@@ -26,6 +26,7 @@ import chat.sphinx.common.components.media_player.MediaPlayerServiceState
 import chat.sphinx.common.components.media_player.UserAction
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedItemDuration
+import chat.sphinx.wrapper.lightning.toSat
 import chat.sphinx.wrapper.podcast.Podcast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,6 +66,8 @@ fun PodcastMainPlayer(
     val progress = if (duration > 0) (currentTime.toFloat() / duration.toFloat()) else 0f
     var sliderPosition by remember { mutableStateOf(progress * 100f) }
     var isUserSeeking by remember { mutableStateOf(false) }
+    var satsSliderPosition by remember { mutableStateOf(podcast.satsPerMinute.toFloat()) }
+    var isAdjustingSats by remember { mutableStateOf(false) }
 
     // Live playback time updater
     LaunchedEffect(isPlaying) {
@@ -100,28 +103,59 @@ fun PodcastMainPlayer(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Podcast: sats per minute", fontSize = 14.sp, color = Color.White)
-                Text(podcast.satsPerMinute.toString(), color = Color.White)
+                Text("Sats per minute", fontSize = 14.sp, color = Color.White)
+                Text(satsSliderPosition.toInt().toString(), color = Color.White)
             }
+
             Slider(
-                value = podcast.satsPerMinute.toFloat(),
-                onValueChange = {},
-                valueRange = 0f..500f,
-                enabled = false,
-                modifier = Modifier.fillMaxWidth()
+                value = satsSliderPosition,
+                onValueChange = {
+                    isAdjustingSats = true
+                    satsSliderPosition = it
+                },
+                onValueChangeFinished = {
+                    isAdjustingSats = false
+                    val newSats = satsSliderPosition.toLong()
+
+                    if (newSats != podcast.satsPerMinute) {
+                        podcast.didChangeSatsPerMinute(newSats)
+                        scope.launch {
+                            mediaPlayerHolder.processUserAction(
+                                UserAction.AdjustSatsPerMinute(
+                                    chatId,
+                                    podcast.getUpdatedContentFeedStatus(
+                                        customAmount = newSats.toSat()
+                                    )
+                                )
+                            )
+                        }
+                    }
+                },
+                valueRange = 0f..100f,
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = primary_blue,
+                    activeTrackColor = primary_blue,
+                    inactiveTrackColor = Color.Gray
+                )
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = episode.title.value,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = Color.White,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = episode.title.value,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color.White
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -213,7 +247,14 @@ fun PodcastMainPlayer(
                     currentSpeed = podcast.speed.toFloat(),
                     onSpeedChange = { speed ->
                         scope.launch {
-                            // Optional: Implement playback speed change
+                            podcast.updateSpeed(speed.toDouble())
+
+                            mediaPlayerHolder.processUserAction(
+                                UserAction.AdjustSpeed(
+                                    chatId,
+                                    podcast.getUpdatedContentFeedStatus()
+                                )
+                            )
                         }
                     }
                 )
