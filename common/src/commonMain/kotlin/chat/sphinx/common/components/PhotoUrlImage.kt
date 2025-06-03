@@ -50,7 +50,8 @@ fun PhotoUrlImage(
     firstNameLetter: String? = null,
     color: Color? = null,
     fontSize: Int? = null,
-    placeHolderRes: String? = null
+    placeHolderRes: String? = null,
+    contentScale: ContentScale = ContentScale.Crop
 ) {
 
     val initials: @Composable () -> Unit = {
@@ -70,6 +71,7 @@ fun PhotoUrlImage(
                 photoUrl,
                 modifier,
                 effect,
+                contentScale = contentScale,
                 loadingCallback = {
                     initials.invoke()
                 },
@@ -104,7 +106,8 @@ fun KamelPhotoUrlImage(
     modifier: Modifier = Modifier,
     effect: @Composable (() -> Unit?)? = null,
     loadingCallback: @Composable () -> Unit,
-    errorCallback: @Composable () -> Unit
+    errorCallback: @Composable () -> Unit,
+    contentScale: ContentScale = ContentScale.Crop
 ) {
     val photoUrlResource = lazyPainterResource(
         data = photoUrl.value
@@ -123,7 +126,7 @@ fun KamelPhotoUrlImage(
         onFailure = {
             errorCallback()
         },
-        contentScale = ContentScale.Crop,
+        contentScale = contentScale,
         modifier = modifier
     )
 }

@@ -1,9 +1,8 @@
 package chat.sphinx.common.components
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -11,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
@@ -26,8 +26,10 @@ import chat.sphinx.common.components.media_player.MediaPlayerServiceState
 import chat.sphinx.common.components.media_player.UserAction
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedItemDuration
+import chat.sphinx.wrapper.fullDateFormat
 import chat.sphinx.wrapper.lightning.toSat
 import chat.sphinx.wrapper.podcast.Podcast
+import chat.sphinx.wrapper.podcast.PodcastEpisode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import theme.primary_blue
@@ -82,17 +84,20 @@ fun PodcastMainPlayer(
             duration = mediaPlayerHolder.getTotalDuration()
         }
     }
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(scrollState)
             .background(MaterialTheme.colorScheme.onSurfaceVariant)
     ) {
         PhotoUrlImage(
             photoUrl = podcast.imageToShow,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f)
+                .height(280.dp),
+            contentScale = ContentScale.Fit
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -341,6 +346,33 @@ fun PodcastMainPlayer(
                 )
             }
         }
+        PodcastEpisodesHeader(podcast.episodes.size)
+
+        podcast.episodes.forEach { episode ->
+            PodcastEpisodeItem(
+                episode = episode,
+                onPlayClick = {
+                    scope.launch {
+                        podcast.willStartPlayingEpisode(
+                            episodeId = episode.id.value,
+                            time = 0,
+                            duration = episode.durationMilliseconds ?: 0L
+                        )
+
+                        mediaPlayerHolder.processUserAction(
+                            UserAction.ServiceAction.Play(
+                                chatId = chatId,
+                                episodeUrl = episode.episodeUrl,
+                                contentFeedStatus = podcast.getUpdatedContentFeedStatus(),
+                                contentEpisodeStatus = episode.getUpdatedContentEpisodeStatus()
+                            )
+                        )
+                    }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp)) // padding at the bottom
     }
 }
 
@@ -398,6 +430,103 @@ fun PlaybackSpeedSelector(
     }
 }
 
+@Composable
+fun PodcastEpisodesHeader(episodesCount: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "EPISODES",
+            style = MaterialTheme.typography.labelLarge.copy(
+                color = Color.Gray,
+                fontWeight = FontWeight.Bold
+            )
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            text = episodesCount.toString(),
+            style = MaterialTheme.typography.labelLarge.copy(
+                color = primary_blue,
+                fontWeight = FontWeight.Bold
+            )
+        )
+    }
+}
+
+@Composable
+fun PodcastEpisodeItem(
+    episode: PodcastEpisode,
+    onPlayClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Episode thumbnail using PhotoUrlImage
+        PhotoUrlImage(
+            photoUrl = episode.imageUrlToShow,
+            modifier = Modifier
+                .size(60.dp)
+                .clip(MaterialTheme.shapes.small),
+            contentScale = ContentScale.Crop
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = "#${episode.id.value} - ${episode.titleToShow}",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = episode.descriptionToShow,
+                fontSize = 14.sp,
+                color = Color.LightGray,
+                maxLines = 2
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            episode.date?.let { date ->
+                Text(
+                    text = date.fullDateFormat(),
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        IconButton(
+            onClick = onPlayClick,
+            modifier = Modifier
+                .size(40.dp)
+                .background(primary_blue, shape = CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "Play",
+                tint = Color.White
+            )
+        }
+    }
+}
 
 fun formatMillis(millis: Long): String {
     val totalSeconds = millis / 1000
