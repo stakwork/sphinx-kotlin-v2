@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -349,14 +350,27 @@ fun PodcastMainPlayer(
         PodcastEpisodesHeader(podcast.episodes.size)
 
         podcast.episodes.forEach { episode ->
+            val isPlayingThisEpisode = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing &&
+                    podcast.getCurrentEpisode()?.id?.value == episode.id.value
+
+            val currentEpisodeStatus = episode.contentEpisodeStatus
+            val currentTime = (currentEpisodeStatus?.currentTime?.value ?: 0L) * 1000
+            val duration = episode.durationMilliseconds ?: 0L
+
             PodcastEpisodeItem(
                 episode = episode,
-                onPlayClick = {
+                isPlaying = isPlayingThisEpisode,
+                isDownloaded = episode.downloaded,
+                isPlayed = episode.played,
+                isExpanded = false,
+                currentTime = currentTime,
+                duration = duration,
+                onPlayPauseClick = {
                     scope.launch {
                         podcast.willStartPlayingEpisode(
                             episodeId = episode.id.value,
                             time = 0,
-                            duration = episode.durationMilliseconds ?: 0L
+                            duration = duration
                         )
 
                         mediaPlayerHolder.processUserAction(
@@ -368,6 +382,12 @@ fun PodcastMainPlayer(
                             )
                         )
                     }
+                },
+                onDownloadClick = { /* implement as needed */ },
+                onShareClick = { /* implement as needed */ },
+                onMoreOptionsClick = { /* implement as needed */ },
+                onToggleChaptersClick = {
+//                    expandedEpisodeId = if (expandedEpisodeId == episode.id.value) null else episode.id.value
                 }
             )
         }
@@ -461,70 +481,211 @@ fun PodcastEpisodesHeader(episodesCount: Int) {
 @Composable
 fun PodcastEpisodeItem(
     episode: PodcastEpisode,
-    onPlayClick: () -> Unit,
+    isPlaying: Boolean,
+    isDownloaded: Boolean,
+    isPlayed: Boolean,
+    isExpanded: Boolean,
+    currentTime: Long,
+    duration: Long,
+    onPlayPauseClick: () -> Unit,
+    onDownloadClick: () -> Unit,
+    onShareClick: () -> Unit,
+    onMoreOptionsClick: () -> Unit,
+    onToggleChaptersClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp, horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .background(if (isPlaying) primary_blue.copy(alpha = 0.08f) else Color.Transparent)
+            .padding(16.dp)
     ) {
-        // Episode thumbnail using PhotoUrlImage
-        PhotoUrlImage(
-            photoUrl = episode.imageUrlToShow,
-            modifier = Modifier
-                .size(60.dp)
-                .clip(MaterialTheme.shapes.small),
-            contentScale = ContentScale.Crop
+        // 1. Thumbnail + Title Row
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Episode image
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(MaterialTheme.shapes.medium)
+            ) {
+                PhotoUrlImage(
+                    photoUrl = episode.imageUrlToShow,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .alpha(if (isPlaying) 0.4f else 1f),
+                    contentScale = ContentScale.Crop
+                )
+
+                if (isPlaying) {
+                    Icon(
+                        imageVector = Icons.Default.GraphicEq,
+                        contentDescription = "Playing",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Title centered with image
+            Text(
+                text = episode.titleToShow,
+                color = if (isPlaying) primary_blue else Color.White,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                fontSize = 16.sp,
+                modifier = Modifier.align(Alignment.CenterVertically)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // 2. Description starts at content start (not offset to image)
+        Text(
+            text = episode.descriptionToShow,
+            maxLines = 2,
+            fontSize = 14.sp,
+            color = Color.LightGray
         )
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-        Column(
-            modifier = Modifier.weight(1f)
+        // 3. Date + Duration Row (with small icon and progress bar)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp)
         ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_podcast_placeholder),
+                contentDescription = "Podcast",
+                tint = Color(0xFFB28BFF),
+                modifier = Modifier
+                    .size(18.dp)
+                    .padding(end = 6.dp)
+            )
+
             Text(
-                text = "#${episode.id.value} - ${episode.titleToShow}",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
+                text = episode.dateString,
+                fontSize = 12.sp,
                 color = Color.White
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = episode.descriptionToShow,
-                fontSize = 14.sp,
-                color = Color.LightGray,
-                maxLines = 2
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(4.dp)
+                    .background(Color.White, shape = CircleShape)
             )
+            Spacer(modifier = Modifier.width(8.dp))
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            episode.date?.let { date ->
+            if (currentTime > 0 && duration > 0) {
                 Text(
-                    text = date.fullDateFormat(),
+                    text = "${formatMillis(duration - currentTime)} left",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = Color.White
+                )
+            } else if (duration > 0) {
+                Text(
+                    text = formatMillis(duration),
+                    fontSize = 12.sp,
+                    color = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            LinearProgressIndicator(
+                progress = currentTime.toFloat() / duration.coerceAtLeast(1),
+                modifier = Modifier
+                    .width(80.dp)
+                    .height(4.dp),
+                color = Color.Gray,
+                trackColor = Color.DarkGray
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 4. Bottom Buttons Row + Equalizer
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+
+        ) {
+            Row {
+                IconButton(onClick = onDownloadClick) {
+                    Icon(
+                        if (isDownloaded) Icons.Default.DownloadDone else Icons.Default.Download,
+                        contentDescription = "Download",
+                        tint = if (isDownloaded) Color.Green else Color.White
+                    )
+                }
+
+                IconButton(onClick = onShareClick) {
+                    Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                }
+
+                IconButton(onClick = onMoreOptionsClick) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+                }
+
+                if (episode.chapters != null) {
+                    IconButton(onClick = onToggleChaptersClick) {
+                        Icon(Icons.Default.List, contentDescription = "Chapters", tint = Color.White)
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(Color.White, CircleShape)
+                    .clickable(onClick = onPlayPauseClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = "Play",
+                    tint = Color.Black,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
-
-        IconButton(
-            onClick = onPlayClick,
-            modifier = Modifier
-                .size(40.dp)
-                .background(primary_blue, shape = CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "Play",
-                tint = Color.White
-            )
+        if (isExpanded && episode.chapters?.nodes?.isNotEmpty() == true) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp)
+            ) {
+//                episode.chapters.nodes.forEach { chapter ->
+//                    val name = chapter.properties?.name
+//                    val time = chapter.properties?.timestamp
+//                    if (!name.isNullOrBlank() && !time.isNullOrBlank()) {
+//                        Text(
+//                            text = "- $name ($time)",
+//                            fontSize = 12.sp,
+//                            color = Color.LightGray,
+//                            modifier = Modifier.padding(vertical = 2.dp)
+//                        )
+//                    }
+//                }
+            }
         }
+
+        Divider(
+            modifier = Modifier.padding(top = 12.dp),
+            thickness = 1.dp,
+            color = Color.DarkGray
+        )
     }
 }
 

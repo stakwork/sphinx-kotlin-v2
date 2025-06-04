@@ -56,6 +56,7 @@ object Res {
         const val ic_altcoins = "drawable/ic_altcoins.png"
         const val ic_music = "drawable/ic_music.png"
         const val ic_podcast = "drawable/ic_podcast.png"
+        const val ic_podcast_placeholder = "drawable/ic_podcast_placeholder.xml"
 
         const val ic_warning = "drawable/ic_warning.png"
 
