@@ -3,13 +3,16 @@ package chat.sphinx.common.components.media_player
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.Contact
+import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedId
 import chat.sphinx.wrapper.feed.FeedItemDuration
 import chat.sphinx.wrapper.lightning.Sat
 import chat.sphinx.wrapper.message.FeedBoost
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class DesktopMediaPlayerHolder {
     val scope = SphinxContainer.appModule.applicationScope
@@ -67,6 +70,27 @@ class DesktopMediaPlayerHolder {
         }
     }
 
+    private var episodeProgressJob: Job? = null
+
+    private fun startProgressSync(chatId: ChatId, feedId: FeedId, episodeId: FeedId) {
+        episodeProgressJob?.cancel()
+        episodeProgressJob = scope.launch(dispatchers.io) {
+            while (_mediaState.value is MediaPlayerServiceState.ServiceActive.MediaState.Playing) {
+                val duration = mediaPlayerController.getDuration()
+                val position = mediaPlayerController.getCurrentPosition()
+
+                feedRepository.updateContentEpisodeStatus(
+                    feedId,
+                    episodeId,
+                    FeedItemDuration(duration / 1000),
+                    FeedItemDuration(position / 1000)
+                )
+
+                delay(5000)
+            }
+        }
+    }
+
     private suspend fun handlePlay(action: UserAction.ServiceAction.Play) {
         val isNewEpisode = currentData?.episodeId != action.contentEpisodeStatus.itemId.value
 
@@ -92,6 +116,12 @@ class DesktopMediaPlayerHolder {
         mediaPlayerController.setPlaybackSpeed(currentData!!.speed)
         mediaPlayerController.play(action.episodeUrl, resumeTime)
 
+        startProgressSync(
+            action.chatId,
+            action.contentFeedStatus.feedId,
+            action.contentEpisodeStatus.itemId
+        )
+
         feedRepository.updateContentFeedStatus(
             action.contentFeedStatus.feedId,
             action.contentFeedStatus.feedUrl,
@@ -114,6 +144,9 @@ class DesktopMediaPlayerHolder {
 
     private suspend fun handlePause(action: UserAction.ServiceAction.Pause) {
         mediaPlayerController.pause()
+        episodeProgressJob?.cancel()
+        episodeProgressJob = null
+        val episodeId = currentData?.episodeId ?: return
 
         _mediaState.value = MediaPlayerServiceState.ServiceActive.MediaState.Paused(
             action.chatId,
@@ -126,7 +159,7 @@ class DesktopMediaPlayerHolder {
 
         feedRepository.updateContentEpisodeStatus(
             FeedId(currentData?.podcastId ?: ""),
-            FeedId(currentData?.episodeId!!),
+            FeedId(episodeId),
             FeedItemDuration(mediaPlayerController.getDuration() / 1000),
             FeedItemDuration(value = mediaPlayerController.getCurrentPosition() / 1000)
         )

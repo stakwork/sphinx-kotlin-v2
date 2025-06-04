@@ -4,6 +4,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -351,11 +352,11 @@ fun PodcastMainPlayer(
 
         podcast.episodes.forEach { episode ->
             val isPlayingThisEpisode = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing &&
-                    podcast.getCurrentEpisode()?.id?.value == episode.id.value
+                    podcast.getCurrentEpisode().id.value == episode.id.value
 
-            val currentEpisodeStatus = episode.contentEpisodeStatus
-            val currentTime = (currentEpisodeStatus?.currentTime?.value ?: 0L) * 1000
-            val duration = episode.durationMilliseconds ?: 0L
+            val episodeStatus = episode.contentEpisodeStatus
+            val episodeCurrentTime = (episodeStatus?.currentTime?.value ?: 0L) * 1000
+            val episodeDuration = (episodeStatus?.duration?.value ?: 0L) * 1000
 
             PodcastEpisodeItem(
                 episode = episode,
@@ -363,24 +364,33 @@ fun PodcastMainPlayer(
                 isDownloaded = episode.downloaded,
                 isPlayed = episode.played,
                 isExpanded = false,
-                currentTime = currentTime,
-                duration = duration,
+                currentTime = episodeCurrentTime,
+                duration = episodeDuration,
                 onPlayPauseClick = {
                     scope.launch {
-                        podcast.willStartPlayingEpisode(
-                            episodeId = episode.id.value,
-                            time = 0,
-                            duration = duration
-                        )
+                        val isCurrentlyPlayingThisEpisode = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing &&
+                                podcast.getCurrentEpisode()?.id?.value == episode.id.value
 
-                        mediaPlayerHolder.processUserAction(
-                            UserAction.ServiceAction.Play(
-                                chatId = chatId,
-                                episodeUrl = episode.episodeUrl,
-                                contentFeedStatus = podcast.getUpdatedContentFeedStatus(),
-                                contentEpisodeStatus = episode.getUpdatedContentEpisodeStatus()
+                        if (isCurrentlyPlayingThisEpisode) {
+                            mediaPlayerHolder.processUserAction(
+                                UserAction.ServiceAction.Pause(chatId, episode.id.value)
                             )
-                        )
+                        } else {
+                            podcast.willStartPlayingEpisode(
+                                episodeId = episode.id.value,
+                                time = 0,
+                                duration = duration
+                            )
+
+                            mediaPlayerHolder.processUserAction(
+                                UserAction.ServiceAction.Play(
+                                    chatId = chatId,
+                                    episodeUrl = episode.episodeUrl,
+                                    contentFeedStatus = podcast.getUpdatedContentFeedStatus(),
+                                    contentEpisodeStatus = episode.getUpdatedContentEpisodeStatus()
+                                )
+                            )
+                        }
                     }
                 },
                 onDownloadClick = { /* implement as needed */ },
@@ -561,14 +571,22 @@ fun PodcastEpisodeItem(
                 .fillMaxWidth()
                 .padding(top = 4.dp)
         ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_podcast_placeholder),
-                contentDescription = "Podcast",
-                tint = Color(0xFFB28BFF),
+
+            Box(
                 modifier = Modifier
                     .size(18.dp)
-                    .padding(end = 6.dp)
-            )
+                    .background(Color(0xFFAF52DE), shape = RoundedCornerShape(6.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Podcasts,
+                    contentDescription = "Podcast",
+                    tint = Color.White,
+                    modifier = Modifier.size(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             Text(
                 text = episode.dateString,
@@ -605,7 +623,7 @@ fun PodcastEpisodeItem(
                 modifier = Modifier
                     .width(80.dp)
                     .height(4.dp),
-                color = Color.Gray,
+                color = if (isPlaying) primary_blue else Color.Gray,
                 trackColor = Color.DarkGray
             )
         }
