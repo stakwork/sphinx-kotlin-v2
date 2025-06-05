@@ -2,7 +2,6 @@ package chat.sphinx.common.components
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,21 +15,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.Res
 import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.media_player.MediaPlayerServiceState
 import chat.sphinx.common.components.media_player.UserAction
+import chat.sphinx.common.viewmodel.PodcastViewModel
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedItemDuration
-import chat.sphinx.wrapper.fullDateFormat
 import chat.sphinx.wrapper.lightning.toSat
-import chat.sphinx.wrapper.podcast.Podcast
 import chat.sphinx.wrapper.podcast.PodcastEpisode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,23 +35,31 @@ import theme.primary_green
 
 @Composable
 fun PodcastSplitScreen(
-    podcast: Podcast?,
     chatId: ChatId,
     mediaPlayerHolder: DesktopMediaPlayerHolder
 ) {
-    podcast?.let {
-        PodcastMainPlayer(it, chatId, mediaPlayerHolder)
-    } ?: run {
-        Text("No podcast data available", modifier = Modifier.padding(16.dp))
-    }
+    PodcastMainPlayer(chatId, mediaPlayerHolder)
 }
 
 @Composable
 fun PodcastMainPlayer(
-    podcast: Podcast,
     chatId: ChatId,
     mediaPlayerHolder: DesktopMediaPlayerHolder
 ) {
+    val viewModel = remember(chatId) { PodcastViewModel(chatId) }
+    val podcastState by viewModel.podcastState.collectAsState()
+
+    val podcast = podcastState ?: run {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = primary_blue)
+        }
+        return
+    }
+    val episode = podcast.getCurrentEpisode()
+
     val scope = rememberCoroutineScope()
     val mediaState by mediaPlayerHolder.mediaState.collectAsState()
     var isPlaying by remember { mutableStateOf(false) }
@@ -66,7 +70,6 @@ fun PodcastMainPlayer(
 
     var currentTime by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
-    val episode = podcast.getCurrentEpisode()
     val progress = if (duration > 0) (currentTime.toFloat() / duration.toFloat()) else 0f
     var sliderPosition by remember { mutableStateOf(progress * 100f) }
     var isUserSeeking by remember { mutableStateOf(false) }

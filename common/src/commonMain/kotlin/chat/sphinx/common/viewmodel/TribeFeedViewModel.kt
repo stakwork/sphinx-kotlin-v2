@@ -49,7 +49,7 @@ class TribeFeedViewModel(
                             podcast?.let { nnPodcast ->
                                 dashboardViewModel.toggleSplitScreen(
                                     true,
-                                    DashboardViewModel.SplitContentType.Podcast(nnPodcast)
+                                    DashboardViewModel.SplitContentType.Podcast(chatViewModel.chatId)
                                 )
                             }
                         }

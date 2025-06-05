@@ -67,7 +67,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class TribeMembers(val chatId: ChatId): SplitContentType()
         data class ContactDetails(val contactId: ContactId?): SplitContentType()
         data class QRDetail(val title: String, val value: String) : SplitContentType()
-        data class Podcast(val podcast: chat.sphinx.wrapper.podcast.Podcast): SplitContentType() // <-- new
+        data class Podcast(val chatId: ChatId): SplitContentType()
     }
 
     sealed class FullScreenView {

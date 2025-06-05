@@ -132,6 +132,13 @@ class DesktopMediaPlayerHolder {
             action.contentFeedStatus.playerSpeed
         )
 
+        feedRepository.updateContentEpisodeStatus(
+            action.contentEpisodeStatus.feedId,
+            action.contentEpisodeStatus.itemId,
+            action.contentEpisodeStatus.duration,
+            action.contentEpisodeStatus.currentTime
+        )
+
         _mediaState.value = MediaPlayerServiceState.ServiceActive.MediaState.Playing(
             action.chatId,
             action.contentFeedStatus.feedId.value,

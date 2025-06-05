@@ -244,13 +244,11 @@ actual fun Dashboard(
 
                                             is DashboardViewModel.SplitContentType.Podcast -> {
                                                 chatViewModel?.let { nnChatViewModel ->
-                                                    val podcast = screen.podcast
                                                     val chatId = nnChatViewModel.chatId
                                                     val mediaPlayerHolder = remember { DesktopMediaPlayerHolder() }
 
                                                     if (chatId != null) {
                                                         PodcastSplitScreen(
-                                                            podcast = podcast,
                                                             chatId = chatId,
                                                             mediaPlayerHolder = mediaPlayerHolder
                                                         )
