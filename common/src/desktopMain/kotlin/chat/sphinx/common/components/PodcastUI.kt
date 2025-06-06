@@ -68,8 +68,13 @@ fun PodcastMainPlayer(
         isPlaying = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing
     }
 
-    var currentTime by remember { mutableStateOf(0L) }
-    var duration by remember { mutableStateOf(0L) }
+    var currentTime by remember {
+        mutableStateOf((episode.contentEpisodeStatus?.currentTime?.value ?: 0L) * 1000)
+    }
+    var duration by remember {
+        mutableStateOf((episode.contentEpisodeStatus?.duration?.value ?: 0L) * 1000)
+    }
+
     val progress = if (duration > 0) (currentTime.toFloat() / duration.toFloat()) else 0f
     var sliderPosition by remember { mutableStateOf(progress * 100f) }
     var isUserSeeking by remember { mutableStateOf(false) }
@@ -77,18 +82,35 @@ fun PodcastMainPlayer(
     var isAdjustingSats by remember { mutableStateOf(false) }
 
     // Live playback time updater
+    LaunchedEffect(episode) {
+        val savedTime = (episode.contentEpisodeStatus?.currentTime?.value ?: 0L) * 1000
+        val savedDuration = (episode.contentEpisodeStatus?.duration?.value ?: 0L) * 1000
+
+        currentTime = savedTime
+        duration = savedDuration
+
+        if (!isUserSeeking && savedDuration > 0) {
+            sliderPosition = (savedTime.toFloat() / savedDuration.toFloat()) * 100f
+        }
+    }
+
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
             currentTime = mediaPlayerHolder.getCurrentPlaybackPosition()
             duration = mediaPlayerHolder.getTotalDuration()
-        }
 
-        while (isPlaying) {
-            delay(1000)
-            currentTime = mediaPlayerHolder.getCurrentPlaybackPosition()
-            duration = mediaPlayerHolder.getTotalDuration()
+            while (isPlaying) {
+                delay(1000)
+                currentTime = mediaPlayerHolder.getCurrentPlaybackPosition()
+                duration = mediaPlayerHolder.getTotalDuration()
+
+                if (!isUserSeeking && duration > 0) {
+                    sliderPosition = (currentTime.toFloat() / duration.toFloat()) * 100f
+                }
+            }
         }
     }
+
     val scrollState = rememberScrollState()
 
     Column(
@@ -124,6 +146,7 @@ fun PodcastMainPlayer(
                     satsSliderPosition = it
                 },
                 onValueChangeFinished = {
+
                     isAdjustingSats = false
                     val newSats = satsSliderPosition.toLong()
 
@@ -184,7 +207,6 @@ fun PodcastMainPlayer(
                     onValueChangeFinished = {
                         val newPositionMillis = (duration * (sliderPosition / 100f)).toLong()
 
-                        // Create a new ContentEpisodeStatus with updated currentTime
                         val updatedEpisodeStatus = podcast.getUpdatedContentEpisodeStatus().copy(
                             currentTime = FeedItemDuration(newPositionMillis / 1000L)
                         )
@@ -196,12 +218,19 @@ fun PodcastMainPlayer(
                                     updatedEpisodeStatus
                                 )
                             )
+
+                            val playingEpisode = podcast.getCurrentEpisode()
+                            playingEpisode.contentEpisodeStatus = updatedEpisodeStatus
+
                             currentTime = newPositionMillis
+                            duration = mediaPlayerHolder.getTotalDuration()
+                            if (duration > 0) {
+                                sliderPosition = (currentTime.toFloat() / duration.toFloat()) * 100f
+                            }
                         }
 
                         isUserSeeking = false
-                    }
-,
+                    },
                     valueRange = 0f..100f,
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
@@ -645,21 +674,21 @@ fun PodcastEpisodeItem(
                     Icon(
                         if (isDownloaded) Icons.Default.DownloadDone else Icons.Default.Download,
                         contentDescription = "Download",
-                        tint = if (isDownloaded) Color.Green else Color.White
+                        tint = if (isDownloaded) Color.Green else Color.Gray
                     )
                 }
 
                 IconButton(onClick = onShareClick) {
-                    Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                    Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.Gray)
                 }
 
                 IconButton(onClick = onMoreOptionsClick) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.Gray)
                 }
 
                 if (episode.chapters != null) {
                     IconButton(onClick = onToggleChaptersClick) {
-                        Icon(Icons.Default.List, contentDescription = "Chapters", tint = Color.White)
+                        Icon(Icons.Default.List, contentDescription = "Chapters", tint = Color.Gray)
                     }
                 }
             }
