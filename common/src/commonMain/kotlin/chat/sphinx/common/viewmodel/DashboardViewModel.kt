@@ -34,6 +34,7 @@ import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import theme.badge_red
+import theme.primary_green
 import java.awt.event.WindowEvent
 import java.awt.event.WindowFocusListener
 
@@ -567,6 +568,7 @@ class DashboardViewModel(): WindowFocusListener {
                     }
                 }
             }
+
 //
 //            repositoryDashboard.networkRefreshLatestContacts.collect { response ->
 //                Exhaustive@
@@ -596,6 +598,16 @@ class DashboardViewModel(): WindowFocusListener {
 //            if (_networkStateFlow.value is Response.Error) {
 //                jobNetworkRefresh?.cancel()
 //            }
+        }
+    }
+    fun showCopiedToClipboardToast() {
+        scope.launch {
+            sphinxNotificationManager.toast(
+                "Sphinx",
+                "Text copied to clipboard",
+                primary_green.value,
+                2000L
+            )
         }
     }
 

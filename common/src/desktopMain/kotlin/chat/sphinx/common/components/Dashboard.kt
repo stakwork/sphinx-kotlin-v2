@@ -250,7 +250,8 @@ actual fun Dashboard(
                                                     if (chatId != null) {
                                                         PodcastSplitScreen(
                                                             chatId = chatId,
-                                                            mediaPlayerHolder = mediaPlayerHolder
+                                                            mediaPlayerHolder = mediaPlayerHolder,
+                                                            dashboardViewModel = dashboardViewModel
                                                         )
                                                     } else {
                                                         Text("Missing chat context", modifier = Modifier.padding(16.dp))

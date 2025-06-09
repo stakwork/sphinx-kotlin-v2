@@ -23,6 +23,8 @@ import chat.sphinx.common.Res
 import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.media_player.MediaPlayerServiceState
 import chat.sphinx.common.components.media_player.UserAction
+import chat.sphinx.common.state.ConfirmationType
+import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.PodcastViewModel
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedItemDuration
@@ -36,15 +38,17 @@ import theme.primary_green
 @Composable
 fun PodcastSplitScreen(
     chatId: ChatId,
-    mediaPlayerHolder: DesktopMediaPlayerHolder
+    mediaPlayerHolder: DesktopMediaPlayerHolder,
+    dashboardViewModel: DashboardViewModel
 ) {
-    PodcastMainPlayer(chatId, mediaPlayerHolder)
+    PodcastMainPlayer(chatId, mediaPlayerHolder, dashboardViewModel)
 }
 
 @Composable
 fun PodcastMainPlayer(
     chatId: ChatId,
-    mediaPlayerHolder: DesktopMediaPlayerHolder
+    mediaPlayerHolder: DesktopMediaPlayerHolder,
+    dashboardViewModel: DashboardViewModel
 ) {
     val viewModel = remember(chatId) { PodcastViewModel(chatId) }
     val podcastState by viewModel.podcastState.collectAsState()
@@ -58,8 +62,8 @@ fun PodcastMainPlayer(
         }
         return
     }
-    val episode = podcast.getCurrentEpisode()
 
+    val episode = podcast.getCurrentEpisode()
     val scope = rememberCoroutineScope()
     val mediaState by mediaPlayerHolder.mediaState.collectAsState()
     var isPlaying by remember { mutableStateOf(false) }
@@ -439,7 +443,13 @@ fun PodcastMainPlayer(
                     }
                 },
                 onDownloadClick = { /* implement as needed */ },
-                onShareClick = { /* implement as needed */ },
+                onShareClick = {
+                    scope.launch {
+                        viewModel.buildPodcastShareConfirmation(episode.id)?.let { confirmation ->
+                            dashboardViewModel.toggleConfirmationWindow(true, confirmation)
+                        }
+                    }
+                },
                 onMoreOptionsClick = { /* implement as needed */ },
                 onToggleChaptersClick = {
 //                    expandedEpisodeId = if (expandedEpisodeId == episode.id.value) null else episode.id.value
