@@ -96,13 +96,19 @@ fun PodcastMainPlayer(
 
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
+
             currentTime = mediaPlayerHolder.getCurrentPlaybackPosition()
             duration = mediaPlayerHolder.getTotalDuration()
 
+            viewModel.setPlayingTime(currentTime)
+
             while (isPlaying) {
                 delay(1000)
+
                 currentTime = mediaPlayerHolder.getCurrentPlaybackPosition()
                 duration = mediaPlayerHolder.getTotalDuration()
+
+                viewModel.setPlayingTime(currentTime)
 
                 if (!isUserSeeking && duration > 0) {
                     sliderPosition = (currentTime.toFloat() / duration.toFloat()) * 100f
@@ -382,13 +388,19 @@ fun PodcastMainPlayer(
         }
         PodcastEpisodesHeader(podcast.episodes.size)
 
+        val playingTime by viewModel.playingEpisodeTime.collectAsState()
+
         podcast.episodes.forEach { episode ->
             val isPlayingThisEpisode = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing &&
                     podcast.getCurrentEpisode().id.value == episode.id.value
 
             val episodeStatus = episode.contentEpisodeStatus
-            val episodeCurrentTime = (episodeStatus?.currentTime?.value ?: 0L) * 1000
-            val episodeDuration = (episodeStatus?.duration?.value ?: 0L) * 1000
+
+            val episodeDuration = if (isPlayingThisEpisode) duration
+            else (episodeStatus?.duration?.value ?: 0L) * 1000
+
+            val episodeCurrentTime = if (isPlayingThisEpisode) playingTime
+            else (episodeStatus?.currentTime?.value ?: 0L) * 1000
 
             PodcastEpisodeItem(
                 episode = episode,
@@ -408,6 +420,7 @@ fun PodcastMainPlayer(
                                 UserAction.ServiceAction.Pause(chatId, episode.id.value)
                             )
                         } else {
+
                             podcast.willStartPlayingEpisode(
                                 episodeId = episode.id.value,
                                 time = 0,
@@ -634,7 +647,7 @@ fun PodcastEpisodeItem(
             )
             Spacer(modifier = Modifier.width(8.dp))
 
-            if (currentTime > 0 && duration > 0) {
+            if (duration > 0) {
                 Text(
                     text = "${formatMillis(duration - currentTime)} left",
                     fontSize = 12.sp,
