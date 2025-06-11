@@ -27,7 +27,7 @@ import chat.sphinx.wrapper.message.Message
 import chat.sphinx.wrapper.message.MessageType
 import chat.sphinx.wrapper.message.SenderAlias
 import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
-import chat.sphinx.wrapper.podcast.Podcast
+import chat.sphinx.wrapper.podcast.PodcastEpisode
 import chat.sphinx.wrapper.toDateTime
 import chat.sphinx.wrapper.tribe.TribeJoinLink
 import chat.sphinx.wrapper_message.ThreadUUID
@@ -81,6 +81,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class CreateTribeScreen(val chatId: ChatId?) : FullScreenView()
         data class QRDetailFullScreen(val title: String?, val value: String?): FullScreenView()
         data class TribeJoin(val tribeJoinLink: TribeJoinLink): FullScreenView()
+        data class EpisodeDetails(val episode: PodcastEpisode, val podcastTitle: String) : FullScreenView()
 
         data class OwnerQRDetail(
             val title: String?,

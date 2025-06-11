@@ -28,6 +28,7 @@ import chat.sphinx.common.components.tribe.JoinTribeScreen
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.utils.getPreferredWindowSize
+import io.ktor.util.*
 
 @Composable
 fun FullScreenOverlay(
@@ -43,6 +44,7 @@ fun FullScreenOverlay(
                 is DashboardViewModel.FullScreenView.QRDetailFullScreen -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.OwnerQRDetail -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.TribeJoin -> getPreferredWindowSize(400, 800)
+                is DashboardViewModel.FullScreenView.EpisodeDetails -> getPreferredWindowSize(420, 500)
                 else -> getPreferredWindowSize(420, 830)
             }
         }
@@ -107,6 +109,14 @@ fun FullScreenOverlay(
                         }
                         is DashboardViewModel.FullScreenView.TribeJoin -> {
                             JoinTribeScreen(dashboardViewModel, fullScreenView.tribeJoinLink, preferredSize)
+                        }
+                        is DashboardViewModel.FullScreenView.EpisodeDetails -> {
+                            EpisodeDetailsScreen(
+                                episode = fullScreenView.episode,
+                                podcastTitle = fullScreenView.podcastTitle,
+                                dashboardViewModel = dashboardViewModel,
+                                preferredSize = preferredSize
+                            )
                         }
                         else -> {}
                     }

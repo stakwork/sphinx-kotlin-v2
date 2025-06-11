@@ -23,7 +23,6 @@ import chat.sphinx.common.Res
 import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.media_player.MediaPlayerServiceState
 import chat.sphinx.common.components.media_player.UserAction
-import chat.sphinx.common.state.ConfirmationType
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.PodcastViewModel
 import chat.sphinx.wrapper.dashboard.ChatId
@@ -450,7 +449,9 @@ fun PodcastMainPlayer(
                         }
                     }
                 },
-                onMoreOptionsClick = { /* implement as needed */ },
+                onMoreOptionsClick = {
+                    dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.EpisodeDetails(episode, podcast.title.value))
+                },
                 onToggleChaptersClick = {
 //                    expandedEpisodeId = if (expandedEpisodeId == episode.id.value) null else episode.id.value
                 }
