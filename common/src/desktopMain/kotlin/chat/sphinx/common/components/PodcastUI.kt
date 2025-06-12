@@ -658,15 +658,37 @@ fun PodcastEpisodeItem(
             )
             Spacer(modifier = Modifier.width(8.dp))
 
-            if (duration > 0) {
-                Text(
-                    text = "${formatMillis(duration - currentTime)} left",
-                    fontSize = 12.sp,
-                    color = Color.White
-                )
+            if (episode.played) {
+                // Show blue mark icon + "Played" label
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(primary_blue),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Played",
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Text(
+                        text = "Played",
+                        fontSize = 12.sp,
+                        color = Color.White
+                    )
+                }
             } else if (duration > 0) {
                 Text(
-                    text = formatMillis(duration),
+                    text = "${formatMillis(duration - currentTime)} left",
                     fontSize = 12.sp,
                     color = Color.White
                 )

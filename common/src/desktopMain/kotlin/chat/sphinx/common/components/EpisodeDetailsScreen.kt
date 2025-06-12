@@ -1,6 +1,7 @@
 package chat.sphinx.common.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,7 +10,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.wrapper.podcast.PodcastEpisode
+import kotlinx.coroutines.launch
+import theme.primary_blue
 
 @Composable
 fun EpisodeDetailsScreen(
@@ -29,6 +32,15 @@ fun EpisodeDetailsScreen(
     dashboardViewModel: DashboardViewModel,
     preferredSize: DpSize
 ) {
+    val scope = rememberCoroutineScope()
+    var isPlayed by remember { mutableStateOf(episode.played) }
+
+    LaunchedEffect(episode.id) {
+        dashboardViewModel.getPlayedMark(episode.id).collect { played ->
+            played?.let { isPlayed = it }
+        }
+    }
+
     Box(
         modifier = Modifier
             .size(preferredSize)
@@ -143,14 +155,28 @@ fun EpisodeDetailsScreen(
                             .padding(vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color.Transparent),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(text = "Share", color = Color.White, fontSize = 16.sp)
+
+                        Text(
+                            text = "Share",
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
                     }
 
                     Divider(color = Color.Gray.copy(alpha = 0.4f))
@@ -159,17 +185,38 @@ fun EpisodeDetailsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clickable {
+                                isPlayed = !isPlayed
+                                episode.played = isPlayed
+                                scope.launch {
+                                    dashboardViewModel.updatePlayedMark(episode.id, isPlayed)
+                                }
+                            }
                             .padding(vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Mark As Played",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(if (isPlayed) primary_blue else Color.Transparent),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = if (isPlayed) "Marked as Played" else "Mark as Played",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(text = "Mark As Played", color = Color.White, fontSize = 16.sp)
+
+                        Text(
+                            text = if (isPlayed) "Mark As UnPlayed" else "Mark As Played",
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
                     }
 
                     Divider(color = Color.Gray.copy(alpha = 0.4f))

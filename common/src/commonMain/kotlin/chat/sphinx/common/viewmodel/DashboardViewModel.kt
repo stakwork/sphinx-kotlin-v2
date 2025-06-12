@@ -22,6 +22,7 @@ import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.dashboard.toContactId
 import chat.sphinx.wrapper.eeemmddhmma
+import chat.sphinx.wrapper.feed.FeedId
 import chat.sphinx.wrapper.lightning.*
 import chat.sphinx.wrapper.message.Message
 import chat.sphinx.wrapper.message.MessageType
@@ -51,6 +52,7 @@ class DashboardViewModel(): WindowFocusListener {
     private val lightningRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).lightningRepository
     private val messageRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).messageRepository
     private val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
+    private val feedRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).feedRepository
 
     enum class WebViewState {
         NonInitialized,
@@ -601,6 +603,15 @@ class DashboardViewModel(): WindowFocusListener {
 //            }
         }
     }
+
+    fun getPlayedMark(episodeId: FeedId): Flow<Boolean?> {
+        return feedRepository.getPlayedMark(episodeId)
+    }
+
+    fun updatePlayedMark(episodeId: FeedId, played: Boolean) {
+        feedRepository.updatePlayedMark(episodeId, played)
+    }
+
     fun showCopiedToClipboardToast() {
         scope.launch {
             sphinxNotificationManager.toast(

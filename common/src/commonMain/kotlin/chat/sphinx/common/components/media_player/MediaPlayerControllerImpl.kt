@@ -2,11 +2,26 @@ package chat.sphinx.common.components.media_player
 
 import uk.co.caprica.vlcj.factory.MediaPlayerFactory
 import uk.co.caprica.vlcj.player.base.MediaPlayer
+import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 
 class MediaPlayerControllerImpl : MediaPlayerController() {
 
     private val mediaPlayerFactory = MediaPlayerFactory()
     private val mediaPlayer: MediaPlayer = mediaPlayerFactory.mediaPlayers().newMediaPlayer()
+
+    private var playbackListener: MediaPlayerController.PlaybackListener? = null
+
+    init {
+        mediaPlayer.events().addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
+            override fun finished(mediaPlayer: MediaPlayer?) {
+                playbackListener?.onPlaybackCompleted()
+            }
+        })
+    }
+    override fun setPlaybackListener(listener: MediaPlayerController.PlaybackListener?) {
+        playbackListener = listener
+    }
+
 
     override fun play(url: String, startTimeMillis: Long) {
         mediaPlayer.media().play(url)

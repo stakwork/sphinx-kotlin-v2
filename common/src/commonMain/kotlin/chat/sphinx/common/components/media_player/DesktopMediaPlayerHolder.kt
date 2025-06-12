@@ -28,6 +28,18 @@ class DesktopMediaPlayerHolder {
     private val _mediaState = MutableStateFlow<MediaPlayerServiceState>(MediaPlayerServiceState.ServiceInactive)
     val mediaState: StateFlow<MediaPlayerServiceState> get() = _mediaState
 
+    init {
+        mediaPlayerController.setPlaybackListener(object : MediaPlayerController.PlaybackListener {
+            override fun onPlaybackCompleted() {
+                currentData?.let { data ->
+                    scope.launch(dispatchers.io) {
+                        feedRepository.updatePlayedMark(FeedId(data.episodeId), played = true)
+                    }
+                }
+            }
+        })
+    }
+
     fun getPlayingContent(): Triple<String, String, Boolean>? {
         return currentData?.takeIf { mediaPlayerController.isPlaying() }?.let {
             Triple(it.podcastId, it.episodeId, true)

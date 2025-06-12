@@ -44,7 +44,7 @@ fun FullScreenOverlay(
                 is DashboardViewModel.FullScreenView.QRDetailFullScreen -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.OwnerQRDetail -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.TribeJoin -> getPreferredWindowSize(400, 800)
-                is DashboardViewModel.FullScreenView.EpisodeDetails -> getPreferredWindowSize(420, 500)
+                is DashboardViewModel.FullScreenView.EpisodeDetails -> getPreferredWindowSize(420, 550)
                 else -> getPreferredWindowSize(420, 830)
             }
         }
