@@ -28,7 +28,6 @@ import chat.sphinx.common.components.tribe.JoinTribeScreen
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.utils.getPreferredWindowSize
-import io.ktor.util.*
 
 @Composable
 fun FullScreenOverlay(
@@ -115,6 +114,7 @@ fun FullScreenOverlay(
                                 episode = fullScreenView.episode,
                                 podcastTitle = fullScreenView.podcastTitle,
                                 dashboardViewModel = dashboardViewModel,
+                                episodeShare = fullScreenView.episodeShare,
                                 preferredSize = preferredSize
                             )
                         }

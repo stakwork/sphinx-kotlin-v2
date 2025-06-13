@@ -3,6 +3,7 @@ package chat.sphinx.common.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.toast
 import chat.sphinx.common.state.*
 import chat.sphinx.concepts.repository.connect_manager.model.NetworkStatus
@@ -83,7 +84,11 @@ class DashboardViewModel(): WindowFocusListener {
         data class CreateTribeScreen(val chatId: ChatId?) : FullScreenView()
         data class QRDetailFullScreen(val title: String?, val value: String?): FullScreenView()
         data class TribeJoin(val tribeJoinLink: TribeJoinLink): FullScreenView()
-        data class EpisodeDetails(val episode: PodcastEpisode, val podcastTitle: String) : FullScreenView()
+        data class EpisodeDetails(
+            val episode: PodcastEpisode,
+            val podcastTitle: String,
+            val episodeShare: ConfirmationType. PodcastShare?
+        ) : FullScreenView()
 
         data class OwnerQRDetail(
             val title: String?,
@@ -213,6 +218,15 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun getWebViewState() : WebViewState {
         return webViewState.value
+    }
+
+    val mediaPlayerHolder = DesktopMediaPlayerHolder()
+    val podcastViewModelMap = mutableMapOf<ChatId, PodcastViewModel>()
+
+    fun getPodcastViewModel(chatId: ChatId): PodcastViewModel {
+        return podcastViewModelMap.getOrPut(chatId) {
+            PodcastViewModel(chatId)
+        }
     }
 
     private val _aboutSphinxStateFlow: MutableStateFlow<Boolean> by lazy {

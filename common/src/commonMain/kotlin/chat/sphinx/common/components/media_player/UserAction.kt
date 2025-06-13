@@ -13,7 +13,8 @@ sealed class UserAction(val chatId: ChatId) {
             chatId: ChatId,
             val episodeUrl: String,
             val contentFeedStatus: ContentFeedStatus,
-            val contentEpisodeStatus: ContentEpisodeStatus
+            val contentEpisodeStatus: ContentEpisodeStatus,
+            val destinations: List<FeedDestination>
         ): ServiceAction(chatId)
 
         class Pause(

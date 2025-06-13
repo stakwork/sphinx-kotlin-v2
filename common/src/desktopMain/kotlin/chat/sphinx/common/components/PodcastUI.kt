@@ -35,22 +35,14 @@ import theme.primary_blue
 import theme.primary_green
 
 @Composable
-fun PodcastSplitScreen(
-    chatId: ChatId,
-    mediaPlayerHolder: DesktopMediaPlayerHolder,
-    dashboardViewModel: DashboardViewModel
-) {
-    PodcastMainPlayer(chatId, mediaPlayerHolder, dashboardViewModel)
-}
-
-@Composable
 fun PodcastMainPlayer(
     chatId: ChatId,
     mediaPlayerHolder: DesktopMediaPlayerHolder,
-    dashboardViewModel: DashboardViewModel
+    dashboardViewModel: DashboardViewModel,
+    podcastViewModel: PodcastViewModel
+
 ) {
-    val viewModel = remember(chatId) { PodcastViewModel(chatId) }
-    val podcastState by viewModel.podcastState.collectAsState()
+    val podcastState by podcastViewModel.podcastState.collectAsState()
 
     val podcast = podcastState ?: run {
         Box(
@@ -103,7 +95,7 @@ fun PodcastMainPlayer(
             currentTime = mediaPlayerHolder.getCurrentPlaybackPosition()
             duration = mediaPlayerHolder.getTotalDuration()
 
-            viewModel.setPlayingTime(currentTime)
+            podcastViewModel.setPlayingTime(currentTime)
 
             while (isPlaying) {
                 delay(1000)
@@ -111,7 +103,7 @@ fun PodcastMainPlayer(
                 currentTime = mediaPlayerHolder.getCurrentPlaybackPosition()
                 duration = mediaPlayerHolder.getTotalDuration()
 
-                viewModel.setPlayingTime(currentTime)
+                podcastViewModel.setPlayingTime(currentTime)
 
                 if (!isUserSeeking && duration > 0) {
                     sliderPosition = (currentTime.toFloat() / duration.toFloat()) * 100f
@@ -291,8 +283,9 @@ fun PodcastMainPlayer(
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val currentSpeed = podcast.getUpdatedContentFeedStatus().playerSpeed?.value?.toFloat() ?: 1f
                 PlaybackSpeedSelector(
-                    currentSpeed = podcast.speed.toFloat(),
+                    currentSpeed = currentSpeed ,
                     onSpeedChange = { speed ->
                         scope.launch {
                             podcast.updateSpeed(speed.toDouble())
@@ -325,7 +318,8 @@ fun PodcastMainPlayer(
                                         chatId,
                                         episode.episodeUrl,
                                         podcast.getUpdatedContentFeedStatus(),
-                                        podcast.getUpdatedContentEpisodeStatus()
+                                        podcast.getUpdatedContentEpisodeStatus(),
+                                        podcast.getFeedDestinations()
                                     )
                                 )
                             }
@@ -391,7 +385,7 @@ fun PodcastMainPlayer(
         }
         PodcastEpisodesHeader(podcast.episodes.size)
 
-        val playingTime by viewModel.playingEpisodeTime.collectAsState()
+        val playingTime by podcastViewModel.playingEpisodeTime.collectAsState()
 
         podcast.episodes.forEach { episode ->
             val isPlayingThisEpisode = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing &&
@@ -435,7 +429,8 @@ fun PodcastMainPlayer(
                                     chatId = chatId,
                                     episodeUrl = episode.episodeUrl,
                                     contentFeedStatus = podcast.getUpdatedContentFeedStatus(),
-                                    contentEpisodeStatus = episode.getUpdatedContentEpisodeStatus()
+                                    contentEpisodeStatus = episode.getUpdatedContentEpisodeStatus(),
+                                    destinations = podcast.getFeedDestinations()
                                 )
                             )
                         }
@@ -444,13 +439,23 @@ fun PodcastMainPlayer(
                 onDownloadClick = { /* implement as needed */ },
                 onShareClick = {
                     scope.launch {
-                        viewModel.buildPodcastShareConfirmation(episode.id)?.let { confirmation ->
+                        podcastViewModel.buildPodcastShareConfirmation(episode.id)?.let { confirmation ->
                             dashboardViewModel.toggleConfirmationWindow(true, confirmation)
                         }
                     }
                 },
                 onMoreOptionsClick = {
-                    dashboardViewModel.showFullScreenView(DashboardViewModel.FullScreenView.EpisodeDetails(episode, podcast.title.value))
+                    scope.launch {
+                        val episodeShare = podcastViewModel.buildPodcastShareConfirmation(episode.id)
+
+                        dashboardViewModel.showFullScreenView(
+                            DashboardViewModel.FullScreenView.EpisodeDetails(
+                                episode,
+                                podcast.title.value,
+                                episodeShare
+                            )
+                        )
+                    }
                 },
                 onToggleChaptersClick = {
 //                    expandedEpisodeId = if (expandedEpisodeId == episode.id.value) null else episode.id.value

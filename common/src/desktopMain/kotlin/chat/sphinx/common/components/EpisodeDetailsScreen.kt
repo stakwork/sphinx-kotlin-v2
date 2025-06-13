@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import chat.sphinx.common.state.ConfirmationType
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.wrapper.podcast.PodcastEpisode
 import kotlinx.coroutines.launch
@@ -30,6 +31,7 @@ fun EpisodeDetailsScreen(
     episode: PodcastEpisode,
     podcastTitle: String,
     dashboardViewModel: DashboardViewModel,
+    episodeShare: ConfirmationType. PodcastShare?,
     preferredSize: DpSize
 ) {
     val scope = rememberCoroutineScope()
@@ -152,6 +154,9 @@ fun EpisodeDetailsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clickable {
+                                dashboardViewModel.toggleConfirmationWindow(true, episodeShare)
+                            }
                             .padding(vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {

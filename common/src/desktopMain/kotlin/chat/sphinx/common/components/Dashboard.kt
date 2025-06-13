@@ -245,13 +245,15 @@ actual fun Dashboard(
                                             is DashboardViewModel.SplitContentType.Podcast -> {
                                                 chatViewModel?.let { nnChatViewModel ->
                                                     val chatId = nnChatViewModel.chatId
-                                                    val mediaPlayerHolder = remember { DesktopMediaPlayerHolder() }
+                                                    val mediaPlayerHolder = dashboardViewModel.mediaPlayerHolder
 
                                                     if (chatId != null) {
-                                                        PodcastSplitScreen(
+                                                        val podcastViewModel = dashboardViewModel.getPodcastViewModel(chatId)
+                                                        PodcastMainPlayer(
                                                             chatId = chatId,
                                                             mediaPlayerHolder = mediaPlayerHolder,
-                                                            dashboardViewModel = dashboardViewModel
+                                                            dashboardViewModel = dashboardViewModel,
+                                                            podcastViewModel = podcastViewModel
                                                         )
                                                     } else {
                                                         Text("Missing chat context", modifier = Modifier.padding(16.dp))

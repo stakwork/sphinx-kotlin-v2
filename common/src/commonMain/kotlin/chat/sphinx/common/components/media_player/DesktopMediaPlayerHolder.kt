@@ -6,12 +6,14 @@ import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedId
 import chat.sphinx.wrapper.feed.FeedItemDuration
+import chat.sphinx.wrapper.feed.toFeedPlayerSpeed
 import chat.sphinx.wrapper.lightning.Sat
 import chat.sphinx.wrapper.message.FeedBoost
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class DesktopMediaPlayerHolder {
@@ -122,7 +124,9 @@ class DesktopMediaPlayerHolder {
                 action.contentFeedStatus.playerSpeed?.value ?: 1.0,
                 action.contentFeedStatus.feedUrl,
                 action.contentFeedStatus.subscriptionStatus
-            )
+            ).also {
+                it.setDestinations(action.destinations)
+            }
         }
 
         mediaPlayerController.setPlaybackSpeed(currentData!!.speed)
@@ -159,6 +163,7 @@ class DesktopMediaPlayerHolder {
             mediaPlayerController.getDuration(),
             currentData!!.speed
         )
+        startStreamingPayments()
     }
 
     private suspend fun handlePause(action: UserAction.ServiceAction.Pause) {
@@ -182,6 +187,7 @@ class DesktopMediaPlayerHolder {
             FeedItemDuration(mediaPlayerController.getDuration() / 1000),
             FeedItemDuration(value = mediaPlayerController.getCurrentPosition() / 1000)
         )
+        stopStreamingPayments()
     }
 
     private suspend fun handleSeek(action: UserAction.ServiceAction.Seek) {
@@ -264,8 +270,62 @@ class DesktopMediaPlayerHolder {
         }
     }
 
+    private var streamingPaymentJob: Job? = null
+
+    private fun startStreamingPayments() {
+        streamingPaymentJob?.cancel()
+        streamingPaymentJob = scope.launch(dispatchers.io) {
+            val data = currentData ?: return@launch
+
+            // Wait for player to start (max 2 seconds total)
+            repeat(20) {
+                if (mediaPlayerController.isPlaying()) return@repeat
+                delay(100)
+            }
+
+            if (!mediaPlayerController.isPlaying()) {
+                // Playback never started
+                return@launch
+            }
+
+            val speed = data.speed
+            val intervalMs = (60_000.0 / speed).toLong()
+            var lastStreamTime = System.currentTimeMillis()
+
+            while (isActive && mediaPlayerController.isPlaying()) {
+                val now = System.currentTimeMillis()
+
+                if (now - lastStreamTime >= intervalMs) {
+                    val currentTimeSeconds = mediaPlayerController.getCurrentPosition() / 1000
+
+                    feedRepository.streamFeedPayments(
+                        data.chatId,
+                        data.podcastId,
+                        data.episodeId,
+                        currentTimeSeconds,
+                        data.satsPerMinute,
+                        data.speed.toFeedPlayerSpeed(),
+                        data.destinations
+                    )
+
+                    lastStreamTime = now
+                }
+
+                delay(1000L)
+            }
+        }
+    }
+
+
+    private fun stopStreamingPayments() {
+        streamingPaymentJob?.cancel()
+        streamingPaymentJob = null
+    }
+
+
     fun clear() {
         mediaPlayerController.stop()
+        stopStreamingPayments()
         currentData = null
         _mediaState.value = MediaPlayerServiceState.ServiceInactive
     }
