@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -120,59 +121,75 @@ fun PodcastMainPlayer(
             .verticalScroll(scrollState)
             .background(MaterialTheme.colorScheme.onSurfaceVariant)
     ) {
-        PhotoUrlImage(
-            photoUrl = podcast.imageToShow,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp),
-            contentScale = ContentScale.Fit
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Sats per minute", fontSize = 14.sp, color = Color.White)
-                Text(satsSliderPosition.toInt().toString(), color = Color.White)
-            }
-
-            Slider(
-                value = satsSliderPosition,
-                onValueChange = {
-                    isAdjustingSats = true
-                    satsSliderPosition = it
-                },
-                onValueChangeFinished = {
-
-                    isAdjustingSats = false
-                    val newSats = satsSliderPosition.toLong()
-
-                    if (newSats != podcast.satsPerMinute) {
-                        podcast.didChangeSatsPerMinute(newSats)
-                        scope.launch {
-                            mediaPlayerHolder.processUserAction(
-                                UserAction.AdjustSatsPerMinute(
-                                    chatId,
-                                    podcast.getUpdatedContentFeedStatus(
-                                        customAmount = newSats.toSat()
-                                    )
-                                )
-                            )
-                        }
-                    }
-                },
-                valueRange = 0f..100f,
-                modifier = Modifier.fillMaxWidth(),
-                colors = SliderDefaults.colors(
-                    thumbColor = primary_blue,
-                    activeTrackColor = primary_blue,
-                    inactiveTrackColor = Color.Gray
-                )
+                .height(360.dp)
+        ) {
+            PhotoUrlImage(
+                photoUrl = podcast.imageToShow,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+            )
+
+            if (podcast.hasDestinations) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Sats per minute", fontSize = 12.sp, color = Color.White)
+                        Text(satsSliderPosition.toInt().toString(), fontSize = 12.sp, color = Color.White)
+                    }
+
+                    Slider(
+                        value = satsSliderPosition,
+                        onValueChange = {
+                            isAdjustingSats = true
+                            satsSliderPosition = it
+                        },
+                        onValueChangeFinished = {
+                            isAdjustingSats = false
+                            val newSats = satsSliderPosition.toLong()
+                            if (newSats != podcast.satsPerMinute) {
+                                podcast.didChangeSatsPerMinute(newSats)
+                                scope.launch {
+                                    mediaPlayerHolder.processUserAction(
+                                        UserAction.AdjustSatsPerMinute(
+                                            chatId,
+                                            podcast.getUpdatedContentFeedStatus(
+                                                customAmount = newSats.toSat()
+                                            )
+                                        )
+                                    )
+                                }
+                            }
+                        },
+                        valueRange = 0f..100f,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(28.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = primary_blue,
+                            activeTrackColor = primary_blue,
+                            inactiveTrackColor = Color.Gray
+                        )
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -198,7 +215,6 @@ fun PodcastMainPlayer(
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
-                // Floating current time label over slider thumb
                 Slider(
                     value = sliderPosition,
                     onValueChange = {
@@ -253,6 +269,31 @@ fun PodcastMainPlayer(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        val currentSpeed = podcast.getUpdatedContentFeedStatus().playerSpeed?.value?.toFloat() ?: 1f
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            PlaybackSpeedSelector(
+                currentSpeed = currentSpeed,
+                onSpeedChange = { speed ->
+                    scope.launch {
+                        podcast.updateSpeed(speed.toDouble())
+                        mediaPlayerHolder.processUserAction(
+                            UserAction.AdjustSpeed(
+                                chatId,
+                                podcast.getUpdatedContentFeedStatus()
+                            )
+                        )
+                    }
+                }
+            )
+        }
+
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -260,8 +301,16 @@ fun PodcastMainPlayer(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { /* Optional: Quote handler */ }) {
-                Icon(Icons.Filled.FormatQuote, "Quote", tint = Color.White, modifier = Modifier.size(28.dp))
+            IconButton(
+                onClick = { /* Disabled */ },
+                enabled = false
+            ) {
+                Icon(
+                    Icons.Filled.FormatQuote,
+                    contentDescription = "Quote",
+                    tint = Color.White.copy(alpha = 0.4f),
+                    modifier = Modifier.size(28.dp)
+                )
             }
 
             IconButton(onClick = {
@@ -279,26 +328,8 @@ fun PodcastMainPlayer(
                     currentTime = newTime
                 }
             }) {
-                Icon(Icons.Filled.Replay10, "Rewind 10s", tint = Color.White, modifier = Modifier.size(28.dp))
+                Icon(Icons.Filled.Replay10, "Rewind 10s", tint = Color.Gray, modifier = Modifier.size(28.dp))
             }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                val currentSpeed = podcast.getUpdatedContentFeedStatus().playerSpeed?.value?.toFloat() ?: 1f
-                PlaybackSpeedSelector(
-                    currentSpeed = currentSpeed ,
-                    onSpeedChange = { speed ->
-                        scope.launch {
-                            podcast.updateSpeed(speed.toDouble())
-
-                            mediaPlayerHolder.processUserAction(
-                                UserAction.AdjustSpeed(
-                                    chatId,
-                                    podcast.getUpdatedContentFeedStatus()
-                                )
-                            )
-                        }
-                    }
-                )
 
                 Box(
                     modifier = Modifier
@@ -333,7 +364,6 @@ fun PodcastMainPlayer(
                         )
                     }
                 }
-            }
 
             IconButton(onClick = {
                 scope.launch {
@@ -350,26 +380,35 @@ fun PodcastMainPlayer(
                     currentTime = newTime
                 }
             }) {
-                Icon(Icons.Filled.Forward30, "Forward 30s", tint = Color.White, modifier = Modifier.size(28.dp))
+                Icon(Icons.Filled.Forward30, "Forward 30s", tint = Color.Gray, modifier = Modifier.size(28.dp))
             }
+            val boostEnabled = podcast.hasDestinations
 
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(primary_green.copy(alpha = 0.5f), shape = CircleShape)
-                    .clickable {
-                        scope.launch {
-                            mediaPlayerHolder.processUserAction(
-                                UserAction.SendBoost(
-                                    chatId,
-                                    podcast.id.value,
-                                    podcast.getUpdatedContentFeedStatus(),
-                                    podcast.getUpdatedContentEpisodeStatus(),
-                                    podcast.getFeedDestinations()
-                                )
-                            )
-                        }
-                    },
+                    .background(
+                        if (boostEnabled) primary_green.copy(alpha = 0.5f)
+                        else Color.Gray.copy(alpha = 0.3f),
+                        shape = CircleShape
+                    )
+                    .then(
+                        if (boostEnabled)
+                            Modifier.clickable {
+                                scope.launch {
+                                    mediaPlayerHolder.processUserAction(
+                                        UserAction.SendBoost(
+                                            chatId,
+                                            podcast.id.value,
+                                            podcast.getUpdatedContentFeedStatus(),
+                                            podcast.getUpdatedContentEpisodeStatus(),
+                                            podcast.getFeedDestinations()
+                                        )
+                                    )
+                                }
+                            }
+                        else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -379,7 +418,7 @@ fun PodcastMainPlayer(
                         .size(28.dp)
                         .padding(2.dp),
                     contentScale = ContentScale.Inside,
-                    colorFilter = ColorFilter.tint(Color.White)
+                    colorFilter = ColorFilter.tint(Color.White.copy(alpha = if (boostEnabled) 1f else 0.4f))
                 )
             }
         }
@@ -630,9 +669,8 @@ fun PodcastEpisodeItem(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp)
+                .padding()
         ) {
-
             Box(
                 modifier = Modifier
                     .size(18.dp)
@@ -652,7 +690,8 @@ fun PodcastEpisodeItem(
             Text(
                 text = episode.dateString,
                 fontSize = 12.sp,
-                color = Color.White
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 4.dp)
             )
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -695,7 +734,8 @@ fun PodcastEpisodeItem(
                 Text(
                     text = "${formatMillis(duration - currentTime)} left",
                     fontSize = 12.sp,
-                    color = Color.White
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
 
