@@ -5,8 +5,10 @@ import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedId
+import chat.sphinx.wrapper.feed.FeedTitle
 import chat.sphinx.wrapper.feed.generateFeedItemLink
 import chat.sphinx.wrapper.podcast.Podcast
+import chat.sphinx.wrapper.podcast.PodcastEpisode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -71,5 +73,30 @@ class PodcastViewModel(
             fromBeginningLink = fromBeginning,
             fromCurrentTimeLink = fromCurrentTime
         )
+    }
+
+    fun getChapters(podcastEpisode: PodcastEpisode, title: FeedTitle) {
+        scope.launch(dispatchers.mainImmediate) {
+            val workflowId = 37159
+            val token = "690d8f037df0fdb002836edfddf4b626"
+
+            if (false) {
+                feedRepository.getChaptersData(
+                    podcastEpisode,
+                    title,
+                    podcastEpisode.referenceId!!,
+                    podcastEpisode.id,
+                    workflowId,
+                    token
+                )
+            } else {
+                feedRepository.checkIfEpisodeNodeExists(
+                    podcastEpisode,
+                    title,
+                    workflowId,
+                    token
+                )
+            }
+        }
     }
 }

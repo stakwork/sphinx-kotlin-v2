@@ -456,12 +456,13 @@ fun PodcastMainPlayer(
                                 UserAction.ServiceAction.Pause(chatId, episode.id.value)
                             )
                         } else {
-
                             podcast.willStartPlayingEpisode(
                                 episodeId = episode.id.value,
                                 time = 0,
                                 duration = duration
                             )
+
+                            podcastViewModel.getChapters(episode, podcast.title)
 
                             mediaPlayerHolder.processUserAction(
                                 UserAction.ServiceAction.Play(
