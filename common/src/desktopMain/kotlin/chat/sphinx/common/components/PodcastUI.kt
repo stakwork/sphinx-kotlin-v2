@@ -6,7 +6,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +23,7 @@ import chat.sphinx.common.Res
 import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.media_player.MediaPlayerServiceState
 import chat.sphinx.common.components.media_player.UserAction
+import chat.sphinx.common.state.ContentState.scope
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.PodcastViewModel
 import chat.sphinx.wrapper.dashboard.ChatId
@@ -76,6 +76,7 @@ fun PodcastMainPlayer(
     var isUserSeeking by remember { mutableStateOf(false) }
     var satsSliderPosition by remember { mutableStateOf(podcast.satsPerMinute.toFloat()) }
     var isAdjustingSats by remember { mutableStateOf(false) }
+    var expandedEpisodeId by remember { mutableStateOf<String?>(null) }
 
     // Live playback time updater
     LaunchedEffect(episode) {
@@ -353,6 +354,7 @@ fun PodcastMainPlayer(
                                         podcast.getFeedDestinations()
                                     )
                                 )
+                                podcastViewModel.getChapters(episode, podcast.title)
                             }
                         }
                     }) {
@@ -443,7 +445,7 @@ fun PodcastMainPlayer(
                 isPlaying = isPlayingThisEpisode,
                 isDownloaded = episode.downloaded,
                 isPlayed = episode.played,
-                isExpanded = false,
+                isExpanded = expandedEpisodeId == episode.id.value,
                 currentTime = episodeCurrentTime,
                 duration = episodeDuration,
                 onPlayPauseClick = {
@@ -498,8 +500,10 @@ fun PodcastMainPlayer(
                     }
                 },
                 onToggleChaptersClick = {
-//                    expandedEpisodeId = if (expandedEpisodeId == episode.id.value) null else episode.id.value
-                }
+                    expandedEpisodeId = if (expandedEpisodeId == episode.id.value) null else episode.id.value
+                },
+                mediaPlayerHolder = mediaPlayerHolder,
+                chatId = chatId
             )
         }
 
@@ -603,8 +607,10 @@ fun PodcastEpisodeItem(
     onShareClick: () -> Unit,
     onMoreOptionsClick: () -> Unit,
     onToggleChaptersClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+    modifier: Modifier = Modifier,
+    mediaPlayerHolder: DesktopMediaPlayerHolder,
+    chatId: ChatId,
+    ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -801,25 +807,63 @@ fun PodcastEpisodeItem(
             }
         }
 
-        if (isExpanded && episode.chapters?.nodes?.isNotEmpty() == true) {
+        val chapterNodes = episode.chapters?.nodes
+
+        if (isExpanded && !chapterNodes.isNullOrEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 12.dp)
+                    .padding(start = 8.dp, end = 8.dp)
             ) {
-//                episode.chapters.nodes.forEach { chapter ->
-//                    val name = chapter.properties?.name
-//                    val time = chapter.properties?.timestamp
-//                    if (!name.isNullOrBlank() && !time.isNullOrBlank()) {
-//                        Text(
-//                            text = "- $name ($time)",
-//                            fontSize = 12.sp,
-//                            color = Color.LightGray,
-//                            modifier = Modifier.padding(vertical = 2.dp)
-//                        )
-//                    }
-//                }
+                chapterNodes
+                    .mapNotNull { it.properties }
+                    .filter { !it.name.isNullOrBlank() && !it.timestamp.isNullOrBlank() }
+                    .sortedBy { parseTimestampToMillis(it.timestamp!!) }
+                    .forEachIndexed { index, chapter ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val timeMillis = parseTimestampToMillis(chapter.timestamp!!)
+                                    scope.launch {
+                                        mediaPlayerHolder.processUserAction(
+                                            UserAction.ServiceAction.Seek(
+                                                chatId,
+                                                episode.getUpdatedContentEpisodeStatus().copy(
+                                                    currentTime = FeedItemDuration(timeMillis / 1000L)
+                                                )
+                                            )
+                                        )
+                                    }
+                                }
+                                .padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = chapter.name.orEmpty(),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                maxLines = 2,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = chapter.timestamp.orEmpty(),
+                                color = Color.LightGray,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        if (index != chapterNodes.lastIndex) {
+                            Divider(
+                                modifier = Modifier.fillMaxWidth(),
+                                thickness = 0.5.dp,
+                                color = Color.DarkGray
+                            )
+                        }
+                    }
             }
         }
 
@@ -841,4 +885,17 @@ fun formatMillis(millis: Long): String {
         "%d:%02d:%02d".format(hours, minutes, seconds)
     else
         "%02d:%02d".format(minutes, seconds)
+}
+
+fun parseTimestampToMillis(timestamp: String): Long {
+    return try {
+        val parts = timestamp.split(":").map { it.toLong() }
+        when (parts.size) {
+            3 -> (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000
+            2 -> (parts[0] * 60 + parts[1]) * 1000
+            else -> 0L
+        }
+    } catch (e: Exception) {
+        0L
+    }
 }

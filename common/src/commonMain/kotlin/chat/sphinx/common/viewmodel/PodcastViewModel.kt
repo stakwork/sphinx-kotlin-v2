@@ -80,7 +80,7 @@ class PodcastViewModel(
             val workflowId = 37159
             val token = "690d8f037df0fdb002836edfddf4b626"
 
-            if (false) {
+            if (podcastEpisode.referenceId != null) {
                 feedRepository.getChaptersData(
                     podcastEpisode,
                     title,
