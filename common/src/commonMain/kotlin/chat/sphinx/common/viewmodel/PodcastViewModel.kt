@@ -29,6 +29,13 @@ class PodcastViewModel(
     private val _playingEpisodeTime = MutableStateFlow(0L)
     val playingEpisodeTime: StateFlow<Long> get() = _playingEpisodeTime
 
+    private val _isSkipAdsEnabled = MutableStateFlow(true) // or false by default
+    val isSkipAdsEnabled: StateFlow<Boolean> = _isSkipAdsEnabled
+
+    fun toggleSkipAds() {
+        _isSkipAdsEnabled.value = !_isSkipAdsEnabled.value
+    }
+
     init {
         observePodcast()
     }
@@ -77,8 +84,8 @@ class PodcastViewModel(
 
     fun getChapters(podcastEpisode: PodcastEpisode, title: FeedTitle) {
         scope.launch(dispatchers.mainImmediate) {
-            val workflowId = 37159
-            val token = "690d8f037df0fdb002836edfddf4b626"
+            val workflowId = 0
+            val token = ""
 
             if (podcastEpisode.referenceId != null) {
                 feedRepository.getChaptersData(

@@ -15,8 +15,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.Res
@@ -34,6 +37,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import theme.primary_blue
 import theme.primary_green
+import kotlin.math.roundToInt
 
 @Composable
 fun PodcastMainPlayer(
@@ -77,6 +81,7 @@ fun PodcastMainPlayer(
     var satsSliderPosition by remember { mutableStateOf(podcast.satsPerMinute.toFloat()) }
     var isAdjustingSats by remember { mutableStateOf(false) }
     var expandedEpisodeId by remember { mutableStateOf<String?>(null) }
+    val isSkipAdsEnabled by podcastViewModel.isSkipAdsEnabled.collectAsState()
 
     // Live playback time updater
     LaunchedEffect(episode) {
@@ -110,6 +115,40 @@ fun PodcastMainPlayer(
                 if (!isUserSeeking && duration > 0) {
                     sliderPosition = (currentTime.toFloat() / duration.toFloat()) * 100f
                 }
+            }
+        }
+    }
+
+    LaunchedEffect(currentTime) {
+        if (!isSkipAdsEnabled || !isPlaying) return@LaunchedEffect
+
+        val chapters = episode.chapters?.nodes
+            ?.mapNotNull { it.properties }
+            ?.filter { !it.timestamp.isNullOrBlank() }
+            ?.sortedBy { parseTimestampToMillis(it.timestamp!!) }
+            ?: return@LaunchedEffect
+
+        for (i in chapters.indices) {
+            val chapterStart = parseTimestampToMillis(chapters[i].timestamp!!)
+            val chapterEnd = if (i + 1 < chapters.size)
+                parseTimestampToMillis(chapters[i + 1].timestamp!!)
+            else
+                duration
+
+            if (chapters[i].isAdBoolean && currentTime in chapterStart until chapterEnd) {
+
+                val nextNonAd = chapters.drop(i + 1).firstOrNull { !it.isAdBoolean }
+                val skipTo = nextNonAd?.timestamp?.let { parseTimestampToMillis(it) } ?: chapterEnd
+
+                val updatedStatus = podcast.getUpdatedContentEpisodeStatus().copy(
+                    currentTime = FeedItemDuration(skipTo / 1000L)
+                )
+
+                mediaPlayerHolder.processUserAction(
+                    UserAction.ServiceAction.Seek(chatId, updatedStatus)
+                )
+
+                break
             }
         }
     }
@@ -211,52 +250,67 @@ fun PodcastMainPlayer(
         Spacer(modifier = Modifier.height(8.dp))
 
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            var sliderWidthPx by remember { mutableStateOf(1) }
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(32.dp)
+                    .padding(horizontal = 16.dp)
+                    .onGloballyPositioned { coords -> sliderWidthPx = coords.size.width }
             ) {
+                // Playback Slider
                 Slider(
                     value = sliderPosition,
-                    onValueChange = {
-                        isUserSeeking = true
-                        sliderPosition = it
-                    },
+                    onValueChange = { isUserSeeking = true; sliderPosition = it },
                     onValueChangeFinished = {
                         val newPositionMillis = (duration * (sliderPosition / 100f)).toLong()
-
-                        val updatedEpisodeStatus = podcast.getUpdatedContentEpisodeStatus().copy(
+                        val updatedStatus = podcast.getUpdatedContentEpisodeStatus().copy(
                             currentTime = FeedItemDuration(newPositionMillis / 1000L)
                         )
-
                         scope.launch {
-                            mediaPlayerHolder.processUserAction(
-                                UserAction.ServiceAction.Seek(
-                                    chatId,
-                                    updatedEpisodeStatus
-                                )
-                            )
-
-                            val playingEpisode = podcast.getCurrentEpisode()
-                            playingEpisode.contentEpisodeStatus = updatedEpisodeStatus
-
+                            mediaPlayerHolder.processUserAction(UserAction.ServiceAction.Seek(chatId, updatedStatus))
                             currentTime = newPositionMillis
-                            duration = mediaPlayerHolder.getTotalDuration()
-                            if (duration > 0) {
-                                sliderPosition = (currentTime.toFloat() / duration.toFloat()) * 100f
-                            }
                         }
-
                         isUserSeeking = false
                     },
                     valueRange = 0f..100f,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.CenterStart),
                     colors = SliderDefaults.colors(
                         thumbColor = primary_blue,
                         activeTrackColor = primary_blue,
                         inactiveTrackColor = Color.Gray
                     )
                 )
+
+                // Chapter Markers
+                val chapterMarkers = episode.chapters?.nodes
+                    ?.mapNotNull { it.properties }
+                    ?.filter { !it.timestamp.isNullOrBlank() }
+                    ?.map {
+                        val positionMs = parseTimestampToMillis(it.timestamp!!)
+                        val ratio = positionMs.toFloat() / duration.coerceAtLeast(1L)
+                        Triple(ratio, it.isAdBoolean, it.timestamp!!)
+                    } ?: emptyList()
+
+                val density = LocalDensity.current
+                val trackPaddingPx = with(density) { 16.dp.roundToPx() }   // slider’s built-in padding
+                val trackWidthPx   = sliderWidthPx - trackPaddingPx * 2    // real usable track width
+
+                chapterMarkers.forEach { (ratio, isAd, _) ->
+                    val dotRadiusPx = with(density) { (6.dp).roundToPx() } // half of your 12.dp dot
+                    val positionPx = (trackWidthPx * ratio).roundToInt() + trackPaddingPx
+                    Box(
+                        modifier = Modifier
+                            .offset { IntOffset(positionPx - dotRadiusPx, 0) }  // center align with thumb
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(if (isAd) Color.Gray else Color.White)
+                            .align(Alignment.CenterStart)
+                    )
+                }
             }
 
             Row(
@@ -424,7 +478,14 @@ fun PodcastMainPlayer(
                 )
             }
         }
-        PodcastEpisodesHeader(podcast.episodes.size)
+        val hasChapters = episode.chapters?.nodes?.isNotEmpty() == true
+
+        PodcastEpisodesHeader(
+            episodesCount = podcast.episodes.size,
+            isSkipAdsEnabled = isSkipAdsEnabled,
+            onSkipAdsClick = { podcastViewModel.toggleSkipAds() },
+            showSkipButton = hasChapters
+        )
 
         val playingTime by podcastViewModel.playingEpisodeTime.collectAsState()
 
@@ -566,30 +627,58 @@ fun PlaybackSpeedSelector(
 }
 
 @Composable
-fun PodcastEpisodesHeader(episodesCount: Int) {
+fun PodcastEpisodesHeader(
+    episodesCount: Int,
+    isSkipAdsEnabled: Boolean,
+    onSkipAdsClick: () -> Unit,
+    showSkipButton: Boolean = true
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = "EPISODES",
-            style = MaterialTheme.typography.labelLarge.copy(
-                color = Color.Gray,
-                fontWeight = FontWeight.Bold
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "EPISODES",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Bold
+                )
             )
-        )
 
-        Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
-        Text(
-            text = episodesCount.toString(),
-            style = MaterialTheme.typography.labelLarge.copy(
-                color = primary_blue,
-                fontWeight = FontWeight.Bold
+            Text(
+                text = episodesCount.toString(),
+                style = MaterialTheme.typography.labelLarge.copy(
+                    color = primary_blue,
+                    fontWeight = FontWeight.Bold
+                )
             )
-        )
+        }
+
+        if (showSkipButton) {
+            Button(
+                onClick = { onSkipAdsClick() },
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSkipAdsEnabled) primary_green else Color.Gray
+                ),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = if (isSkipAdsEnabled) "SKIP ADS ENABLED" else "SKIP ADS DISABLED",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
+            }
+        }
     }
 }
 
