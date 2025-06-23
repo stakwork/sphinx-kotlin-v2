@@ -84,8 +84,8 @@ class PodcastViewModel(
 
     fun getChapters(podcastEpisode: PodcastEpisode, title: FeedTitle) {
         scope.launch(dispatchers.mainImmediate) {
-            val workflowId = 0
-            val token = ""
+            val workflowId = System.getProperty("GRAPH_MINDSET_WORKFLOW_ID", "0").toInt()
+            val token =  System.getProperty("GRAPH_MINDSET_TOKEN", "default")
 
             if (podcastEpisode.referenceId != null) {
                 feedRepository.getChaptersData(
