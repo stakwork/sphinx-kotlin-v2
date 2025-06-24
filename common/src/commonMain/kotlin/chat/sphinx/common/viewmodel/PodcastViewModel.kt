@@ -7,8 +7,10 @@ import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedId
 import chat.sphinx.wrapper.feed.FeedTitle
 import chat.sphinx.wrapper.feed.generateFeedItemLink
+import chat.sphinx.wrapper.podcast.ChapterResponseDto
 import chat.sphinx.wrapper.podcast.Podcast
 import chat.sphinx.wrapper.podcast.PodcastEpisode
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +34,10 @@ class PodcastViewModel(
     private val _isSkipAdsEnabled = MutableStateFlow(true) // or false by default
     val isSkipAdsEnabled: StateFlow<Boolean> = _isSkipAdsEnabled
 
+    private val _episodeChapters = MutableStateFlow<Map<String, ChapterResponseDto>>(emptyMap())
+    val episodeChapters: StateFlow<Map<String, ChapterResponseDto>> = _episodeChapters.asStateFlow()
+
+
     fun toggleSkipAds() {
         _isSkipAdsEnabled.value = !_isSkipAdsEnabled.value
     }
@@ -44,6 +50,13 @@ class PodcastViewModel(
         scope.launch(dispatchers.mainImmediate) {
             feedRepository.getPodcastByChatId(chatId).collect { updatedPodcast ->
                 _podcastState.value = updatedPodcast
+
+                updatedPodcast?.episodes?.forEach { episode ->
+                    val chapters = episode.chapters
+                    if (chapters != null && chapters.nodes.isNotEmpty()) {
+                        _episodeChapters.value += (episode.id.value to chapters)
+                    }
+                }
             }
         }
     }
@@ -52,10 +65,19 @@ class PodcastViewModel(
         _playingEpisodeTime.value = timeMs
     }
 
-    fun refreshPodcast() {
-        // Optional: add explicit refresh logic
-    }
 
+    fun refreshPodcast(podcastEpisode: PodcastEpisode) {
+        scope.launch(dispatchers.mainImmediate) {
+            feedRepository.getPodcastByChatId(chatId).collect { updatedPodcast ->
+                _podcastState.value = updatedPodcast
+
+                val updatedEpisode = updatedPodcast?.episodes?.find { it.id == podcastEpisode.id }
+                updatedEpisode?.chapters?.let { chapterData ->
+                    _episodeChapters.value += (podcastEpisode.id.value to chapterData)
+                }
+            }
+        }
+    }
     suspend fun buildPodcastShareConfirmation(episodeId: FeedId): ConfirmationType.PodcastShare? {
         val podcast = podcastState.value ?: return null
         val episode = podcast.episodes.find { it.id == episodeId } ?: return null
@@ -104,6 +126,9 @@ class PodcastViewModel(
                     token
                 )
             }
+
+            delay(3000L)
+            refreshPodcast(podcastEpisode)
         }
     }
 }

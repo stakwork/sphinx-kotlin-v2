@@ -32,6 +32,7 @@ import chat.sphinx.common.viewmodel.PodcastViewModel
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedItemDuration
 import chat.sphinx.wrapper.lightning.toSat
+import chat.sphinx.wrapper.podcast.NodeDto
 import chat.sphinx.wrapper.podcast.PodcastEpisode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -82,6 +83,7 @@ fun PodcastMainPlayer(
     var isAdjustingSats by remember { mutableStateOf(false) }
     var expandedEpisodeId by remember { mutableStateOf<String?>(null) }
     val isSkipAdsEnabled by podcastViewModel.isSkipAdsEnabled.collectAsState()
+    val chaptersMap by podcastViewModel.episodeChapters.collectAsState()
 
     // Live playback time updater
     LaunchedEffect(episode) {
@@ -122,7 +124,7 @@ fun PodcastMainPlayer(
     LaunchedEffect(currentTime) {
         if (!isSkipAdsEnabled || !isPlaying) return@LaunchedEffect
 
-        val chapters = episode.chapters?.nodes
+        val chapters = chaptersMap[episode.id.value]?.nodes
             ?.mapNotNull { it.properties }
             ?.filter { !it.timestamp.isNullOrBlank() }
             ?.sortedBy { parseTimestampToMillis(it.timestamp!!) }
@@ -286,7 +288,7 @@ fun PodcastMainPlayer(
                 )
 
                 // Chapter Markers
-                val chapterMarkers = episode.chapters?.nodes
+                val chapterMarkers = chaptersMap[episode.id.value]?.nodes
                     ?.mapNotNull { it.properties }
                     ?.filter { !it.timestamp.isNullOrBlank() }
                     ?.map {
@@ -564,7 +566,8 @@ fun PodcastMainPlayer(
                     expandedEpisodeId = if (expandedEpisodeId == episode.id.value) null else episode.id.value
                 },
                 mediaPlayerHolder = mediaPlayerHolder,
-                chatId = chatId
+                chatId = chatId,
+                chapterNodes = chaptersMap[episode.id.value]?.nodes
             )
         }
 
@@ -699,6 +702,7 @@ fun PodcastEpisodeItem(
     modifier: Modifier = Modifier,
     mediaPlayerHolder: DesktopMediaPlayerHolder,
     chatId: ChatId,
+    chapterNodes: List<NodeDto>?
     ) {
     Column(
         modifier = modifier
@@ -873,7 +877,8 @@ fun PodcastEpisodeItem(
                     Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.Gray)
                 }
 
-                if (episode.chapters != null) {
+
+                if (!chapterNodes.isNullOrEmpty()) {
                     IconButton(onClick = onToggleChaptersClick) {
                         Icon(Icons.Default.List, contentDescription = "Chapters", tint = Color.Gray)
                     }
@@ -895,8 +900,6 @@ fun PodcastEpisodeItem(
                 )
             }
         }
-
-        val chapterNodes = episode.chapters?.nodes
 
         if (isExpanded && !chapterNodes.isNullOrEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
