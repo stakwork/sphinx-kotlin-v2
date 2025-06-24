@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: "recursive"
-          token: ${{secrets.SPHINX_TOKEN }}
+          token: ${{secrets.SPHINX_TOKEN}}
 
       - name: Setting up JDK for ${{ matrix.jdk-version }}
         uses: actions/setup-java@v3
@@ -34,11 +34,14 @@ jobs:
         run: chmod +x gradlew
 
       - name: Packaging distributables for ${{ runner.os }}
-        run: ./gradlew package
+        env:
+          WORKFLOW_ID: ${{ secrets.WORKFLOW_ID }}
+          CHAPTERS_TOKEN: ${{ secrets.CHAPTERS_TOKEN }}
+        run: ./gradlew package -PWORKFLOW_ID="$WORKFLOW_ID" -PCHAPTERS_TOKEN="$CHAPTERS_TOKEN"
 
       - name: Uploading artifacts to release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref , 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             desktop/build/compose/binaries/main/dmg/*

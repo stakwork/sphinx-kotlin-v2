@@ -15,7 +15,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
@@ -26,6 +30,7 @@ import chat.sphinx.common.state.ConfirmationType
 import chat.sphinx.platform.imageResource
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.utils.getPreferredWindowSize
+import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import theme.primary_blue
 
 @Composable
@@ -45,6 +50,7 @@ fun ConfirmationUI(
                 is ConfirmationType.PayInvoice -> "Confirm Payment"
                 is ConfirmationType.TribeDeleteMember -> "Confirm Delete Member"
                 is ConfirmationType.ContactDelete -> "Confirm Delete Contact"
+                is ConfirmationType.PodcastShare -> "Share Episode"
             },
             state = WindowState(
                 position = WindowPosition.Aligned(Alignment.Center),
@@ -63,9 +69,10 @@ fun ConfirmationUI(
                 Image(
                     painter = imageResource(Res.drawable.sphinx_logo),
                     contentDescription = null,
-                    modifier = Modifier.height(50.dp).width(50.dp),
+                    modifier = Modifier.size(50.dp),
                     contentScale = ContentScale.Fit
                 )
+
                 Spacer(Modifier.height(12.dp))
 
                 Text(
@@ -73,12 +80,14 @@ fun ConfirmationUI(
                         is ConfirmationType.PayInvoice -> "Are you sure you want to pay this invoice?"
                         is ConfirmationType.TribeDeleteMember -> "Are you sure you want to remove ${confirmationType.alias?.value}?"
                         is ConfirmationType.ContactDelete -> "Are you sure you want to delete this contact?"
+                        is ConfirmationType.PodcastShare -> "Share from beginning or current time?"
                     },
                     color = MaterialTheme.colorScheme.tertiary,
                     fontFamily = Roboto,
                     fontWeight = FontWeight.Light,
                     fontSize = 13.sp
                 )
+
                 Spacer(Modifier.height(16.dp))
 
                 Row(
@@ -86,54 +95,117 @@ fun ConfirmationUI(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Button(
-                        onClick = {
-                            isOpen = false
-                            dashboardViewModel.toggleConfirmationWindow(false)
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = MaterialTheme.colorScheme.onBackground,
-                            contentColor = MaterialTheme.colorScheme.tertiary
-                        ),
-                        elevation = ButtonDefaults.elevation(defaultElevation = 2.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp)
-                    ) {
-                        Text("Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            when (confirmationType) {
-                                is ConfirmationType.PayInvoice -> {
-                                    confirmationType.message?.let { dashboardViewModel.payContactInvoice(it) }
-                                }
-                                is ConfirmationType.TribeDeleteMember -> {
-                                    dashboardViewModel.kickMemberFromTribe(
-                                        confirmationType.memberPubKey,
-                                        confirmationType.alias,
-                                        confirmationType.chatId
-                                    )
-                                    dashboardViewModel.toggleTribeMembersSplitScreen(false, null)
-                                }
-                                is ConfirmationType.ContactDelete -> {
-                                    dashboardViewModel.deleteSelectedContact()
-                                }
+                    when (confirmationType) {
+                        is ConfirmationType.PayInvoice,
+                        is ConfirmationType.TribeDeleteMember,
+                        is ConfirmationType.ContactDelete -> {
+                            Button(
+                                onClick = {
+                                    isOpen = false
+                                    dashboardViewModel.toggleConfirmationWindow(false)
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    backgroundColor = MaterialTheme.colorScheme.onBackground,
+                                    contentColor = MaterialTheme.colorScheme.tertiary
+                                ),
+                                elevation = ButtonDefaults.elevation(defaultElevation = 2.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            ) {
+                                Text("Cancel")
                             }
-                            isOpen = false
-                            dashboardViewModel.toggleConfirmationWindow(false)
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = primary_blue,
-                            contentColor = MaterialTheme.colorScheme.tertiary
-                        ),
-                        elevation = ButtonDefaults.elevation(defaultElevation = 4.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = 8.dp)
-                    ) {
-                        Text("Confirm")
+
+                            Button(
+                                onClick = {
+                                    when (confirmationType) {
+                                        is ConfirmationType.PayInvoice -> {
+                                            confirmationType.message?.let {
+                                                dashboardViewModel.payContactInvoice(it)
+                                            }
+                                        }
+
+                                        is ConfirmationType.TribeDeleteMember -> {
+                                            dashboardViewModel.kickMemberFromTribe(
+                                                confirmationType.memberPubKey,
+                                                confirmationType.alias,
+                                                confirmationType.chatId
+                                            )
+                                            dashboardViewModel.toggleTribeMembersSplitScreen(false, null)
+                                        }
+
+                                        is ConfirmationType.ContactDelete -> {
+                                            dashboardViewModel.deleteSelectedContact()
+                                        }
+
+                                        else -> {}
+                                    }
+
+                                    isOpen = false
+                                    dashboardViewModel.toggleConfirmationWindow(false)
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    backgroundColor = primary_blue,
+                                    contentColor = MaterialTheme.colorScheme.tertiary
+                                ),
+                                elevation = ButtonDefaults.elevation(defaultElevation = 4.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 8.dp)
+                            ) {
+                                Text("Confirm")
+                            }
+                        }
+
+                        is ConfirmationType.PodcastShare -> {
+                            val clipboardManager = LocalClipboardManager.current
+
+                            Button(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(confirmationType.fromBeginningLink))
+                                    isOpen = false
+                                    dashboardViewModel.toggleConfirmationWindow(false)
+                                    dashboardViewModel.showCopiedToClipboardToast()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    backgroundColor = primary_blue,
+                                    contentColor = MaterialTheme.colorScheme.tertiary
+                                ),
+                                elevation = ButtonDefaults.elevation(defaultElevation = 4.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            ) {
+                                Text(
+                                    text = "Share from Beginning",
+                                    fontSize = 11.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+
+                            Button(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(confirmationType.fromCurrentTimeLink))
+                                    isOpen = false
+                                    dashboardViewModel.toggleConfirmationWindow(false)
+                                    dashboardViewModel.showCopiedToClipboardToast()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    backgroundColor = MaterialTheme.colorScheme.onBackground,
+                                    contentColor = MaterialTheme.colorScheme.tertiary
+                                ),
+                                elevation = ButtonDefaults.elevation(defaultElevation = 2.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 8.dp)
+                            ) {
+                                Text(
+                                    text = "Share from Current Time",
+                                    fontSize = 11.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
             }

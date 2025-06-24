@@ -63,3 +63,6 @@ dev.db
 /desktop/cache
 /desktop/kcef-bundle
 /desktop/jcef-bundle
+
+# Exclude generated secrets/configs
+common/src/commonMain/kotlin/chat/sphinx/generated/

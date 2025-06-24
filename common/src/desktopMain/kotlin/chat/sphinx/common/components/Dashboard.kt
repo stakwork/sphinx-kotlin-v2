@@ -35,6 +35,7 @@ import chat.sphinx.common.Res
 import chat.sphinx.common.components.chat.AttachmentPreview
 import chat.sphinx.common.components.chat.MessagePinnedFullContent
 import chat.sphinx.common.components.chat.MessagePinnedPopUp
+import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.menu.ChatAction
 import chat.sphinx.common.components.pin.PINScreen
 import chat.sphinx.common.components.tribe.NotificationLevel
@@ -42,10 +43,7 @@ import chat.sphinx.common.components.tribe.TribeDetailView
 import chat.sphinx.common.components.tribe.TribeMembersView
 import chat.sphinx.common.models.DashboardChat
 import chat.sphinx.common.state.*
-import chat.sphinx.common.viewmodel.DashboardViewModel
-import chat.sphinx.common.viewmodel.LockedDashboardViewModel
-import chat.sphinx.common.viewmodel.ThreadsViewModel
-import chat.sphinx.common.viewmodel.WebAppViewModel
+import chat.sphinx.common.viewmodel.*
 import chat.sphinx.common.viewmodel.chat.ChatContactViewModel
 import chat.sphinx.common.viewmodel.chat.ChatTribeViewModel
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
@@ -242,6 +240,25 @@ actual fun Dashboard(
                                             is DashboardViewModel.SplitContentType.QRDetail -> {
                                                 val qrCodeViewModel = QRCodeViewModel(screen.title, screen.value)
                                                 QRDetailSplitScreen(dashboardViewModel, qrCodeViewModel)
+                                            }
+
+                                            is DashboardViewModel.SplitContentType.Podcast -> {
+                                                chatViewModel?.let { nnChatViewModel ->
+                                                    val chatId = nnChatViewModel.chatId
+                                                    val mediaPlayerHolder = dashboardViewModel.mediaPlayerHolder
+
+                                                    if (chatId != null) {
+                                                        val podcastViewModel = dashboardViewModel.getPodcastViewModel(chatId)
+                                                        PodcastMainPlayer(
+                                                            chatId = chatId,
+                                                            mediaPlayerHolder = mediaPlayerHolder,
+                                                            dashboardViewModel = dashboardViewModel,
+                                                            podcastViewModel = podcastViewModel
+                                                        )
+                                                    } else {
+                                                        Text("Missing chat context", modifier = Modifier.padding(16.dp))
+                                                    }
+                                                }
                                             }
 
                                             else -> {}
@@ -872,7 +889,8 @@ fun SplitTopBar(
         ) {
 
             if (splitType !is DashboardViewModel.SplitContentType.TribeDetail &&
-                splitType !is DashboardViewModel.SplitContentType.ContactDetails
+                splitType !is DashboardViewModel.SplitContentType.ContactDetails &&
+                splitType !is DashboardViewModel.SplitContentType.Podcast
             ) {
                 IconButton(
                     onClick = {
@@ -921,11 +939,12 @@ fun SplitTopBar(
                 is DashboardViewModel.SplitContentType.TribeMembers -> "Tribe Members"
                 is DashboardViewModel.SplitContentType.ContactDetails -> "Contact Details"
                 is DashboardViewModel.SplitContentType.QRDetail -> splitType.title
+                is DashboardViewModel.SplitContentType.Podcast -> "Podcast"
                 else -> ""
             }
 
             Text(
-                modifier = Modifier.padding(start = 8.dp),
+                modifier = Modifier.padding(start = if (splitType is DashboardViewModel.SplitContentType.Podcast) 16.dp else 8.dp),
                 text = titleText,
                 fontFamily = Roboto,
                 fontSize = 16.sp,

@@ -3,6 +3,7 @@ package chat.sphinx.common.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.toast
 import chat.sphinx.common.state.*
 import chat.sphinx.concepts.repository.connect_manager.model.NetworkStatus
@@ -22,17 +23,20 @@ import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.dashboard.toContactId
 import chat.sphinx.wrapper.eeemmddhmma
+import chat.sphinx.wrapper.feed.FeedId
 import chat.sphinx.wrapper.lightning.*
 import chat.sphinx.wrapper.message.Message
 import chat.sphinx.wrapper.message.MessageType
 import chat.sphinx.wrapper.message.SenderAlias
 import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
+import chat.sphinx.wrapper.podcast.PodcastEpisode
 import chat.sphinx.wrapper.toDateTime
 import chat.sphinx.wrapper.tribe.TribeJoinLink
 import chat.sphinx.wrapper_message.ThreadUUID
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import theme.badge_red
+import theme.primary_green
 import java.awt.event.WindowEvent
 import java.awt.event.WindowFocusListener
 
@@ -49,6 +53,7 @@ class DashboardViewModel(): WindowFocusListener {
     private val lightningRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).lightningRepository
     private val messageRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).messageRepository
     private val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
+    private val feedRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).feedRepository
 
     enum class WebViewState {
         NonInitialized,
@@ -66,6 +71,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class TribeMembers(val chatId: ChatId): SplitContentType()
         data class ContactDetails(val contactId: ContactId?): SplitContentType()
         data class QRDetail(val title: String, val value: String) : SplitContentType()
+        data class Podcast(val chatId: ChatId): SplitContentType()
     }
 
     sealed class FullScreenView {
@@ -78,6 +84,11 @@ class DashboardViewModel(): WindowFocusListener {
         data class CreateTribeScreen(val chatId: ChatId?) : FullScreenView()
         data class QRDetailFullScreen(val title: String?, val value: String?): FullScreenView()
         data class TribeJoin(val tribeJoinLink: TribeJoinLink): FullScreenView()
+        data class EpisodeDetails(
+            val episode: PodcastEpisode,
+            val podcastTitle: String,
+            val episodeShare: ConfirmationType. PodcastShare?
+        ) : FullScreenView()
 
         data class OwnerQRDetail(
             val title: String?,
@@ -209,6 +220,15 @@ class DashboardViewModel(): WindowFocusListener {
         return webViewState.value
     }
 
+    val mediaPlayerHolder = DesktopMediaPlayerHolder()
+    val podcastViewModelMap = mutableMapOf<ChatId, PodcastViewModel>()
+
+    fun getPodcastViewModel(chatId: ChatId): PodcastViewModel {
+        return podcastViewModelMap.getOrPut(chatId) {
+            PodcastViewModel(chatId)
+        }
+    }
+
     private val _aboutSphinxStateFlow: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(false)
     }
@@ -257,6 +277,14 @@ class DashboardViewModel(): WindowFocusListener {
             toggleSplitScreen(false, null)
         }
     }
+
+//    fun togglePodcastSplitScreen(open: Boolean, chatId: ChatId?) {
+//        if (open) {
+//            toggleSplitScreen(true, SplitContentType.Podcast())
+//        } else {
+//            toggleSplitScreen(false)
+//        }
+//    }
 
     private val _confirmationStateFlow: MutableStateFlow<Pair<Boolean, ConfirmationType?>> by lazy {
         MutableStateFlow(Pair(false, null))
@@ -557,6 +585,7 @@ class DashboardViewModel(): WindowFocusListener {
                     }
                 }
             }
+
 //
 //            repositoryDashboard.networkRefreshLatestContacts.collect { response ->
 //                Exhaustive@
@@ -586,6 +615,25 @@ class DashboardViewModel(): WindowFocusListener {
 //            if (_networkStateFlow.value is Response.Error) {
 //                jobNetworkRefresh?.cancel()
 //            }
+        }
+    }
+
+    fun getPlayedMark(episodeId: FeedId): Flow<Boolean?> {
+        return feedRepository.getPlayedMark(episodeId)
+    }
+
+    fun updatePlayedMark(episodeId: FeedId, played: Boolean) {
+        feedRepository.updatePlayedMark(episodeId, played)
+    }
+
+    fun showCopiedToClipboardToast() {
+        scope.launch {
+            sphinxNotificationManager.toast(
+                "Sphinx",
+                "Text copied to clipboard",
+                primary_green.value,
+                2000L
+            )
         }
     }
 

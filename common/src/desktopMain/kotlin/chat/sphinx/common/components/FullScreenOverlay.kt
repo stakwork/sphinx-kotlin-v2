@@ -43,6 +43,7 @@ fun FullScreenOverlay(
                 is DashboardViewModel.FullScreenView.QRDetailFullScreen -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.OwnerQRDetail -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.TribeJoin -> getPreferredWindowSize(400, 800)
+                is DashboardViewModel.FullScreenView.EpisodeDetails -> getPreferredWindowSize(420, 550)
                 else -> getPreferredWindowSize(420, 830)
             }
         }
@@ -107,6 +108,15 @@ fun FullScreenOverlay(
                         }
                         is DashboardViewModel.FullScreenView.TribeJoin -> {
                             JoinTribeScreen(dashboardViewModel, fullScreenView.tribeJoinLink, preferredSize)
+                        }
+                        is DashboardViewModel.FullScreenView.EpisodeDetails -> {
+                            EpisodeDetailsScreen(
+                                episode = fullScreenView.episode,
+                                podcastTitle = fullScreenView.podcastTitle,
+                                dashboardViewModel = dashboardViewModel,
+                                episodeShare = fullScreenView.episodeShare,
+                                preferredSize = preferredSize
+                            )
                         }
                         else -> {}
                     }

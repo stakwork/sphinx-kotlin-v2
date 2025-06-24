@@ -111,9 +111,19 @@ compose.desktop {
             packageVersion = "1.0.6"
 
             val sphinxProperties = Properties().apply {
-                val localPropertiesFile = project.file("../local.properties")
-                if (localPropertiesFile.exists()) {
-                    load(FileInputStream(localPropertiesFile))
+                val defaultsFile = project.file("../local.defaults.properties")
+                if (defaultsFile.exists()) {
+                    load(FileInputStream(defaultsFile))
+                }
+
+                val localFile = project.file("../local.properties")
+                if (localFile.exists()) {
+                    load(FileInputStream(localFile))
+                }
+            }
+            sphinxProperties.forEach { key, value ->
+                if (key is String && value is String) {
+                    jvmArgs("-D$key=$value")
                 }
             }
 
