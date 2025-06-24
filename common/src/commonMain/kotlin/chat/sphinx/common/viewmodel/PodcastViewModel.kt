@@ -2,6 +2,7 @@ package chat.sphinx.common.viewmodel
 
 import chat.sphinx.common.state.ConfirmationType
 import chat.sphinx.di.container.SphinxContainer
+import chat.sphinx.generated.ApiConfig
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedId
@@ -106,8 +107,9 @@ class PodcastViewModel(
 
     fun getChapters(podcastEpisode: PodcastEpisode, title: FeedTitle) {
         scope.launch(dispatchers.mainImmediate) {
-            val workflowId = System.getProperty("GRAPH_MINDSET_WORKFLOW_ID", "0").toInt()
-            val token =  System.getProperty("GRAPH_MINDSET_TOKEN", "default")
+            val workflowId = ApiConfig.WORKFLOW_ID
+            val token = ApiConfig.CHAPTERS_TOKEN
+
 
             if (podcastEpisode.referenceId != null) {
                 feedRepository.getChaptersData(

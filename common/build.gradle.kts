@@ -1,3 +1,5 @@
+import java.util.*
+
 plugins {
     id("com.android.library")
     kotlin("multiplatform")
@@ -13,6 +15,47 @@ repositories {
     maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots")
 }
 
+// Load secrets from local.properties (for local dev)
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+// Task to generate ApiConfig
+val generateApiConfig by tasks.registering {
+    val outputDir = file("src/commonMain/kotlin/chat/sphinx/generated")
+
+    doLast {
+        val workflowIdStr = findProperty("WORKFLOW_ID")?.toString()
+            ?: localProperties.getProperty("WORKFLOW_ID") ?: "0"
+        val chaptersToken = findProperty("CHAPTERS_TOKEN")?.toString()
+            ?: localProperties.getProperty("CHAPTERS_TOKEN") ?: ""
+
+        val safeWorkflowId = workflowIdStr.toIntOrNull() ?: 0
+        val safeToken = chaptersToken.replace("\"", "\\\"")
+
+        val configContent = """
+            package chat.sphinx.generated
+
+            object ApiConfig {
+                const val WORKFLOW_ID = $safeWorkflowId
+                const val CHAPTERS_TOKEN = "$safeToken"
+            }
+        """.trimIndent()
+
+        outputDir.mkdirs()
+        file("${outputDir.path}/ApiConfig.kt").writeText(configContent)
+    }
+}
+
+// Ensure ApiConfig is generated before compilation
+tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
+    dependsOn(generateApiConfig)
+}
+
+
 kotlin {
     androidTarget()
     jvm("desktop") {
@@ -20,9 +63,12 @@ kotlin {
             kotlinOptions.jvmTarget = JavaVersion.VERSION_17.toString()
         }
     }
+    sourceSets["commonMain"].kotlin.srcDir("src/commonMain/kotlin/chat/sphinx/generated")
+
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions.jvmTarget = JavaVersion.VERSION_17.toString()
     }
+
     sourceSets {
         val klockVersion = "2.5.1"
         val korauVersion = "3.2.0"
@@ -52,22 +98,26 @@ kotlin {
                 api("io.github.kevinnzou:compose-webview-multiplatform:1.8.0")
             }
         }
+
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
             }
         }
+
         val androidMain by getting {
             dependencies {
                 api("androidx.appcompat:appcompat:1.6.1")
                 api("androidx.core:core-ktx:1.12.0")
             }
         }
+
         val androidUnitTest by getting {
             dependencies {
                 implementation("junit:junit:4.13")
             }
         }
+
         val desktopMain by getting {
             dependencies {
                 api(compose.preview)
@@ -76,31 +126,31 @@ kotlin {
                 api(compose.desktop.components.splitPane)
             }
         }
+
         val desktopTest by getting
     }
 }
 
 android {
-    compileSdkVersion(31)
-    sourceSets {
-        named("main") {
-            manifest.srcFile("src/androidMain/AndroidManifest.xml")
-            res.srcDirs("src/androidMain/res", "src/commonMain/resources")
-        }
+    compileSdk = 31
+    sourceSets["main"].apply {
+        manifest.srcFile("src/androidMain/AndroidManifest.xml")
+        res.srcDirs("src/androidMain/res", "src/commonMain/resources")
     }
     defaultConfig {
-        minSdkVersion(24)
-        targetSdkVersion(31)
+        minSdk = 24
+        targetSdk = 31
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
 dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
     implementation("androidx.compose.ui:ui-text:1.5.4")
     implementation("com.google.android.material:material:1.10.0")
-    implementation ("io.coil-kt:coil-compose:1.4.0")
+    implementation("io.coil-kt:coil-compose:1.4.0")
     implementation("androidx.compose.material:material:1.6.0-alpha08")
 }
