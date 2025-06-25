@@ -14,23 +14,39 @@ class MediaPlayerControllerImpl : MediaPlayerController() {
 
     init {
         try {
-            val nativeDir = File(
-                MediaPlayerControllerImpl::class.java.getResource("/natives/windows/x86_64")!!.toURI()
-            )
+            val jvmArch = System.getProperty("os.arch") // e.g., "x86", "amd64"
+            val nativePathUrl = MediaPlayerControllerImpl::class.java.getResource("/natives/windows/x86_64")
+                ?: throw IllegalStateException("VLC native path not found")
+
+            val nativeDir = File(nativePathUrl.toURI())
+
+            // Check if we're on 64-bit JVM and using 64-bit VLC
+            if (jvmArch.contains("64") && nativeDir.absolutePath.contains("x86_64").not()) {
+                throw IllegalStateException("64-bit JVM but 32-bit VLC library found.")
+            }
+
+            // (Optional) Check for 32-bit JVM
+            if (jvmArch.contains("86") && jvmArch.contains("64").not() && nativeDir.absolutePath.contains("x86_64")) {
+                throw IllegalStateException("32-bit JVM but 64-bit VLC library found.")
+            }
+
             System.setProperty("jna.library.path", nativeDir.absolutePath)
             System.setProperty("VLC_PLUGIN_PATH", File(nativeDir, "plugins").absolutePath)
+
+            mediaPlayerFactory = MediaPlayerFactory()
+            mediaPlayer = mediaPlayerFactory.mediaPlayers().newMediaPlayer()
+
+            mediaPlayer.events().addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
+                override fun finished(mediaPlayer: MediaPlayer?) {
+                    playbackListener?.onPlaybackCompleted()
+                }
+            })
+
         } catch (e: Exception) {
-            println("VLC path setup failed: ${e.message}")
+            println("⚠️ VLC player could not be initialized: ${e.message}")
+            // Fallback: maybe disable media player feature or use a dummy player
+            throw IllegalStateException("VLC not supported on this system", e)
         }
-
-        mediaPlayerFactory = MediaPlayerFactory()
-        mediaPlayer = mediaPlayerFactory.mediaPlayers().newMediaPlayer()
-
-        mediaPlayer.events().addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
-            override fun finished(mediaPlayer: MediaPlayer?) {
-                playbackListener?.onPlaybackCompleted()
-            }
-        })
     }
 
     override fun setPlaybackListener(listener: MediaPlayerController.PlaybackListener?) {
