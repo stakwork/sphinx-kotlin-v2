@@ -34,7 +34,10 @@ val generateApiConfig by tasks.registering {
             ?: localProperties.getProperty("CHAPTERS_TOKEN") ?: ""
 
         val safeWorkflowId = workflowIdStr.toIntOrNull() ?: 0
-        val safeToken = chaptersToken.replace("\"", "\\\"")
+
+        val safeToken = chaptersToken
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
 
         val configContent = """
             package chat.sphinx.generated
