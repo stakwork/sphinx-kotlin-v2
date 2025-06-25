@@ -39,7 +39,16 @@ kotlin {
                 "amd64" -> "x86_64"
                 else -> osArch
             }
+            val javaFxVersion = "21.0.1"
+            val arch = System.getProperty("os.arch")
 
+            val platform = when {
+                org.gradle.internal.os.OperatingSystem.current().isWindows -> "win"
+                org.gradle.internal.os.OperatingSystem.current().isLinux -> "linux"
+                org.gradle.internal.os.OperatingSystem.current().isMacOsX && arch == "aarch64" -> "mac-aarch64"
+                org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "mac"
+                else -> throw GradleException("Unsupported OS")
+            }
             // Set the resources srcDir based on the OS and architecture
             val nativeResourceDir = when {
                 "mac" in osName && normalizedArch == "aarch64" -> "src/jvmMain/resources/natives/macos/aarch64"
@@ -69,6 +78,11 @@ kotlin {
                 implementation("org.jetbrains.compose.ui:ui-graphics:1.5.1")
                 implementation("uk.co.caprica:vlcj:4.7.1")
                 implementation("net.java.dev.jna:jna:5.13.0")
+                implementation("org.openjfx:javafx-base:$javaFxVersion:$platform")
+                implementation("org.openjfx:javafx-controls:$javaFxVersion:$platform")
+                implementation("org.openjfx:javafx-graphics:$javaFxVersion:$platform")
+                implementation("org.openjfx:javafx-media:$javaFxVersion:$platform")
+                implementation("org.openjfx:javafx-swing:$javaFxVersion:$platform")
 
 //                implementation ("com.github.skydoves:landscapist-glide:1.3.6")
 //                implementation ("io.coil-kt:coil-compose:1.4.0")
