@@ -33,9 +33,11 @@ import kotlinx.coroutines.withContext
 import theme.LocalSpacing
 import theme.Spacing
 import java.io.File
+import java.io.PrintStream
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() = application {
+
     val windowState = rememberWindowState()
     val sphinxIcon = imageResource(DesktopResource.drawable.sphinx_icon)
 

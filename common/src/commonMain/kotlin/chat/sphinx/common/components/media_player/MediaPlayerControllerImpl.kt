@@ -1,60 +1,100 @@
-package chat.sphinx.common.components.media_player
-
-import uk.co.caprica.vlcj.factory.MediaPlayerFactory
-import uk.co.caprica.vlcj.player.base.MediaPlayer
-import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
+import chat.sphinx.common.components.media_player.MediaPlayerController
+import javafx.application.Platform
+import javafx.embed.swing.JFXPanel // Needed to init JavaFX runtime
+import javafx.scene.media.Media
+import javafx.scene.media.MediaPlayer
+import java.io.File
 
 class MediaPlayerControllerImpl : MediaPlayerController() {
 
-    private val mediaPlayerFactory = MediaPlayerFactory()
-    private val mediaPlayer: MediaPlayer = mediaPlayerFactory.mediaPlayers().newMediaPlayer()
-
+    private var mediaPlayer: MediaPlayer? = null
     private var playbackListener: MediaPlayerController.PlaybackListener? = null
 
     init {
-        mediaPlayer.events().addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
-            override fun finished(mediaPlayer: MediaPlayer?) {
-                playbackListener?.onPlaybackCompleted()
-            }
-        })
+        // Initializes JavaFX runtime
+        JFXPanel()
     }
+
     override fun setPlaybackListener(listener: MediaPlayerController.PlaybackListener?) {
         playbackListener = listener
     }
 
-
     override fun play(url: String, startTimeMillis: Long) {
-        mediaPlayer.media().play(url)
-        if (startTimeMillis > 0) {
-            mediaPlayer.controls().setTime(startTimeMillis)
+        Platform.runLater {
+            try {
+                // Dispose existing player
+                mediaPlayer?.dispose()
+
+                // Convert file path or URL properly
+                val uri = if (url.startsWith("http://") || url.startsWith("https://")) {
+                    url
+                } else {
+                    File(url).toURI().toString()
+                }
+
+                println("Playing media from URI: $uri")
+
+                val media = Media(uri)
+
+                // Add error listener to diagnose issues
+                media.setOnError {
+                    println("Media error: ${media.error}")
+                }
+
+                mediaPlayer = MediaPlayer(media).apply {
+                    setOnError {
+                        println("MediaPlayer error: $error")
+                    }
+                    setOnEndOfMedia {
+                        playbackListener?.onPlaybackCompleted()
+                    }
+                    setOnReady {
+                        if (startTimeMillis > 0) {
+                            seek(javafx.util.Duration.millis(startTimeMillis.toDouble()))
+                        }
+                        play()
+                    }
+                }
+            } catch (e: Exception) {
+                println("Exception while trying to play media: ${e.message}")
+                e.printStackTrace()
+            }
         }
     }
 
     override fun pause() {
-        mediaPlayer.controls().pause()
+        Platform.runLater {
+            mediaPlayer?.pause()
+        }
     }
 
     override fun stop() {
-        mediaPlayer.controls().stop()
+        Platform.runLater {
+            mediaPlayer?.stop()
+        }
     }
 
     override fun seekTo(millis: Long) {
-        mediaPlayer.controls().setTime(millis)
+        Platform.runLater {
+            mediaPlayer?.seek(javafx.util.Duration.millis(millis.toDouble()))
+        }
     }
 
     override fun setPlaybackSpeed(speed: Double) {
-        mediaPlayer.controls().setRate(speed.toFloat())
+        Platform.runLater {
+            mediaPlayer?.rate = speed
+        }
     }
 
     override fun isPlaying(): Boolean {
-        return mediaPlayer.status().isPlaying
+        return mediaPlayer?.status == MediaPlayer.Status.PLAYING
     }
 
     override fun getCurrentPosition(): Long {
-        return mediaPlayer.status().time()
+        return mediaPlayer?.currentTime?.toMillis()?.toLong() ?: 0
     }
 
     override fun getDuration(): Long {
-        return mediaPlayer.media().info()?.duration() ?: 0
+        return mediaPlayer?.totalDuration?.toMillis()?.toLong() ?: 0
     }
 }

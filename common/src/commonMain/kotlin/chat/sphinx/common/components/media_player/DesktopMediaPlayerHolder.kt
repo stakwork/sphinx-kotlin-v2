@@ -1,5 +1,6 @@
 package chat.sphinx.common.components.media_player
 
+import MediaPlayerControllerImpl
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.contact.Contact

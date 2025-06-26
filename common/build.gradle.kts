@@ -34,7 +34,10 @@ val generateApiConfig by tasks.registering {
             ?: localProperties.getProperty("CHAPTERS_TOKEN") ?: ""
 
         val safeWorkflowId = workflowIdStr.toIntOrNull() ?: 0
-        val safeToken = chaptersToken.replace("\"", "\\\"")
+
+        val safeToken = chaptersToken
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
 
         val configContent = """
             package chat.sphinx.generated
@@ -69,6 +72,17 @@ kotlin {
         kotlinOptions.jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    val javaFxVersion = "21.0.1"
+    val arch = System.getProperty("os.arch")
+
+    val platform = when {
+        org.gradle.internal.os.OperatingSystem.current().isWindows -> "win"
+        org.gradle.internal.os.OperatingSystem.current().isLinux -> "linux"
+        org.gradle.internal.os.OperatingSystem.current().isMacOsX && arch == "aarch64" -> "mac-aarch64"
+        org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "mac"
+        else -> throw GradleException("Unsupported OS")
+    }
+
     sourceSets {
         val klockVersion = "2.5.1"
         val korauVersion = "3.2.0"
@@ -94,8 +108,12 @@ kotlin {
                 implementation("com.soywiz.korlibs.korio:korio:$korioVersion")
                 implementation("com.soywiz.korlibs.korau:korau:$korauVersion")
                 implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
-                implementation("uk.co.caprica:vlcj:4.7.1")
                 api("io.github.kevinnzou:compose-webview-multiplatform:1.8.0")
+                implementation("org.openjfx:javafx-base:$javaFxVersion:$platform")
+                implementation("org.openjfx:javafx-controls:$javaFxVersion:$platform")
+                implementation("org.openjfx:javafx-graphics:$javaFxVersion:$platform")
+                implementation("org.openjfx:javafx-media:$javaFxVersion:$platform")
+                implementation("org.openjfx:javafx-swing:$javaFxVersion:$platform")
             }
         }
 
