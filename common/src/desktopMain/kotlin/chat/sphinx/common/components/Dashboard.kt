@@ -86,6 +86,7 @@ actual fun Dashboard(
     val splitScreenState by dashboardViewModel.splitScreenStateFlow.collectAsState()
     val fullScreenViewState by dashboardViewModel.fullScreenViewStateFlow.collectAsState()
     val isSidebarHidden by dashboardViewModel.isSidebarHiddenFlow.collectAsState()
+    val selectedTabIndex by dashboardViewModel.selectedTabStateFlow.collectAsState()
 
     when (DashboardScreenState.screenState()) {
         DashboardScreenType.Unlocked -> {
@@ -248,7 +249,8 @@ actual fun Dashboard(
                                                     val mediaPlayerHolder = dashboardViewModel.mediaPlayerHolder
 
                                                     if (chatId != null) {
-                                                        val podcastViewModel = dashboardViewModel.getPodcastViewModel(chatId)
+                                                        val podcastViewModel =
+                                                            dashboardViewModel.getPodcastViewModel(chatId)
                                                         PodcastMainPlayer(
                                                             chatId = chatId,
                                                             mediaPlayerHolder = mediaPlayerHolder,
@@ -287,91 +289,107 @@ actual fun Dashboard(
                             }
                         }
                     } else {
+                        val isFeedTabSelected = selectedTabIndex == 2
                         val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
 
-                        Scaffold(
-                            scaffoldState = scaffoldState,
-                            topBar = {
-                                SphinxChatDetailTopAppBar(
-                                    dashboardChat,
-                                    chatViewModel,
-                                    dashboardViewModel,
-                                    webAppViewModel
-                                )
-                            },
-                            bottomBar = {
-                                SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                        if (isFeedTabSelected) {
+                            Scaffold(
+                                scaffoldState = scaffoldState,
+                            ) { paddingValues ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                        .padding(paddingValues)
+                                ) {
+                                    FeedListUI(dashboardViewModel)
+                                }
                             }
-                        ) { paddingValues ->
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-                                    .padding(paddingValues),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                if (isSidebarHidden) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-                                            .padding(paddingValues)
-                                    ) {
-                                        IconButton(
-                                            onClick = { dashboardViewModel.toggleSidebarVisibility() },
+                        } else {
+                            Scaffold(
+                                scaffoldState = scaffoldState,
+                                topBar = {
+                                    SphinxChatDetailTopAppBar(
+                                        dashboardChat,
+                                        chatViewModel,
+                                        dashboardViewModel,
+                                        webAppViewModel
+                                    )
+                                },
+                                bottomBar = {
+                                    SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                }
+                            ) { paddingValues ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                        .padding(paddingValues),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    if (isSidebarHidden) {
+                                        Box(
                                             modifier = Modifier
-                                                .align(Alignment.TopStart)
-                                                .padding(start = 0.dp, top = 16.dp, 0.dp, bottom = 16.dp)
+                                                .fillMaxSize()
+                                                .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                                .padding(paddingValues)
                                         ) {
-                                            androidx.compose.material.Icon(
-                                                Icons.Default.ChevronRight,
-                                                contentDescription = "Hide",
-                                                tint = Color.White.copy(alpha = 0.6f),
-                                                modifier = Modifier.size(32.dp)
-                                            )
+                                            IconButton(
+                                                onClick = { dashboardViewModel.toggleSidebarVisibility() },
+                                                modifier = Modifier
+                                                    .align(Alignment.TopStart)
+                                                    .padding(start = 0.dp, top = 16.dp, 0.dp, bottom = 16.dp)
+                                            ) {
+                                                androidx.compose.material.Icon(
+                                                    Icons.Default.ChevronRight,
+                                                    contentDescription = "Hide",
+                                                    tint = Color.White.copy(alpha = 0.6f),
+                                                    modifier = Modifier.size(32.dp)
+                                                )
+                                            }
                                         }
                                     }
-                                }
 
-                                chatViewModel?.let { chatViewModel ->
-                                    MessageListUI(chatViewModel, dashboardViewModel, dashboardChat)
+                                    chatViewModel?.let { chatViewModel ->
+                                        MessageListUI(chatViewModel, dashboardViewModel, dashboardChat)
+                                    }
                                 }
+                                AttachmentPreview(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
+                                MessagePinnedPopUp(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
+                                MessagePinnedFullContent(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
+                                ChatAction(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
+                                NotificationLevel(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
                             }
-                            AttachmentPreview(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
-                            MessagePinnedPopUp(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
-                            MessagePinnedFullContent(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
-                            ChatAction(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
-                            NotificationLevel(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
                         }
                     }
-                }
-                splitter {
-                    visiblePart {
-                        Box(
-                            Modifier.width(1.dp).fillMaxHeight().background(MaterialTheme.colors.background)
-                        )
-                    }
-                    handle {
-                        Box(
-                            Modifier.markAsHandle().cursorForHorizontalResize()
-                                .background(SolidColor(Color.Gray), alpha = 0.50f).width(9.dp).fillMaxHeight()
-                        )
+                    splitter {
+                        visiblePart {
+                            Box(
+                                Modifier.width(1.dp).fillMaxHeight().background(MaterialTheme.colors.background)
+                            )
+                        }
+                        handle {
+                            Box(
+                                Modifier.markAsHandle().cursorForHorizontalResize()
+                                    .background(SolidColor(Color.Gray), alpha = 0.50f).width(9.dp).fillMaxHeight()
+                            )
+                        }
                     }
                 }
             }
