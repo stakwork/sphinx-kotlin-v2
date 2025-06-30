@@ -35,7 +35,6 @@ import chat.sphinx.common.Res
 import chat.sphinx.common.components.chat.AttachmentPreview
 import chat.sphinx.common.components.chat.MessagePinnedFullContent
 import chat.sphinx.common.components.chat.MessagePinnedPopUp
-import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.menu.ChatAction
 import chat.sphinx.common.components.pin.PINScreen
 import chat.sphinx.common.components.tribe.NotificationLevel
@@ -83,6 +82,8 @@ actual fun Dashboard(
     var chatViewModel: ChatViewModel? = null
 
     val webAppViewModel = remember { WebAppViewModel() }
+    val feedViewModel = remember { FeedViewModel(dashboardViewModel) }
+
     val splitScreenState by dashboardViewModel.splitScreenStateFlow.collectAsState()
     val fullScreenViewState by dashboardViewModel.fullScreenViewStateFlow.collectAsState()
     val isSidebarHidden by dashboardViewModel.isSidebarHiddenFlow.collectAsState()
@@ -121,7 +122,7 @@ actual fun Dashboard(
                 }
 
                 first(if (isSidebarHidden) 0.dp else 300.dp) {
-                    DashboardSidebarUI(dashboardViewModel, webAppViewModel)
+                    DashboardSidebarUI(dashboardViewModel, webAppViewModel, feedViewModel)
                 }
 
                 second(if (isSidebarHidden) 1000.dp else 700.dp) {
@@ -302,7 +303,7 @@ actual fun Dashboard(
                                         .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                                         .padding(paddingValues)
                                 ) {
-                                    FeedListUI(dashboardViewModel)
+                                    FeedListUI(feedViewModel)
                                 }
                             }
                         } else {

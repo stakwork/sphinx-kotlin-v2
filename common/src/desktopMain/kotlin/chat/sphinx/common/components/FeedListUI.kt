@@ -1,22 +1,15 @@
 package chat.sphinx.common.components
 
-import androidx.compose.animation.VectorConverter
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Card
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,17 +19,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.FeedViewModel
 import chat.sphinx.wrapper.feed.Feed
-import theme.place_holder_text
+import chat.sphinx.wrapper.feed.FeedItem
+import chat.sphinx.wrapper.timeAgo
+import theme.primary_blue
 
 @Composable
 fun FeedListUI(
-    dashboardViewModel: DashboardViewModel
+    feedViewModel: FeedViewModel,
+    isFollowing: Boolean = false,
 ) {
-    val feedViewModel = remember { FeedViewModel(dashboardViewModel) }
-
     val recentlyReleased by feedViewModel.feedsHolderViewStateFlow.collectAsState()
     val recentlyPlayed by feedViewModel.lastPlayedFeedsHolderViewStateFlow.collectAsState()
 
@@ -47,16 +40,138 @@ fun FeedListUI(
             .padding(horizontal = 24.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Spacer(modifier = Modifier.height(32.dp))
 
-        SectionHeader("Recently Played")
-        recentlyPlayed.take(3).forEach {
-            FeedCard(it)
+        if (isFollowing) {
+            Spacer(modifier = Modifier.height(12.dp))
+            SectionHeader("Following")
+
+            recentlyPlayed.forEach { feed ->
+                FollowingFeedItem(feed = feed)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        } else {
+            Spacer(modifier = Modifier.height(32.dp))
+            SectionHeader("Recently Released")
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+            ) {
+                recentlyPlayed.mapNotNull { it.lastPublished }.forEach { episode ->
+                    FeedCardSquare(episode, Modifier.padding(end = 12.dp))
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+@Composable
+fun FeedCardSquare(
+    episode: FeedItem,
+    modifier: Modifier = Modifier,
+    isPlaying: Boolean = false,
+    onClick: (() -> Unit)? = null
+) {
+    val imageUrl = episode.imageUrlToShow?.value
+    val episodeTitle = episode.titleToShow
+    val showTitle = episode.feed?.titleToShow ?: ""
+    val description = episode.descriptionToShow
+    val published = episode.datePublished?.timeAgo() ?: ""
+
+    val currentTime = (episode.contentEpisodeStatus?.currentTime?.value ?: 0L) * 1000
+    val duration = (episode.contentEpisodeStatus?.duration?.value ?: 0L) * 1000
+
+    Column(
+        modifier = modifier
+            .width(180.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (imageUrl != null) {
+            PhotoUrlImage(
+                photoUrl = episode.imageUrlToShow,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .background(Color.DarkGray, RoundedCornerShape(8.dp))
+            )
+        }
+
+        Text(
+            text = episodeTitle,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = showTitle,
+            fontSize = 12.sp,
+            color = Color.Gray,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = description,
+            fontSize = 11.sp,
+            color = Color.Gray,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = published,
+            fontSize = 10.sp,
+            color = Color.Gray
+        )
+
+        if (duration > 0) {
+            val left = duration - currentTime
+            if (left > 0) {
+                Text(
+                    text = "${formatMillis(left)} left",
+                    fontSize = 10.sp,
+                    color = primary_blue
+                )
+            } else {
+                Text(
+                    text = "${formatMillis(duration)}",
+                    fontSize = 10.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+
+        if (currentTime > 0f) {
+            LinearProgressIndicator(
+                progress = currentTime.toFloat() / duration.coerceAtLeast(1),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = primary_blue,
+                trackColor = Color.DarkGray
+            )
+        }
+    }
+}
+
 
 @Composable
 fun SectionHeader(text: String) {
@@ -80,82 +195,65 @@ fun SectionHeader(text: String) {
         )
     }
     Spacer(modifier = Modifier.height(8.dp))
+
 }
 
 @Composable
-fun FeedCard(feed: Feed) {
-    val imageUrl = feed.imageUrlToShow?.value
-    val episodeNumber = feed.lastItem?.title?.value?.substringBefore(" ") ?: "#0000"
-    val episodeTitle = feed.lastItem?.title?.value?.substringAfter(" ") ?: feed.titleToShow
-    val published = feed.lastItem?.datePublished ?: feed.datePublished
+fun FollowingFeedItem(
+    feed: Feed,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
+    val imageUrl = feed.imageUrlToShow?.value.orEmpty()
+    val title = feed.titleToShow
+    val author = feed.author?.value ?: ""
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .clickable { /* Optional: go to player */ }
-            .padding(12.dp)
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        if (imageUrl != null) {
+        if (imageUrl.isNotBlank()) {
             PhotoUrlImage(
                 photoUrl = feed.imageUrlToShow,
                 modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(6.dp)),
                 contentScale = ContentScale.Crop
             )
         } else {
             Box(
                 Modifier
-                    .size(80.dp)
-                    .background(Color.DarkGray, RoundedCornerShape(8.dp))
+                    .size(48.dp)
+                    .background(Color.DarkGray, RoundedCornerShape(6.dp))
             )
         }
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
+        Column {
             Text(
-                text = episodeNumber,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-            )
-
-            Text(
-                text = episodeTitle,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.W600,
+                text = title,
                 color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
 
             Text(
-                text = feed.titleToShow,
-                fontSize = 12.sp,
-                color = place_holder_text,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                text = feed.descriptionToShow,
-                fontSize = 11.sp,
+                text = author,
                 color = Color.Gray,
-                maxLines = 2,
+                fontSize = 12.sp,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-
-//            published?.let {
-//                Spacer(modifier = Modifier.height(4.dp))
-//                Text(
-//                    text = it,
-//                    fontSize = 10.sp,
-//                    color = Color.Gray
-//                )
-//            }
         }
     }
 }
+
+

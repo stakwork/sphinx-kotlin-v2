@@ -28,10 +28,10 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import chat.sphinx.common.components.tribe.JoinTribeScreen
 import chat.sphinx.common.state.AuthorizeViewState
 import chat.sphinx.common.state.ContactScreenState
 import chat.sphinx.common.viewmodel.DashboardViewModel
+import chat.sphinx.common.viewmodel.FeedViewModel
 import chat.sphinx.common.viewmodel.WebAppViewModel
 import chat.sphinx.common.viewmodel.dashboard.ChatListViewModel
 import chat.sphinx.concepts.repository.connect_manager.model.NetworkStatus
@@ -43,6 +43,7 @@ import theme.*
 fun DashboardSidebarUI(
     dashboardViewModel: DashboardViewModel,
     webAppViewModel: WebAppViewModel,
+    feedViewModel: FeedViewModel
 ) {
     val chatListViewModel = remember { ChatListViewModel() }
     val uriHandler = LocalUriHandler.current
@@ -318,7 +319,7 @@ fun DashboardSidebarUI(
             when (selectedTabIndex) {
                 0 -> ChatListUI(chatListViewModel, dashboardViewModel, false)
                 1 -> ChatListUI(chatListViewModel, dashboardViewModel, true)
-                2 -> FeedListUI(dashboardViewModel)
+                2 -> FeedListUI(feedViewModel, true)
             }
 
             AboutSphinxWindow(dashboardViewModel)
