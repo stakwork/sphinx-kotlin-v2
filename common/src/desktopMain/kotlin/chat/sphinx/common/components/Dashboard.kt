@@ -103,6 +103,7 @@ actual fun Dashboard(
                 chatViewModel?.readMessages()
                 chatViewModel?.cancelMessagesJob()
 
+
                 chatViewModel = when (chatDetailState) {
                     is ChatDetailData.SelectedChatDetailData.SelectedContactDetail -> {
                         ChatContactViewModel(null, chatDetailState.contactId!!, dashboardViewModel)
@@ -245,25 +246,17 @@ actual fun Dashboard(
                                             }
 
                                             is DashboardViewModel.SplitContentType.Podcast -> {
-                                                chatViewModel?.let { nnChatViewModel ->
-                                                    val chatId = nnChatViewModel.chatId
-                                                    val mediaPlayerHolder = dashboardViewModel.mediaPlayerHolder
+                                                val chatId = screen.chatId
+                                                val mediaPlayerHolder = dashboardViewModel.mediaPlayerHolder
+                                                val podcastViewModel = dashboardViewModel.getPodcastViewModel(chatId)
 
-                                                    if (chatId != null) {
-                                                        val podcastViewModel =
-                                                            dashboardViewModel.getPodcastViewModel(chatId)
-                                                        PodcastMainPlayer(
-                                                            chatId = chatId,
-                                                            mediaPlayerHolder = mediaPlayerHolder,
-                                                            dashboardViewModel = dashboardViewModel,
-                                                            podcastViewModel = podcastViewModel
-                                                        )
-                                                    } else {
-                                                        Text("Missing chat context", modifier = Modifier.padding(16.dp))
-                                                    }
-                                                }
+                                                PodcastMainPlayer(
+                                                    chatId = chatId,
+                                                    mediaPlayerHolder = mediaPlayerHolder,
+                                                    dashboardViewModel = dashboardViewModel,
+                                                    podcastViewModel = podcastViewModel
+                                                )
                                             }
-
                                             else -> {}
                                         }
                                     }
