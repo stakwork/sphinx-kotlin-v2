@@ -3,8 +3,6 @@ package chat.sphinx.common.viewmodel
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.chat.ChatHost
-import chat.sphinx.wrapper.chat.ChatUUID
-import chat.sphinx.wrapper.chat.toChatHost
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.*
 import chat.sphinx.wrapper.time
@@ -27,8 +25,8 @@ class FeedViewModel(
     private val _feedsHolderViewStateFlow = MutableStateFlow<List<Feed>>(emptyList())
     val feedsHolderViewStateFlow: StateFlow<List<Feed>> = _feedsHolderViewStateFlow
 
-//    private val _lastPlayedFeedsHolderViewStateFlow = MutableStateFlow<List<Feed>>(emptyList())
-//    val lastPlayedFeedsHolderViewStateFlow: StateFlow<List<Feed>> = _lastPlayedFeedsHolderViewStateFlow
+    private val _recentlyPlayedEpisode = MutableStateFlow<FeedItem?>(null)
+    val recentlyPlayedEpisode: StateFlow<FeedItem?> = _recentlyPlayedEpisode
 
     init {
         scope.launch(dispatchers.mainImmediate) {
@@ -39,13 +37,38 @@ class FeedViewModel(
                     .filter { it.subscribed.isTrue() || it.chatId.value.toInt() != ChatId.NULL_CHAT_ID }
                     .sortedByDescending { it.lastPublished?.datePublished?.time ?: 0 }
 
-//                _lastPlayedFeedsHolderViewStateFlow.value = filteredFeeds
-//                    .filter { it.lastPlayed != null }
-//                    .sortedWith(compareByDescending<Feed> { it.lastPlayed?.time }
-//                        .thenByDescending { it.lastPublished?.datePublished?.time ?: 0 })
+                val episodes = feeds.flatMap { feed ->
+                    feed.items.mapNotNull { item ->
+                        item.contentEpisodeStatus?.let { status ->
+                            status.lastPlayed?.let { lastPlayed ->
+                                item to lastPlayed
+                            }
+                        }
+                    }
+                }
+
+                val mostRecent = episodes.maxByOrNull { it.second.value }?.first
+                _recentlyPlayedEpisode.value = mostRecent
+            }
+        }
+        observeContentEpisodeStatus()
+    }
+
+    private fun observeContentEpisodeStatus() {
+        scope.launch(dispatchers.io) {
+            feedRepository.getLastPlayedEpisode().collect { statuses ->
+
+                _recentlyPlayedEpisode.value = feedsHolderViewStateFlow.value.find { feed ->
+                    feed.items.any { item ->
+                        feed.id == statuses?.feedId && item.id == statuses.itemId
+                    }
+                }?.items?.find { item ->
+                    item.id == statuses?.itemId
+                }
             }
         }
     }
+
     fun onPodcastFeedItemClicked(item: FeedItem) {
         val feed = item.feed ?: return
         val chatId = feed.chatId

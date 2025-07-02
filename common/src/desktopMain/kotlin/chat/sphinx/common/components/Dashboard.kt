@@ -133,41 +133,58 @@ actual fun Dashboard(
                             first(500.dp) {
                                 val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
 
-                                Scaffold(
-                                    scaffoldState = scaffoldState,
-                                    topBar = {
-                                        SphinxChatDetailTopAppBar(
-                                            dashboardChat,
-                                            chatViewModel,
-                                            dashboardViewModel,
-                                            webAppViewModel
-                                        )
-                                    },
-                                    bottomBar = {
-                                        SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
-                                    }
-                                ) { paddingValues ->
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-                                            .padding(paddingValues),
-                                        verticalArrangement = Arrangement.Center,
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        chatViewModel?.let { vm ->
-                                            MessageListUI(vm, dashboardViewModel, dashboardChat)
+                                val isFeedTabSelected = selectedTabIndex == 2
+                                val isPodcastSplit = splitScreenState.type is DashboardViewModel.SplitContentType.Podcast
+
+                                if (isFeedTabSelected && isPodcastSplit) {
+                                    Scaffold(
+                                        scaffoldState = scaffoldState,
+                                    ) { paddingValues ->
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                                .padding(paddingValues)
+                                        ) {
+                                            FeedListUI(feedViewModel)
                                         }
                                     }
+                                } else {
+                                    Scaffold(
+                                        scaffoldState = scaffoldState,
+                                        topBar = {
+                                            SphinxChatDetailTopAppBar(
+                                                dashboardChat,
+                                                chatViewModel,
+                                                dashboardViewModel,
+                                                webAppViewModel
+                                            )
+                                        },
+                                        bottomBar = {
+                                            SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                        }
+                                    ) { paddingValues ->
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                                .padding(paddingValues),
+                                            verticalArrangement = Arrangement.Center,
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            chatViewModel?.let { vm ->
+                                                MessageListUI(vm, dashboardViewModel, dashboardChat)
+                                            }
+                                        }
 
-                                    AttachmentPreview(chatViewModel, Modifier.padding(paddingValues))
-                                    MessagePinnedPopUp(chatViewModel, Modifier.padding(paddingValues))
-                                    MessagePinnedFullContent(chatViewModel, Modifier.padding(paddingValues))
-                                    ChatAction(chatViewModel, Modifier.padding(paddingValues))
-                                    NotificationLevel(chatViewModel, Modifier.padding(paddingValues))
+                                        AttachmentPreview(chatViewModel, Modifier.padding(paddingValues))
+                                        MessagePinnedPopUp(chatViewModel, Modifier.padding(paddingValues))
+                                        MessagePinnedFullContent(chatViewModel, Modifier.padding(paddingValues))
+                                        ChatAction(chatViewModel, Modifier.padding(paddingValues))
+                                        NotificationLevel(chatViewModel, Modifier.padding(paddingValues))
+                                    }
                                 }
                             }
-
                             second(200.dp) {
                                 val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
 

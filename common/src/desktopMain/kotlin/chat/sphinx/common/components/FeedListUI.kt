@@ -31,7 +31,7 @@ fun FeedListUI(
     isFollowing: Boolean = false,
 ) {
     val recentlyReleased by feedViewModel.feedsHolderViewStateFlow.collectAsState()
-//    val recentlyReleased by feedViewModel.lastPlayedFeedsHolderViewStateFlow.collectAsState()
+    val recentlyPlayed by feedViewModel.recentlyPlayedEpisode.collectAsState()
 
     Column(
         modifier = Modifier
@@ -63,6 +63,21 @@ fun FeedListUI(
                 recentlyReleased.mapNotNull { it.lastPublished }.forEach { episode ->
                     FeedCardSquare(episode, Modifier.padding(end = 12.dp)) {
                         feedViewModel.onPodcastFeedItemClicked(episode)
+                    }
+                }
+            }
+
+            if (recentlyPlayed != null) {
+                Spacer(modifier = Modifier.height(24.dp))
+                SectionHeader("Recently Played")
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                ) {
+                    FeedCardSquare(recentlyPlayed!!, Modifier.padding(end = 12.dp)) {
+                        feedViewModel.onPodcastFeedItemClicked(recentlyPlayed!!)
                     }
                 }
             }
