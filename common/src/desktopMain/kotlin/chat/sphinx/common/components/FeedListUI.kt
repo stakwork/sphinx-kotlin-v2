@@ -52,7 +52,7 @@ fun FeedListUI(
                 Spacer(modifier = Modifier.height(12.dp))
             }
         } else {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             SectionHeader("Recently Released")
 
             Row(
@@ -102,6 +102,7 @@ fun FeedCardSquare(
 
     val currentTime = (episode.contentEpisodeStatus?.currentTime?.value ?: 0L) * 1000
     val duration = (episode.contentEpisodeStatus?.duration?.value ?: 0L) * 1000
+    val remainingTime = (duration - currentTime).coerceAtLeast(0)
 
     Column(
         modifier = modifier
@@ -109,8 +110,7 @@ fun FeedCardSquare(
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface)
             .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(8.dp)
     ) {
         if (imageUrl != null) {
             PhotoUrlImage(
@@ -129,6 +129,8 @@ fun FeedCardSquare(
             )
         }
 
+        Spacer(Modifier.height(2.dp))
+
         Text(
             text = episodeTitle,
             fontSize = 13.sp,
@@ -137,6 +139,8 @@ fun FeedCardSquare(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+
+        Spacer(Modifier.height(4.dp))
 
         Text(
             text = showTitle,
@@ -160,38 +164,43 @@ fun FeedCardSquare(
             color = Color.Gray
         )
 
-        if (duration > 0) {
-            val left = duration - currentTime
-            if (left > 0) {
-                Text(
-                    text = "${formatMillis(left)} left",
-                    fontSize = 10.sp,
-                    color = primary_blue
-                )
-            } else {
-                Text(
-                    text = "${formatMillis(duration)}",
-                    fontSize = 10.sp,
-                    color = Color.Gray
-                )
-            }
-        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(20.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (duration > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (remainingTime > 0) "${formatMillis(remainingTime)} left" else formatMillis(duration),
+                        fontSize = 10.sp,
+                        color = primary_blue
+                    )
 
-        if (currentTime > 0f) {
-            LinearProgressIndicator(
-                progress = currentTime.toFloat() / duration.coerceAtLeast(1),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp)),
-                color = primary_blue,
-                trackColor = Color.DarkGray
-            )
+                    Column(
+                        modifier = Modifier.width(80.dp)
+                    ) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = currentTime.toFloat() / duration.coerceAtLeast(1),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp)),
+                            color = primary_blue,
+                            trackColor = Color.DarkGray
+                        )
+                    }
+                }
+            }
         }
     }
 }
-
-
 @Composable
 fun SectionHeader(text: String) {
     Row(
@@ -202,9 +211,10 @@ fun SectionHeader(text: String) {
             text = text,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
-            modifier = Modifier.weight(1f)
+            color = Color.White
         )
+
+        Spacer(modifier = Modifier.width(8.dp))
 
         Icon(
             Icons.Default.ChevronRight,
@@ -214,8 +224,8 @@ fun SectionHeader(text: String) {
         )
     }
     Spacer(modifier = Modifier.height(8.dp))
-
 }
+
 
 @Composable
 fun FollowingFeedItem(

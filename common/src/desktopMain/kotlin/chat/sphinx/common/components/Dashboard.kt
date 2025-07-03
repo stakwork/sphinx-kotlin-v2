@@ -314,6 +314,22 @@ actual fun Dashboard(
                                         .padding(paddingValues)
                                 ) {
                                     FeedListUI(feedViewModel)
+
+                                    if (isSidebarHidden) {
+                                        IconButton(
+                                            onClick = { dashboardViewModel.toggleSidebarVisibility() },
+                                            modifier = Modifier
+                                                .align(Alignment.TopStart)
+                                                .padding(start = 0.dp, top = 64.dp, end = 0.dp, bottom = 0.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ChevronRight,
+                                                contentDescription = "Show Sidebar",
+                                                tint = Color.White.copy(alpha = 0.6f),
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         } else {
