@@ -40,7 +40,6 @@ class TribeFeedViewModel(
                     currentEpisodeId = null
                 )
 
-                // If it's a podcast, fetch and load the podcast
                 if (feedType.isPodcast()) {
                     scope.launch(dispatchers.mainImmediate) {
                         delay(500L)

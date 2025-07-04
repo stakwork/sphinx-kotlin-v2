@@ -35,7 +35,6 @@ import chat.sphinx.common.Res
 import chat.sphinx.common.components.chat.AttachmentPreview
 import chat.sphinx.common.components.chat.MessagePinnedFullContent
 import chat.sphinx.common.components.chat.MessagePinnedPopUp
-import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.menu.ChatAction
 import chat.sphinx.common.components.pin.PINScreen
 import chat.sphinx.common.components.tribe.NotificationLevel
@@ -83,9 +82,12 @@ actual fun Dashboard(
     var chatViewModel: ChatViewModel? = null
 
     val webAppViewModel = remember { WebAppViewModel() }
+    val feedViewModel = remember { FeedViewModel(dashboardViewModel) }
+
     val splitScreenState by dashboardViewModel.splitScreenStateFlow.collectAsState()
     val fullScreenViewState by dashboardViewModel.fullScreenViewStateFlow.collectAsState()
     val isSidebarHidden by dashboardViewModel.isSidebarHiddenFlow.collectAsState()
+    val selectedTabIndex by dashboardViewModel.selectedTabStateFlow.collectAsState()
 
     when (DashboardScreenState.screenState()) {
         DashboardScreenType.Unlocked -> {
@@ -100,6 +102,7 @@ actual fun Dashboard(
 
                 chatViewModel?.readMessages()
                 chatViewModel?.cancelMessagesJob()
+
 
                 chatViewModel = when (chatDetailState) {
                     is ChatDetailData.SelectedChatDetailData.SelectedContactDetail -> {
@@ -120,7 +123,7 @@ actual fun Dashboard(
                 }
 
                 first(if (isSidebarHidden) 0.dp else 300.dp) {
-                    DashboardSidebarUI(dashboardViewModel, webAppViewModel)
+                    DashboardSidebarUI(dashboardViewModel, webAppViewModel, feedViewModel)
                 }
 
                 second(if (isSidebarHidden) 1000.dp else 700.dp) {
@@ -130,41 +133,58 @@ actual fun Dashboard(
                             first(500.dp) {
                                 val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
 
-                                Scaffold(
-                                    scaffoldState = scaffoldState,
-                                    topBar = {
-                                        SphinxChatDetailTopAppBar(
-                                            dashboardChat,
-                                            chatViewModel,
-                                            dashboardViewModel,
-                                            webAppViewModel
-                                        )
-                                    },
-                                    bottomBar = {
-                                        SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
-                                    }
-                                ) { paddingValues ->
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-                                            .padding(paddingValues),
-                                        verticalArrangement = Arrangement.Center,
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        chatViewModel?.let { vm ->
-                                            MessageListUI(vm, dashboardViewModel, dashboardChat)
+                                val isFeedTabSelected = selectedTabIndex == 2
+                                val isPodcastSplit = splitScreenState.type is DashboardViewModel.SplitContentType.Podcast
+
+                                if (isFeedTabSelected && isPodcastSplit) {
+                                    Scaffold(
+                                        scaffoldState = scaffoldState,
+                                    ) { paddingValues ->
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                                .padding(paddingValues)
+                                        ) {
+                                            FeedListUI(feedViewModel)
                                         }
                                     }
+                                } else {
+                                    Scaffold(
+                                        scaffoldState = scaffoldState,
+                                        topBar = {
+                                            SphinxChatDetailTopAppBar(
+                                                dashboardChat,
+                                                chatViewModel,
+                                                dashboardViewModel,
+                                                webAppViewModel
+                                            )
+                                        },
+                                        bottomBar = {
+                                            SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                        }
+                                    ) { paddingValues ->
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                                .padding(paddingValues),
+                                            verticalArrangement = Arrangement.Center,
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            chatViewModel?.let { vm ->
+                                                MessageListUI(vm, dashboardViewModel, dashboardChat)
+                                            }
+                                        }
 
-                                    AttachmentPreview(chatViewModel, Modifier.padding(paddingValues))
-                                    MessagePinnedPopUp(chatViewModel, Modifier.padding(paddingValues))
-                                    MessagePinnedFullContent(chatViewModel, Modifier.padding(paddingValues))
-                                    ChatAction(chatViewModel, Modifier.padding(paddingValues))
-                                    NotificationLevel(chatViewModel, Modifier.padding(paddingValues))
+                                        AttachmentPreview(chatViewModel, Modifier.padding(paddingValues))
+                                        MessagePinnedPopUp(chatViewModel, Modifier.padding(paddingValues))
+                                        MessagePinnedFullContent(chatViewModel, Modifier.padding(paddingValues))
+                                        ChatAction(chatViewModel, Modifier.padding(paddingValues))
+                                        NotificationLevel(chatViewModel, Modifier.padding(paddingValues))
+                                    }
                                 }
                             }
-
                             second(200.dp) {
                                 val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
 
@@ -243,24 +263,17 @@ actual fun Dashboard(
                                             }
 
                                             is DashboardViewModel.SplitContentType.Podcast -> {
-                                                chatViewModel?.let { nnChatViewModel ->
-                                                    val chatId = nnChatViewModel.chatId
-                                                    val mediaPlayerHolder = dashboardViewModel.mediaPlayerHolder
+                                                val chatId = screen.chatId
+                                                val mediaPlayerHolder = dashboardViewModel.mediaPlayerHolder
+                                                val podcastViewModel = dashboardViewModel.getPodcastViewModel(chatId)
 
-                                                    if (chatId != null) {
-                                                        val podcastViewModel = dashboardViewModel.getPodcastViewModel(chatId)
-                                                        PodcastMainPlayer(
-                                                            chatId = chatId,
-                                                            mediaPlayerHolder = mediaPlayerHolder,
-                                                            dashboardViewModel = dashboardViewModel,
-                                                            podcastViewModel = podcastViewModel
-                                                        )
-                                                    } else {
-                                                        Text("Missing chat context", modifier = Modifier.padding(16.dp))
-                                                    }
-                                                }
+                                                PodcastMainPlayer(
+                                                    chatId = chatId,
+                                                    mediaPlayerHolder = mediaPlayerHolder,
+                                                    dashboardViewModel = dashboardViewModel,
+                                                    podcastViewModel = podcastViewModel
+                                                )
                                             }
-
                                             else -> {}
                                         }
                                     }
@@ -287,91 +300,123 @@ actual fun Dashboard(
                             }
                         }
                     } else {
+                        val isFeedTabSelected = selectedTabIndex == 2
                         val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
 
-                        Scaffold(
-                            scaffoldState = scaffoldState,
-                            topBar = {
-                                SphinxChatDetailTopAppBar(
-                                    dashboardChat,
-                                    chatViewModel,
-                                    dashboardViewModel,
-                                    webAppViewModel
-                                )
-                            },
-                            bottomBar = {
-                                SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
-                            }
-                        ) { paddingValues ->
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-                                    .padding(paddingValues),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                if (isSidebarHidden) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-                                            .padding(paddingValues)
-                                    ) {
+                        if (isFeedTabSelected) {
+                            Scaffold(
+                                scaffoldState = scaffoldState,
+                            ) { paddingValues ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                        .padding(paddingValues)
+                                ) {
+                                    FeedListUI(feedViewModel)
+
+                                    if (isSidebarHidden) {
                                         IconButton(
                                             onClick = { dashboardViewModel.toggleSidebarVisibility() },
                                             modifier = Modifier
                                                 .align(Alignment.TopStart)
-                                                .padding(start = 0.dp, top = 16.dp, 0.dp, bottom = 16.dp)
+                                                .padding(start = 0.dp, top = 64.dp, end = 0.dp, bottom = 0.dp)
                                         ) {
-                                            androidx.compose.material.Icon(
-                                                Icons.Default.ChevronRight,
-                                                contentDescription = "Hide",
+                                            Icon(
+                                                imageVector = Icons.Default.ChevronRight,
+                                                contentDescription = "Show Sidebar",
                                                 tint = Color.White.copy(alpha = 0.6f),
                                                 modifier = Modifier.size(32.dp)
                                             )
                                         }
                                     }
                                 }
-
-                                chatViewModel?.let { chatViewModel ->
-                                    MessageListUI(chatViewModel, dashboardViewModel, dashboardChat)
-                                }
                             }
-                            AttachmentPreview(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
-                            MessagePinnedPopUp(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
-                            MessagePinnedFullContent(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
-                            ChatAction(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
-                            NotificationLevel(
-                                chatViewModel,
-                                Modifier.padding(paddingValues)
-                            )
+                        } else {
+                            Scaffold(
+                                scaffoldState = scaffoldState,
+                                topBar = {
+                                    SphinxChatDetailTopAppBar(
+                                        dashboardChat,
+                                        chatViewModel,
+                                        dashboardViewModel,
+                                        webAppViewModel
+                                    )
+                                },
+                                bottomBar = {
+                                    SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                }
+                            ) { paddingValues ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                        .padding(paddingValues),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    if (isSidebarHidden) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                                                .padding(paddingValues)
+                                        ) {
+                                            IconButton(
+                                                onClick = { dashboardViewModel.toggleSidebarVisibility() },
+                                                modifier = Modifier
+                                                    .align(Alignment.TopStart)
+                                                    .padding(start = 0.dp, top = 16.dp, 0.dp, bottom = 16.dp)
+                                            ) {
+                                                androidx.compose.material.Icon(
+                                                    Icons.Default.ChevronRight,
+                                                    contentDescription = "Hide",
+                                                    tint = Color.White.copy(alpha = 0.6f),
+                                                    modifier = Modifier.size(32.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    chatViewModel?.let { chatViewModel ->
+                                        MessageListUI(chatViewModel, dashboardViewModel, dashboardChat)
+                                    }
+                                }
+                                AttachmentPreview(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
+                                MessagePinnedPopUp(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
+                                MessagePinnedFullContent(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
+                                ChatAction(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
+                                NotificationLevel(
+                                    chatViewModel,
+                                    Modifier.padding(paddingValues)
+                                )
+                            }
                         }
                     }
-                }
-                splitter {
-                    visiblePart {
-                        Box(
-                            Modifier.width(1.dp).fillMaxHeight().background(MaterialTheme.colors.background)
-                        )
-                    }
-                    handle {
-                        Box(
-                            Modifier.markAsHandle().cursorForHorizontalResize()
-                                .background(SolidColor(Color.Gray), alpha = 0.50f).width(9.dp).fillMaxHeight()
-                        )
+                    splitter {
+                        visiblePart {
+                            Box(
+                                Modifier.width(1.dp).fillMaxHeight().background(MaterialTheme.colors.background)
+                            )
+                        }
+                        handle {
+                            Box(
+                                Modifier.markAsHandle().cursorForHorizontalResize()
+                                    .background(SolidColor(Color.Gray), alpha = 0.50f).width(9.dp).fillMaxHeight()
+                            )
+                        }
                     }
                 }
             }

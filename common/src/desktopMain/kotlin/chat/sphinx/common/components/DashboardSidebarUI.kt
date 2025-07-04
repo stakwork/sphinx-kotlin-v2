@@ -23,14 +23,15 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import chat.sphinx.common.components.tribe.JoinTribeScreen
 import chat.sphinx.common.state.AuthorizeViewState
 import chat.sphinx.common.state.ContactScreenState
 import chat.sphinx.common.viewmodel.DashboardViewModel
+import chat.sphinx.common.viewmodel.FeedViewModel
 import chat.sphinx.common.viewmodel.WebAppViewModel
 import chat.sphinx.common.viewmodel.dashboard.ChatListViewModel
 import chat.sphinx.concepts.repository.connect_manager.model.NetworkStatus
@@ -42,6 +43,7 @@ import theme.*
 fun DashboardSidebarUI(
     dashboardViewModel: DashboardViewModel,
     webAppViewModel: WebAppViewModel,
+    feedViewModel: FeedViewModel
 ) {
     val chatListViewModel = remember { ChatListViewModel() }
     val uriHandler = LocalUriHandler.current
@@ -233,7 +235,9 @@ fun DashboardSidebarUI(
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(modifier = Modifier.fillMaxWidth(0.6f)) {
+                val tabs = listOf("Friends", "Tribes", "Feed")
+
+                Box(modifier = Modifier.fillMaxWidth(0.8f)) {
                     TabRow(
                         selectedTabIndex = selectedTabIndex,
                         modifier = Modifier.fillMaxWidth(),
@@ -246,31 +250,48 @@ fun DashboardSidebarUI(
                             )
                         }
                     ) {
-                        val tabs = listOf("Friends", "Tribes")
                         tabs.forEachIndexed { index, title ->
                             Tab(
                                 selected = selectedTabIndex == index,
-                                onClick = { dashboardViewModel.setSelectedTab(index)},
+                                onClick = { dashboardViewModel.setSelectedTab(index) },
                                 text = {
-                                    Text(
-                                        text = title,
-                                        fontSize = 12.sp,
-                                        color = if (selectedTabIndex == index) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onBackground
-                                    )
+                                    Box(contentAlignment = Alignment.TopEnd) {
+                                        Text(
+                                            text = title,
+                                            fontSize = 11.sp,
+                                            color = if (selectedTabIndex == index)
+                                                MaterialTheme.colorScheme.tertiary
+                                            else
+                                                MaterialTheme.colorScheme.onBackground,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Clip
+                                        )
+
+                                        // Show blue dot only above "Tribes" tab (index 1)
+                                        if (index == 1 && (unseenTribeMessagesCount ?: 0L) > 0L) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(6.dp)
+                                                    .offset(x = 6.dp, y = (-8).dp)
+                                                    .background(color = primary_blue, shape = CircleShape)
+                                            )
+                                        }
+                                    }
                                 }
                             )
                         }
                     }
 
-                    if ((unseenTribeMessagesCount ?: 0L) > 0L) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .align(Alignment.TopEnd)
-                                .offset(x = (-4).dp, y = 4.dp)
-                                .background(color = primary_blue, shape = CircleShape)
-                        )
-                    }
+//                    if ((unseenTribeMessagesCount ?: 0L) > 0L) {
+//                        Box(
+//                            modifier = Modifier
+//                                .size(6.dp)
+//                                .align(Alignment.TopEnd)
+//                                .offset(x = (-4).dp, y = 4.dp)
+//                                .background(color = primary_blue, shape = CircleShape)
+//                        )
+//                    }
                 }
 
                 Box(
@@ -298,6 +319,7 @@ fun DashboardSidebarUI(
             when (selectedTabIndex) {
                 0 -> ChatListUI(chatListViewModel, dashboardViewModel, false)
                 1 -> ChatListUI(chatListViewModel, dashboardViewModel, true)
+                2 -> FeedListUI(feedViewModel, true)
             }
 
             AboutSphinxWindow(dashboardViewModel)

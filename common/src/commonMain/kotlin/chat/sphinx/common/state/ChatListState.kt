@@ -42,6 +42,7 @@ abstract class ChatListData {
             return true
         }
     }
+    class FeedListData : ChatListData() {}
 }
 
 object ChatListState {
