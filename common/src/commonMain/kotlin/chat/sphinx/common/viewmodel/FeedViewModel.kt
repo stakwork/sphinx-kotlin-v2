@@ -1,10 +1,14 @@
 package chat.sphinx.common.viewmodel
 
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.text.input.TextFieldValue
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.chat.ChatHost
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.*
+import chat.sphinx.wrapper.podcast.FeedSearchResultRow
 import chat.sphinx.wrapper.time
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +31,11 @@ class FeedViewModel(
 
     private val _recentlyPlayedEpisode = MutableStateFlow<FeedItem?>(null)
     val recentlyPlayedEpisode: StateFlow<FeedItem?> = _recentlyPlayedEpisode
+
+    private val _searchResults = MutableStateFlow<List<FeedSearchResultRow>>(emptyList())
+    val searchResults: StateFlow<List<FeedSearchResultRow>> = _searchResults
+
+    var feedSearchText: MutableState<TextFieldValue?> = mutableStateOf(null)
 
     init {
         scope.launch(dispatchers.mainImmediate) {
@@ -52,6 +61,25 @@ class FeedViewModel(
             }
         }
         observeContentEpisodeStatus()
+    }
+
+    fun searchFeeds(searchTerm: TextFieldValue) {
+        feedSearchText.value = searchTerm
+        if (searchTerm.text.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+
+        scope.launch(dispatchers.io) {
+            feedRepository.searchFeedsBy(searchTerm.text, FeedType.Podcast).collect {
+                _searchResults.value = it
+            }
+        }
+    }
+
+    fun clearFeedSearch() {
+        feedSearchText.value = TextFieldValue("")
+        _searchResults.value = emptyList()
     }
 
     private fun observeContentEpisodeStatus() {

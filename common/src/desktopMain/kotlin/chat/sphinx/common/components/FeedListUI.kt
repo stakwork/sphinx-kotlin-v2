@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import chat.sphinx.common.viewmodel.FeedViewModel
 import chat.sphinx.wrapper.feed.Feed
 import chat.sphinx.wrapper.feed.FeedItem
+import chat.sphinx.wrapper.podcast.toFeed
 import chat.sphinx.wrapper.timeAgo
 import theme.primary_blue
 
@@ -30,6 +31,7 @@ fun FeedListUI(
     feedViewModel: FeedViewModel,
     isFollowing: Boolean = false,
 ) {
+    val searchResults by feedViewModel.searchResults.collectAsState()
     val recentlyReleased by feedViewModel.feedsHolderViewStateFlow.collectAsState()
     val recentlyPlayed by feedViewModel.recentlyPlayedEpisode.collectAsState()
 
@@ -40,16 +42,36 @@ fun FeedListUI(
             .padding(horizontal = 24.dp)
             .verticalScroll(rememberScrollState())
     ) {
-
         if (isFollowing) {
             Spacer(modifier = Modifier.height(12.dp))
-            SectionHeader("Following")
 
-            recentlyReleased.forEach { feed ->
-                FollowingFeedItem(feed = feed) {
-                    feedViewModel.onPodcastFeedItemClicked(feed.lastItem ?: return@FollowingFeedItem)
+            if (searchResults.isNotEmpty()) {
+                // Show "Search Results" header
+                SectionHeader("Search Results")
+
+                searchResults.forEach { result ->
+                    if (!result.isSectionHeader) {
+                        result.feedSearchResult?.let { searchResult ->
+                            val feed = searchResult.toFeed()
+                            if (feed != null) {
+                                FollowingFeedItem(feed = feed) {
+                                    feedViewModel.onPodcastFeedItemClicked(feed.lastItem ?: return@FollowingFeedItem)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+            } else {
+                // Default Following feeds
+                SectionHeader("Following")
+
+                recentlyReleased.forEach { feed ->
+                    FollowingFeedItem(feed = feed) {
+                        feedViewModel.onPodcastFeedItemClicked(feed.lastItem ?: return@FollowingFeedItem)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
         } else {
             Spacer(modifier = Modifier.height(16.dp))

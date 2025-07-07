@@ -177,10 +177,21 @@ fun DashboardSidebarUI(
                             Spacer(modifier = Modifier.width(8.dp))
                         },
                         trailingIcon = {
-                            if (chatListViewModel.searchText.value?.text?.isNotEmpty() == true) {
+                            if (selectedTabIndex == 2 && feedViewModel.feedSearchText.value?.text?.isNotEmpty() == true) {
                                 Icon(
                                     Icons.Filled.Cancel,
-                                    contentDescription = null,
+                                    contentDescription = "Clear search",
+                                    tint = place_holder_text,
+                                    modifier = Modifier
+                                        .width(28.dp)
+                                        .clickable {
+                                            feedViewModel.clearFeedSearch()
+                                        }
+                                )
+                            } else if (selectedTabIndex != 2 && chatListViewModel.searchText.value?.text?.isNotEmpty() == true) {
+                                Icon(
+                                    Icons.Filled.Cancel,
+                                    contentDescription = "Clear search",
                                     tint = place_holder_text,
                                     modifier = Modifier
                                         .width(28.dp)
@@ -207,9 +218,17 @@ fun DashboardSidebarUI(
                         fontSize = 14.sp,
                         placeholderText = "Search",
                         onValueChange = { input ->
-                            chatListViewModel.filterChats(input)
+                            if (selectedTabIndex == 2) {
+                                feedViewModel.searchFeeds(input)
+                            } else {
+                                chatListViewModel.filterChats(input)
+                            }
                         },
-                        value = chatListViewModel.searchText.value ?: TextFieldValue("")
+                        value = if (selectedTabIndex == 2) {
+                            feedViewModel.feedSearchText.value ?: TextFieldValue("")
+                        } else {
+                            chatListViewModel.searchText.value ?: TextFieldValue("")
+                        }
                     )
                 },
                 elevation = 4.dp,
