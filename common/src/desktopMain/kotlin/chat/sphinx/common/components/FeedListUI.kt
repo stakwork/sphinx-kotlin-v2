@@ -52,11 +52,8 @@ fun FeedListUI(
                 searchResults.forEach { result ->
                     if (!result.isSectionHeader) {
                         result.feedSearchResult?.let { searchResult ->
-                            val feed = searchResult.toFeed()
-                            if (feed != null) {
-                                FollowingFeedItem(feed = feed) {
-                                    feedViewModel.onPodcastFeedItemClicked(feed.lastItem ?: return@FollowingFeedItem)
-                                }
+                            FollowingFeedItem(feed = searchResult.toFeed() ?: return@let) {
+                                feedViewModel.onPodcastSearchResultClicked(searchResult)
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                         }

@@ -4,15 +4,19 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.input.TextFieldValue
 import chat.sphinx.di.container.SphinxContainer
+import chat.sphinx.response.Response
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.chat.ChatHost
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.*
+import chat.sphinx.wrapper.podcast.FeedSearchResult
 import chat.sphinx.wrapper.podcast.FeedSearchResultRow
 import chat.sphinx.wrapper.time
+import chat.sphinx.wrapper.toPhotoUrl
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class FeedViewModel(
@@ -81,6 +85,55 @@ class FeedViewModel(
         feedSearchText.value = TextFieldValue("")
         _searchResults.value = emptyList()
     }
+
+    fun onPodcastSearchResultClicked(
+        searchResult: FeedSearchResult,
+        onComplete: (() -> Unit)? = null
+    ) {
+        if (!searchResult.feedType.toInt().toFeedType().isPodcast()) {
+            onComplete?.invoke()
+            return
+        }
+
+        scope.launch(dispatchers.mainImmediate) {
+            val feedUrl = searchResult.url.toFeedUrl()
+            if (feedUrl == null) {
+                onComplete?.invoke()
+                return@launch
+            }
+
+            val response = feedRepository.updateFeedContent(
+                chatId = ChatId(ChatId.NULL_CHAT_ID.toLong()),
+                host = ChatHost(Feed.TRIBES_DEFAULT_SERVER_URL),
+                feedUrl = feedUrl,
+                searchResultDescription = searchResult.description?.toFeedDescription(),
+                searchResultImageUrl = searchResult.imageUrl?.toPhotoUrl(),
+                chatUUID = null,
+                subscribed = false.toSubscribed(),
+                currentEpisodeId = null
+            )
+
+            when (response) {
+                is Response.Success -> {
+                    val feed = feedRepository.getFeedById(response.value).firstOrNull()
+                    if (feed != null && feed.isPodcast) {
+                        delay(300L)
+                        // DashboardViewModel.SplitContentType.Podcast needs a new implementation because
+                        // now we will handle null chatId in Feed
+//                        dashboardViewModel.toggleSplitScreen(
+//                            isOpen = true,
+//                            type = DashboardViewModel.SplitContentType.Podcast(feed.chatId)
+//                        )
+                    } else { }
+                }
+
+                is Response.Error -> {}
+            }
+
+            onComplete?.invoke()
+        }
+    }
+
 
     private fun observeContentEpisodeStatus() {
         scope.launch(dispatchers.io) {
