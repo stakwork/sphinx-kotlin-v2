@@ -54,6 +54,7 @@ import chat.sphinx.response.Response
 import chat.sphinx.utils.onKeyUp
 import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.chat.*
+import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
 import chat.sphinx.wrapper.lightning.asFormattedString
 import chat.sphinx.wrapper.message.media.isImage
@@ -264,11 +265,12 @@ actual fun Dashboard(
 
                                             is DashboardViewModel.SplitContentType.Podcast -> {
                                                 val chatId = screen.chatId
+                                                val feedId = screen.feedId
                                                 val mediaPlayerHolder = dashboardViewModel.mediaPlayerHolder
-                                                val podcastViewModel = dashboardViewModel.getPodcastViewModel(chatId)
+                                                val podcastViewModel = dashboardViewModel.getPodcastViewModel(chatId, feedId)
 
                                                 PodcastMainPlayer(
-                                                    chatId = chatId,
+                                                    chatId = chatId ?: ChatId(ChatId.NULL_CHAT_ID.toLong()),
                                                     mediaPlayerHolder = mediaPlayerHolder,
                                                     dashboardViewModel = dashboardViewModel,
                                                     podcastViewModel = podcastViewModel

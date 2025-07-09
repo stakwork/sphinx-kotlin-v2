@@ -71,7 +71,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class TribeMembers(val chatId: ChatId): SplitContentType()
         data class ContactDetails(val contactId: ContactId?): SplitContentType()
         data class QRDetail(val title: String, val value: String) : SplitContentType()
-        data class Podcast(val chatId: ChatId): SplitContentType()
+        data class Podcast(val chatId: ChatId?, val feedId: FeedId?): SplitContentType()
     }
 
     sealed class FullScreenView {
@@ -221,13 +221,20 @@ class DashboardViewModel(): WindowFocusListener {
     }
 
     val mediaPlayerHolder = DesktopMediaPlayerHolder()
-    val podcastViewModelMap = mutableMapOf<ChatId, PodcastViewModel>()
+    val podcastViewModelMap = mutableMapOf<String, PodcastViewModel>()
 
-    fun getPodcastViewModel(chatId: ChatId): PodcastViewModel {
-        return podcastViewModelMap.getOrPut(chatId) {
-            PodcastViewModel(chatId)
+    fun getPodcastViewModel(chatId: ChatId?, feedId: FeedId?): PodcastViewModel {
+        val key = when {
+            chatId != null && chatId.value.toInt() != ChatId.NULL_CHAT_ID -> "chat-${chatId.value}"
+            feedId != null -> "feed-${feedId.value}"
+            else -> "unknown"
+        }
+
+        return podcastViewModelMap.getOrPut(key) {
+            PodcastViewModel(chatId, feedId)
         }
     }
+
 
     private val _aboutSphinxStateFlow: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(false)

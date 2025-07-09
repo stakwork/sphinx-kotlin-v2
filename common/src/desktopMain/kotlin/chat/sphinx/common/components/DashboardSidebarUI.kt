@@ -217,6 +217,11 @@ fun DashboardSidebarUI(
                             .height(30.dp),
                         fontSize = 14.sp,
                         placeholderText = "Search",
+                        onFocusChanged = { isFocused ->
+                            if (selectedTabIndex == 2) {
+                                feedViewModel.setSearchFocused(isFocused)
+                            }
+                        },
                         onValueChange = { input ->
                             if (selectedTabIndex == 2) {
                                 feedViewModel.searchFeeds(input)
@@ -228,7 +233,7 @@ fun DashboardSidebarUI(
                             feedViewModel.feedSearchText.value ?: TextFieldValue("")
                         } else {
                             chatListViewModel.searchText.value ?: TextFieldValue("")
-                        }
+                        },
                     )
                 },
                 elevation = 4.dp,

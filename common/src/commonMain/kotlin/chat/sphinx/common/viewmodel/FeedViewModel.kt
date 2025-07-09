@@ -41,6 +41,13 @@ class FeedViewModel(
 
     var feedSearchText: MutableState<TextFieldValue?> = mutableStateOf(null)
 
+    private val _isSearchFocused = MutableStateFlow(false)
+    val isSearchFocused: StateFlow<Boolean> = _isSearchFocused
+
+    fun setSearchFocused(focused: Boolean) {
+        _isSearchFocused.value = focused
+    }
+
     init {
         scope.launch(dispatchers.mainImmediate) {
             repositoryDashboard.getAllFeeds().collect { feeds ->
@@ -118,12 +125,10 @@ class FeedViewModel(
                     val feed = feedRepository.getFeedById(response.value).firstOrNull()
                     if (feed != null && feed.isPodcast) {
                         delay(300L)
-                        // DashboardViewModel.SplitContentType.Podcast needs a new implementation because
-                        // now we will handle null chatId in Feed
-//                        dashboardViewModel.toggleSplitScreen(
-//                            isOpen = true,
-//                            type = DashboardViewModel.SplitContentType.Podcast(feed.chatId)
-//                        )
+                        dashboardViewModel.toggleSplitScreen(
+                            isOpen = true,
+                            type = DashboardViewModel.SplitContentType.Podcast(chatId = null, feed.id)
+                        )
                     } else { }
                 }
 
@@ -154,7 +159,7 @@ class FeedViewModel(
         val feed = item.feed ?: return
         val chatId = feed.chatId
         val feedUrl = feed.feedUrl
-        val chatUUID = feed.chat?.uuid ?: return
+        val chatUUID = feed.chat?.uuid
         val host = ChatHost(Feed.TRIBES_DEFAULT_SERVER_URL) // not used for networkQueryChat.getFeedContent
         val feedType = feed.feedType
 
@@ -166,7 +171,7 @@ class FeedViewModel(
                 host = host,
                 feedUrl = feedUrl,
                 chatUUID = chatUUID,
-                subscribed = false.toSubscribed(),
+                subscribed = feed.subscribed,
                 currentEpisodeId = null
             )
 
@@ -174,7 +179,7 @@ class FeedViewModel(
 
             dashboardViewModel.toggleSplitScreen(
                 isOpen = true,
-                type = DashboardViewModel.SplitContentType.Podcast(chatId)
+                type = DashboardViewModel.SplitContentType.Podcast(chatId, feed.id)
             )
         }
     }

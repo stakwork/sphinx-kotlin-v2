@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +35,8 @@ fun FeedListUI(
     val searchResults by feedViewModel.searchResults.collectAsState()
     val recentlyReleased by feedViewModel.feedsHolderViewStateFlow.collectAsState()
     val recentlyPlayed by feedViewModel.recentlyPlayedEpisode.collectAsState()
+    val isSearchFocused by feedViewModel.isSearchFocused.collectAsState()
+    val searchText = feedViewModel.feedSearchText.value?.text ?: ""
 
     Column(
         modifier = Modifier
@@ -45,7 +48,22 @@ fun FeedListUI(
         if (isFollowing) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (searchResults.isNotEmpty()) {
+            if (isSearchFocused && searchText.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 64.dp, bottom = 32.dp, start = 32.dp, end = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Search over\n4 000 000 podcasts\non the Podcast Index",
+                        fontSize = 16.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 24.sp
+                    )
+                }
+            } else if (searchResults.isNotEmpty()) {
                 // Show "Search Results" header
                 SectionHeader("Search Results")
 
@@ -71,6 +89,7 @@ fun FeedListUI(
                 }
             }
         } else {
+            // ... existing code for non-following tab ...
             Spacer(modifier = Modifier.height(16.dp))
             SectionHeader("Recently Released")
 
@@ -104,9 +123,7 @@ fun FeedListUI(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
-}
-
-@Composable
+}@Composable
 fun FeedCardSquare(
     episode: FeedItem,
     modifier: Modifier = Modifier,

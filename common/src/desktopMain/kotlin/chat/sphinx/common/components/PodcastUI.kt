@@ -31,6 +31,7 @@ import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.PodcastViewModel
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.FeedItemDuration
+import chat.sphinx.wrapper.feed.isTrue
 import chat.sphinx.wrapper.lightning.toSat
 import chat.sphinx.wrapper.podcast.NodeDto
 import chat.sphinx.wrapper.podcast.PodcastEpisode
@@ -178,7 +179,33 @@ fun PodcastMainPlayer(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
-            )
+            ) {
+                // Subscribe Button (Only if not subscribed)
+                if (!podcast.subscribed.isTrue()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.TopEnd
+                    ) {
+                        Button(
+                            onClick = {
+                                podcastViewModel.toggleSubscribeState(podcast.id, podcast.subscribed)
+                            },
+                            shape = RoundedCornerShape(50),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                "SUBSCRIBE",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+            }
 
             if (podcast.hasDestinations) {
                 Column(
