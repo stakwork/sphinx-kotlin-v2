@@ -7,6 +7,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
@@ -28,10 +29,15 @@ fun CustomTextField(
     singleLine: Boolean = true,
     maxLines: Int = 4,
     cursorBrush: Color? = null,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    onFocusChanged: ((Boolean) -> Unit)? = null
 ) {
     BasicTextField(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .onFocusChanged { focusState ->
+                onFocusChanged?.invoke(focusState.isFocused)
+            },
         value = value,
         onValueChange = onValueChange,
         enabled = enabled,

@@ -16,12 +16,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.viewmodel.FeedViewModel
 import chat.sphinx.wrapper.feed.Feed
 import chat.sphinx.wrapper.feed.FeedItem
+import chat.sphinx.wrapper.podcast.toFeed
 import chat.sphinx.wrapper.timeAgo
 import theme.primary_blue
 
@@ -30,8 +32,11 @@ fun FeedListUI(
     feedViewModel: FeedViewModel,
     isFollowing: Boolean = false,
 ) {
+    val searchResults by feedViewModel.searchResults.collectAsState()
     val recentlyReleased by feedViewModel.feedsHolderViewStateFlow.collectAsState()
     val recentlyPlayed by feedViewModel.recentlyPlayedEpisode.collectAsState()
+    val isSearchFocused by feedViewModel.isSearchFocused.collectAsState()
+    val searchText = feedViewModel.feedSearchText.value?.text ?: ""
 
     Column(
         modifier = Modifier
@@ -40,18 +45,51 @@ fun FeedListUI(
             .padding(horizontal = 24.dp)
             .verticalScroll(rememberScrollState())
     ) {
-
         if (isFollowing) {
             Spacer(modifier = Modifier.height(12.dp))
-            SectionHeader("Following")
 
-            recentlyReleased.forEach { feed ->
-                FollowingFeedItem(feed = feed) {
-                    feedViewModel.onPodcastFeedItemClicked(feed.lastItem ?: return@FollowingFeedItem)
+            if (isSearchFocused && searchText.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 64.dp, bottom = 32.dp, start = 32.dp, end = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Search over\n4 000 000 podcasts\non the Podcast Index",
+                        fontSize = 16.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 24.sp
+                    )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+            } else if (searchResults.isNotEmpty()) {
+                // Show "Search Results" header
+                SectionHeader("Search Results")
+
+                searchResults.forEach { result ->
+                    if (!result.isSectionHeader) {
+                        result.feedSearchResult?.let { searchResult ->
+                            FollowingFeedItem(feed = searchResult.toFeed() ?: return@let) {
+                                feedViewModel.onPodcastSearchResultClicked(searchResult)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+            } else {
+                // Default Following feeds
+                SectionHeader("Following")
+
+                recentlyReleased.forEach { feed ->
+                    FollowingFeedItem(feed = feed) {
+                        feedViewModel.onPodcastFeedItemClicked(feed.lastItem ?: return@FollowingFeedItem)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
         } else {
+            // ... existing code for non-following tab ...
             Spacer(modifier = Modifier.height(16.dp))
             SectionHeader("Recently Released")
 
@@ -85,9 +123,7 @@ fun FeedListUI(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
-}
-
-@Composable
+}@Composable
 fun FeedCardSquare(
     episode: FeedItem,
     modifier: Modifier = Modifier,

@@ -1,14 +1,22 @@
 package chat.sphinx.common.viewmodel
 
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.text.input.TextFieldValue
 import chat.sphinx.di.container.SphinxContainer
+import chat.sphinx.response.Response
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.chat.ChatHost
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.feed.*
+import chat.sphinx.wrapper.podcast.FeedSearchResult
+import chat.sphinx.wrapper.podcast.FeedSearchResultRow
 import chat.sphinx.wrapper.time
+import chat.sphinx.wrapper.toPhotoUrl
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class FeedViewModel(
@@ -27,6 +35,18 @@ class FeedViewModel(
 
     private val _recentlyPlayedEpisode = MutableStateFlow<FeedItem?>(null)
     val recentlyPlayedEpisode: StateFlow<FeedItem?> = _recentlyPlayedEpisode
+
+    private val _searchResults = MutableStateFlow<List<FeedSearchResultRow>>(emptyList())
+    val searchResults: StateFlow<List<FeedSearchResultRow>> = _searchResults
+
+    var feedSearchText: MutableState<TextFieldValue?> = mutableStateOf(null)
+
+    private val _isSearchFocused = MutableStateFlow(false)
+    val isSearchFocused: StateFlow<Boolean> = _isSearchFocused
+
+    fun setSearchFocused(focused: Boolean) {
+        _isSearchFocused.value = focused
+    }
 
     init {
         scope.launch(dispatchers.mainImmediate) {
@@ -54,6 +74,72 @@ class FeedViewModel(
         observeContentEpisodeStatus()
     }
 
+    fun searchFeeds(searchTerm: TextFieldValue) {
+        feedSearchText.value = searchTerm
+        if (searchTerm.text.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+
+        scope.launch(dispatchers.io) {
+            feedRepository.searchFeedsBy(searchTerm.text, FeedType.Podcast).collect {
+                _searchResults.value = it
+            }
+        }
+    }
+
+    fun clearFeedSearch() {
+        feedSearchText.value = TextFieldValue("")
+        _searchResults.value = emptyList()
+    }
+
+    fun onPodcastSearchResultClicked(
+        searchResult: FeedSearchResult,
+        onComplete: (() -> Unit)? = null
+    ) {
+        if (!searchResult.feedType.toInt().toFeedType().isPodcast()) {
+            onComplete?.invoke()
+            return
+        }
+
+        scope.launch(dispatchers.mainImmediate) {
+            val feedUrl = searchResult.url.toFeedUrl()
+            if (feedUrl == null) {
+                onComplete?.invoke()
+                return@launch
+            }
+
+            val response = feedRepository.updateFeedContent(
+                chatId = ChatId(ChatId.NULL_CHAT_ID.toLong()),
+                host = ChatHost(Feed.TRIBES_DEFAULT_SERVER_URL),
+                feedUrl = feedUrl,
+                searchResultDescription = searchResult.description?.toFeedDescription(),
+                searchResultImageUrl = searchResult.imageUrl?.toPhotoUrl(),
+                chatUUID = null,
+                subscribed = false.toSubscribed(),
+                currentEpisodeId = null
+            )
+
+            when (response) {
+                is Response.Success -> {
+                    val feed = feedRepository.getFeedById(response.value).firstOrNull()
+                    if (feed != null && feed.isPodcast) {
+                        delay(300L)
+                        dashboardViewModel.toggleSplitScreen(
+                            isOpen = true,
+                            type = DashboardViewModel.SplitContentType.Podcast(chatId = null, feed.id)
+                        )
+                    } else { }
+                }
+
+                is Response.Error -> {}
+            }
+
+            onComplete?.invoke()
+        }
+    }
+
+
     private fun observeContentEpisodeStatus() {
         scope.launch(dispatchers.io) {
             feedRepository.getLastPlayedEpisode().collect { statuses ->
@@ -73,7 +159,7 @@ class FeedViewModel(
         val feed = item.feed ?: return
         val chatId = feed.chatId
         val feedUrl = feed.feedUrl
-        val chatUUID = feed.chat?.uuid ?: return
+        val chatUUID = feed.chat?.uuid
         val host = ChatHost(Feed.TRIBES_DEFAULT_SERVER_URL) // not used for networkQueryChat.getFeedContent
         val feedType = feed.feedType
 
@@ -85,7 +171,7 @@ class FeedViewModel(
                 host = host,
                 feedUrl = feedUrl,
                 chatUUID = chatUUID,
-                subscribed = false.toSubscribed(),
+                subscribed = feed.subscribed,
                 currentEpisodeId = null
             )
 
@@ -93,7 +179,7 @@ class FeedViewModel(
 
             dashboardViewModel.toggleSplitScreen(
                 isOpen = true,
-                type = DashboardViewModel.SplitContentType.Podcast(chatId)
+                type = DashboardViewModel.SplitContentType.Podcast(chatId, feed.id)
             )
         }
     }

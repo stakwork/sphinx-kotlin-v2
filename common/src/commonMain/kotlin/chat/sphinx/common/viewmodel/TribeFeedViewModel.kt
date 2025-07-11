@@ -17,7 +17,6 @@ class TribeFeedViewModel(
     val chatViewModel: ChatViewModel,
     val dashboardViewModel: DashboardViewModel
 ) {
-
     val scope = SphinxContainer.appModule.applicationScope
     val dispatchers = SphinxContainer.appModule.dispatchers
     private val sphinxNotificationManager = createSphinxNotificationManager()
@@ -36,7 +35,7 @@ class TribeFeedViewModel(
                     host = data.host,
                     feedUrl = feedUrl,
                     chatUUID = data.chatUUID,
-                    subscribed = false.toSubscribed(),
+                    subscribed = true.toSubscribed(),
                     currentEpisodeId = null
                 )
 
@@ -48,7 +47,7 @@ class TribeFeedViewModel(
                             podcast?.let { nnPodcast ->
                                 dashboardViewModel.toggleSplitScreen(
                                     true,
-                                    DashboardViewModel.SplitContentType.Podcast(chatViewModel.chatId)
+                                    DashboardViewModel.SplitContentType.Podcast(chatViewModel.chatId, null)
                                 )
                             }
                         }
@@ -57,25 +56,4 @@ class TribeFeedViewModel(
             }
         }
     }
-
-//    private fun retrieveEpisodeDuration(
-//        episode: PodcastEpisode
-//    ): Long {
-//        val duration = episode.localFile?.let {
-//            Uri.fromFile(it).getMediaDuration(true)
-//        } ?: Uri.parse(episode.episodeUrl).getMediaDuration(false)
-//
-//        viewModelScope.launch(io) {
-//            feedRepository.updateContentEpisodeStatus(
-//                feedId = episode.podcastId,
-//                itemId = episode.id,
-//                FeedItemDuration(duration / 1000),
-//                FeedItemDuration(episode.currentTimeSeconds)
-//            )
-//        }
-//
-//        return duration
-//    }
-
-
 }
