@@ -9,16 +9,22 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isPrimary
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -993,6 +999,274 @@ fun PodcastEpisodeItem(
         )
     }
 }
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun FloatingPodcastPlayer(
+    chatId: ChatId,
+    mediaPlayerHolder: DesktopMediaPlayerHolder,
+    dashboardViewModel: DashboardViewModel,
+    podcastViewModel: PodcastViewModel,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val podcastState by podcastViewModel.podcastState.collectAsState()
+    val podcast = podcastState ?: return
+
+    val episode = podcast.getCurrentEpisode()
+    val scope = rememberCoroutineScope()
+    val mediaState by mediaPlayerHolder.mediaState.collectAsState()
+    var isPlaying by remember { mutableStateOf(false) }
+
+    LaunchedEffect(mediaState) {
+        isPlaying = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing
+    }
+
+    var currentTime by remember {
+        mutableStateOf((episode.contentEpisodeStatus?.currentTime?.value ?: 0L) * 1000)
+    }
+    var duration by remember {
+        mutableStateOf((episode.contentEpisodeStatus?.duration?.value ?: 0L) * 1000)
+    }
+
+    val progress = if (duration > 0) (currentTime.toFloat() / duration.toFloat()) else 0f
+
+    LaunchedEffect(isPlaying) {
+        if (isPlaying) {
+            while (isPlaying) {
+                currentTime = mediaPlayerHolder.getCurrentPlaybackPosition()
+                duration = mediaPlayerHolder.getTotalDuration()
+                delay(1000)
+            }
+        }
+    }
+
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = modifier
+            .width(320.dp)
+            .height(140.dp)
+            .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+            .onPointerEvent(PointerEventType.Press) { if (it.button.isPrimary) isDragging = true }
+            .onPointerEvent(PointerEventType.Release) { if (it.button.isPrimary) isDragging = false }
+            .onPointerEvent(PointerEventType.Move) { event ->
+                if (isDragging) {
+                    val change = event.changes.first()
+                    offsetX += change.position.x - change.previousPosition.x
+                    offsetY += change.position.y - change.previousPosition.y
+                }
+            }
+            .shadow(8.dp, RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PhotoUrlImage(
+                        photoUrl = podcast.imageToShow,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = podcast.title.value,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = episode.title.value,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SeekableProgressBar(
+                    currentTime = currentTime,
+                    duration = duration,
+                    onSeek = { newTime ->
+                        val updatedEpisodeStatus = podcast.getUpdatedContentEpisodeStatus().copy(
+                            currentTime = FeedItemDuration(newTime / 1000L)
+                        )
+                        scope.launch {
+                            mediaPlayerHolder.processUserAction(
+                                UserAction.ServiceAction.Seek(chatId, updatedEpisodeStatus)
+                            )
+                        }
+                    }
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                val newTime = (currentTime - 15_000).coerceAtLeast(0L)
+                                val updatedEpisodeStatus = podcast.getUpdatedContentEpisodeStatus().copy(
+                                    currentTime = FeedItemDuration(newTime / 1000L)
+                                )
+                                mediaPlayerHolder.processUserAction(
+                                    UserAction.ServiceAction.Seek(chatId, updatedEpisodeStatus)
+                                )
+                            }
+                        },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Replay10,
+                            contentDescription = "Rewind",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                if (isPlaying) {
+                                    mediaPlayerHolder.processUserAction(
+                                        UserAction.ServiceAction.Pause(chatId, episode.id.value)
+                                    )
+                                } else {
+                                    mediaPlayerHolder.processUserAction(
+                                        UserAction.ServiceAction.Play(
+                                            chatId,
+                                            episode.episodeUrl,
+                                            podcast.getUpdatedContentFeedStatus(),
+                                            podcast.getUpdatedContentEpisodeStatus(),
+                                            podcast.getFeedDestinations()
+                                        )
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(primary_blue, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                val newTime = (currentTime + 30_000).coerceAtMost(duration)
+                                val updatedEpisodeStatus = podcast.getUpdatedContentEpisodeStatus().copy(
+                                    currentTime = FeedItemDuration(newTime / 1000L)
+                                )
+                                mediaPlayerHolder.processUserAction(
+                                    UserAction.ServiceAction.Seek(chatId, updatedEpisodeStatus)
+                                )
+                            }
+                        },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Forward30,
+                            contentDescription = "Forward",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(24.dp)
+            ) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Close",
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SeekableProgressBar(
+    currentTime: Long,
+    duration: Long,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    color: Color = primary_blue
+) {
+    var sliderPosition by remember { mutableStateOf(0f) }
+    var isUserSeeking by remember { mutableStateOf(false) }
+
+    val progress = if (duration > 0) currentTime.toFloat() / duration else 0f
+
+    LaunchedEffect(currentTime, duration) {
+        if (!isUserSeeking) {
+            sliderPosition = progress
+        }
+    }
+
+    Slider(
+        value = sliderPosition,
+        onValueChange = {
+            isUserSeeking = true
+            sliderPosition = it
+        },
+        onValueChangeFinished = {
+            val newTime = (sliderPosition * duration).toLong()
+            onSeek(newTime)
+            isUserSeeking = false
+        },
+        valueRange = 0f..1f,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(16.dp),
+        colors = SliderDefaults.colors(
+            thumbColor = Color.Transparent, // hides the thumb
+            activeTrackColor = color,
+            inactiveTrackColor = Color.Gray.copy(alpha = 0.3f)
+        )
+    )
+}
+
 
 fun formatMillis(millis: Long): String {
     val totalSeconds = millis / 1000

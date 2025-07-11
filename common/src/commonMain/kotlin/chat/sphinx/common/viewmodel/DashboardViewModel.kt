@@ -102,6 +102,26 @@ class DashboardViewModel(): WindowFocusListener {
         val type: SplitContentType? = null
     )
 
+
+    private val _floatingPlayerStateFlow = MutableStateFlow<FloatingPlayerState?>(null)
+    val floatingPlayerStateFlow: StateFlow<FloatingPlayerState?> = _floatingPlayerStateFlow.asStateFlow()
+
+    fun showFloatingPlayer(chatId: ChatId, feedId: FeedId) {
+        _floatingPlayerStateFlow.value = FloatingPlayerState(chatId, feedId, true)
+    }
+
+    fun hideFloatingPlayer() {
+        _floatingPlayerStateFlow.value = null
+    }
+
+    private fun shouldShowFloatingPlayer(): Boolean {
+        val isPodcastPlaying = mediaPlayerHolder.getPlayingContent()?.third == true
+        val isOnFeedTab = selectedTabStateFlow.value == 2
+        val isSplitScreenPodcast = splitScreenStateFlow.value.type is SplitContentType.Podcast
+
+        return isPodcastPlaying && (!isOnFeedTab || !isSplitScreenPodcast)
+    }
+
     private val _splitScreenStateFlow: MutableStateFlow<SplitScreenState> by lazy {
         MutableStateFlow(SplitScreenState(isOpen = false, type = null))
     }
@@ -167,7 +187,16 @@ class DashboardViewModel(): WindowFocusListener {
         get() = _selectedTabStateFlow.asStateFlow()
 
     fun setSelectedTab(tab: Int) {
+        val previousTab = _selectedTabStateFlow.value
         _selectedTabStateFlow.value = tab
+
+        // If switching away from feed tab and podcast is playing, close split screen
+        if (previousTab == 2 && tab != 2) {
+            val playingContent = mediaPlayerHolder.getPlayingContent()
+            if (playingContent?.third == true && splitScreenStateFlow.value.type is SplitContentType.Podcast) {
+                toggleSplitScreen(false)
+            }
+        }
     }
 
     val accountOwnerStateFlow: StateFlow<Contact?>

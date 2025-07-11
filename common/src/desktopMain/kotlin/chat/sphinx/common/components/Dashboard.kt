@@ -56,6 +56,7 @@ import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.RestoreProgress
+import chat.sphinx.wrapper.feed.FeedId
 import chat.sphinx.wrapper.lightning.asFormattedString
 import chat.sphinx.wrapper.message.media.isImage
 import chat.sphinx.wrapper.message.retrieveTextToShow
@@ -89,6 +90,26 @@ actual fun Dashboard(
     val fullScreenViewState by dashboardViewModel.fullScreenViewStateFlow.collectAsState()
     val isSidebarHidden by dashboardViewModel.isSidebarHiddenFlow.collectAsState()
     val selectedTabIndex by dashboardViewModel.selectedTabStateFlow.collectAsState()
+    val floatingPlayerState by dashboardViewModel.floatingPlayerStateFlow.collectAsState()
+
+    LaunchedEffect(selectedTabIndex, splitScreenState) {
+        val playingContent = dashboardViewModel.mediaPlayerHolder.getPlayingContent()
+        if (playingContent?.third == true) { // isPlaying
+            val isPodcastSplit = splitScreenState.type is DashboardViewModel.SplitContentType.Podcast
+            val isFeedTabSelected = selectedTabIndex == 2
+
+            if (isFeedTabSelected && isPodcastSplit) {
+                dashboardViewModel.hideFloatingPlayer()
+            } else if (playingContent.first.isNotEmpty()) {
+                dashboardViewModel.showFloatingPlayer(
+                    ChatId(ChatId.NULL_CHAT_ID.toLong()),
+                    FeedId(playingContent.first)
+                )
+            }
+        } else {
+            dashboardViewModel.hideFloatingPlayer()
+        }
+    }
 
     when (DashboardScreenState.screenState()) {
         DashboardScreenType.Unlocked -> {
@@ -419,6 +440,29 @@ actual fun Dashboard(
                                     .background(SolidColor(Color.Gray), alpha = 0.50f).width(9.dp).fillMaxHeight()
                             )
                         }
+                    }
+                }
+            }
+
+            floatingPlayerState?.let { playerState ->
+                if (playerState.isVisible) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        val podcastViewModel = dashboardViewModel.getPodcastViewModel(
+                            playerState.chatId,
+                            playerState.feedId
+                        )
+
+                        FloatingPodcastPlayer(
+                            chatId = playerState.chatId,
+                            mediaPlayerHolder = dashboardViewModel.mediaPlayerHolder,
+                            dashboardViewModel = dashboardViewModel,
+                            podcastViewModel = podcastViewModel,
+                            onClose = { dashboardViewModel.hideFloatingPlayer() }
+                        )
                     }
                 }
             }
