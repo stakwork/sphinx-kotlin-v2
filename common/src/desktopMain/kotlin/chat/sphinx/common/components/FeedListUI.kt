@@ -64,7 +64,6 @@ fun FeedListUI(
                     )
                 }
             } else if (searchResults.isNotEmpty()) {
-                // Show "Search Results" header
                 SectionHeader("Search Results")
 
                 searchResults.forEach { result ->
@@ -78,7 +77,6 @@ fun FeedListUI(
                     }
                 }
             } else {
-                // Default Following feeds
                 SectionHeader("Following")
 
                 recentlyReleased.forEach { feed ->
@@ -89,7 +87,6 @@ fun FeedListUI(
                 }
             }
         } else {
-            // ... existing code for non-following tab ...
             Spacer(modifier = Modifier.height(16.dp))
             SectionHeader("Recently Released")
 
