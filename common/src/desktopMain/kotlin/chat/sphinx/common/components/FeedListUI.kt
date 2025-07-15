@@ -3,6 +3,7 @@ package chat.sphinx.common.components
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Divider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
@@ -41,7 +42,7 @@ fun FeedListUI(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.onSurfaceVariant)
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 24.dp)
             .verticalScroll(rememberScrollState())
     ) {
@@ -83,7 +84,6 @@ fun FeedListUI(
                     FollowingFeedItem(feed = feed) {
                         feedViewModel.onPodcastFeedItemClicked(feed.lastItem ?: return@FollowingFeedItem)
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         } else {
@@ -120,7 +120,8 @@ fun FeedListUI(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
-}@Composable
+}
+@Composable
 fun FeedCardSquare(
     episode: FeedItem,
     modifier: Modifier = Modifier,
@@ -140,17 +141,16 @@ fun FeedCardSquare(
     Column(
         modifier = modifier
             .width(180.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
             .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .padding(8.dp)
+            .padding(4.dp)
     ) {
         if (imageUrl != null) {
             PhotoUrlImage(
                 photoUrl = episode.imageUrlToShow,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f),
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp)), // Rounded corners
                 contentScale = ContentScale.Crop
             )
         } else {
@@ -158,11 +158,11 @@ fun FeedCardSquare(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .background(Color.DarkGray, RoundedCornerShape(8.dp))
+                    .background(Color.DarkGray, RoundedCornerShape(12.dp))
             )
         }
 
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(6.dp))
 
         Text(
             text = episodeTitle,
@@ -170,17 +170,19 @@ fun FeedCardSquare(
             fontWeight = FontWeight.Bold,
             color = Color.White,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 14.sp
         )
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(8.dp))
 
         Text(
             text = showTitle,
             fontSize = 12.sp,
             color = Color.Gray,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 13.sp
         )
 
         Text(
@@ -188,48 +190,43 @@ fun FeedCardSquare(
             fontSize = 11.sp,
             color = Color.Gray,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 12.sp
         )
+
+        Spacer(Modifier.height(12.dp))
 
         Text(
             text = published,
             fontSize = 10.sp,
-            color = Color.Gray
+            color = Color.Gray,
+            lineHeight = 11.sp
         )
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(20.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (duration > 0) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = if (remainingTime > 0) "${formatMillis(remainingTime)} left" else formatMillis(duration),
-                        fontSize = 10.sp,
-                        color = primary_blue
-                    )
 
-                    Column(
-                        modifier = Modifier.width(80.dp)
-                    ) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            progress = currentTime.toFloat() / duration.coerceAtLeast(1),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(2.dp)),
-                            color = primary_blue,
-                            trackColor = Color.DarkGray
-                        )
-                    }
-                }
+        if (duration > 0) {
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = if (remainingTime > 0) "${formatMillis(remainingTime)} left" else formatMillis(duration),
+                    fontSize = 10.sp,
+                    color = primary_blue
+                )
+
+                LinearProgressIndicator(
+                    progress = currentTime.toFloat() / duration.coerceAtLeast(1),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = primary_blue,
+                    trackColor = Color.DarkGray
+                )
             }
         }
     }
@@ -273,12 +270,11 @@ fun FollowingFeedItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
             .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .padding(12.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
-    ) {
+    )
+    {
         if (imageUrl.isNotBlank()) {
             PhotoUrlImage(
                 photoUrl = feed.imageUrlToShow,
@@ -314,7 +310,15 @@ fun FollowingFeedItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+
+            Spacer(Modifier.height(8.dp))
+
+            androidx.compose.material3.Divider(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.Black.copy(alpha = 0.2f)
+            )
         }
+
     }
 }
 
