@@ -68,12 +68,32 @@ fun PodcastMainPlayer(
     }
 
     val episode = podcast.getCurrentEpisode()
+
     val scope = rememberCoroutineScope()
     val mediaState by mediaPlayerHolder.mediaState.collectAsState()
     var isPlaying by remember { mutableStateOf(false) }
+    var isPreparingToPlay by remember { mutableStateOf(false) }
+
+    val isPlayingThisPodcast = remember(mediaState, podcast) {
+        val currentPodcastId = podcast.id.value
+        when (val state = mediaState) {
+            is MediaPlayerServiceState.ServiceActive.MediaState.Playing -> state.podcastId == currentPodcastId
+            is MediaPlayerServiceState.ServiceActive.MediaState.Paused -> state.podcastId == currentPodcastId
+            is MediaPlayerServiceState.ServiceActive.MediaState.Ended  -> state.podcastId == currentPodcastId
+            is MediaPlayerServiceState.ServiceActive.MediaState.Failed -> state.podcastId == currentPodcastId
+            else -> false
+        }
+    }
 
     LaunchedEffect(mediaState) {
         isPlaying = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing
+        if (isPlaying) {
+            isPreparingToPlay = false
+        }
+    }
+
+    val isLoading = remember(mediaState) {
+        mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Preparing
     }
 
     var currentTime by remember {
@@ -83,7 +103,12 @@ fun PodcastMainPlayer(
         mutableStateOf((episode.contentEpisodeStatus?.duration?.value ?: 0L) * 1000)
     }
 
-    val progress = if (duration > 0) (currentTime.toFloat() / duration.toFloat()) else 0f
+    val progress = if (isPlayingThisPodcast && duration > 0) {
+        (currentTime.toFloat() / duration.toFloat())
+    } else {
+        0f
+    }
+
     var sliderPosition by remember { mutableStateOf(progress * 100f) }
     var isUserSeeking by remember { mutableStateOf(false) }
     var satsSliderPosition by remember { mutableStateOf(podcast.satsPerMinute.toFloat()) }
@@ -331,15 +356,15 @@ fun PodcastMainPlayer(
                     } ?: emptyList()
 
                 val density = LocalDensity.current
-                val trackPaddingPx = with(density) { 16.dp.roundToPx() }   // slider’s built-in padding
-                val trackWidthPx   = sliderWidthPx - trackPaddingPx * 2    // real usable track width
+                val trackPaddingPx = with(density) { 16.dp.roundToPx() }
+                val trackWidthPx   = sliderWidthPx - trackPaddingPx * 2
 
                 chapterMarkers.forEach { (ratio, isAd, _) ->
-                    val dotRadiusPx = with(density) { (6.dp).roundToPx() } // half of your 12.dp dot
+                    val dotRadiusPx = with(density) { (6.dp).roundToPx() }
                     val positionPx = (trackWidthPx * ratio).roundToInt() + trackPaddingPx
                     Box(
                         modifier = Modifier
-                            .offset { IntOffset(positionPx - dotRadiusPx, 0) }  // center align with thumb
+                            .offset { IntOffset(positionPx - dotRadiusPx, 0) }
                             .size(12.dp)
                             .clip(CircleShape)
                             .background(if (isAd) Color.Gray else Color.White)
@@ -349,11 +374,33 @@ fun PodcastMainPlayer(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(formatMillis(currentTime), fontSize = 12.sp, color = primary_blue)
-                Text(formatMillis(duration), fontSize = 12.sp, color = Color.Gray)
+                Text(
+                    text = if (isPlayingThisPodcast) formatMillis(currentTime) else "0:00",
+                    fontSize = 12.sp,
+                    color = primary_blue
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.tertiary,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = formatMillis(duration),
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
             }
         }
 
@@ -421,40 +468,61 @@ fun PodcastMainPlayer(
                 Icon(Icons.Filled.Replay10, "Rewind 10s", tint = Color.Gray, modifier = Modifier.size(28.dp))
             }
 
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(primary_blue, shape = CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    IconButton(onClick = {
-                        scope.launch {
-                            if (isPlaying) {
-                                mediaPlayerHolder.processUserAction(
-                                    UserAction.ServiceAction.Pause(chatId, episode.id.value)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(primary_blue, shape = CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(onClick = {
+                    scope.launch {
+                        val shouldResume = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Paused &&
+                                (mediaState as MediaPlayerServiceState.ServiceActive.MediaState.Paused).podcastId == podcast.id.value
+
+                        val shouldRestart = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Ended ||
+                                mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Failed
+
+                        if (isPlayingThisPodcast && !shouldResume && !shouldRestart) {
+                            mediaPlayerHolder.processUserAction(
+                                UserAction.ServiceAction.Pause(chatId, episode.id.value)
+                            )
+                        } else {
+                            isPreparingToPlay = true
+
+                            podcast.willStartPlayingEpisode(
+                                episodeId = episode.id.value,
+                                time = currentTime.toInt(),
+                                duration = duration
+                            )
+
+                            podcastViewModel.getChapters(episode, podcast.title)
+
+                            mediaPlayerHolder.processUserAction(
+                                UserAction.ServiceAction.Play(
+                                    chatId = chatId,
+                                    episodeUrl = episode.episodeUrl,
+                                    contentFeedStatus = podcast.getUpdatedContentFeedStatus(),
+                                    contentEpisodeStatus = episode.getUpdatedContentEpisodeStatus().copy(
+                                        currentTime = FeedItemDuration(currentTime / 1000L)
+                                    ),
+                                    destinations = podcast.getFeedDestinations()
                                 )
-                            } else {
-                                mediaPlayerHolder.processUserAction(
-                                    UserAction.ServiceAction.Play(
-                                        chatId,
-                                        episode.episodeUrl,
-                                        podcast.getUpdatedContentFeedStatus(),
-                                        podcast.getUpdatedContentEpisodeStatus(),
-                                        podcast.getFeedDestinations()
-                                    )
-                                )
-                                podcastViewModel.getChapters(episode, podcast.title)
-                            }
+                            )
                         }
-                    }) {
-                        Icon(
-                            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            "Play/Pause",
-                            tint = Color.White,
-                            modifier = Modifier.size(36.dp)
-                        )
                     }
+                })
+                {
+                    val isPlayingThisEpisode = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing &&
+                            (mediaState as MediaPlayerServiceState.ServiceActive.MediaState.Playing).podcastId == podcast.id.value
+
+                    Icon(
+                        imageVector = if (isPlayingThisEpisode) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (isPlayingThisEpisode) "Pause" else "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(36.dp)
+                    )
                 }
+            }
 
             IconButton(onClick = {
                 scope.launch {
@@ -604,7 +672,7 @@ fun PodcastMainPlayer(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp)) // padding at the bottom
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -787,7 +855,7 @@ fun PodcastEpisodeItem(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // 2. Description starts at content start (not offset to image)
+        // 2. Description
         Text(
             text = episode.descriptionToShow,
             maxLines = 2,
@@ -797,7 +865,7 @@ fun PodcastEpisodeItem(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // 3. Date + Duration Row (with small icon and progress bar)
+        // 3. Date + Duration Row
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier

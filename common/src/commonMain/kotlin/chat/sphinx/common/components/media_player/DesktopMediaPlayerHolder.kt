@@ -33,6 +33,33 @@ class DesktopMediaPlayerHolder {
 
     init {
         mediaPlayerController.setPlaybackListener(object : MediaPlayerController.PlaybackListener {
+
+            override fun onPreparing() {
+                currentData?.let { data ->
+                    _mediaState.value = MediaPlayerServiceState.ServiceActive.MediaState.Preparing(
+                        data.chatId,
+                        data.podcastId,
+                        data.episodeId,
+                        mediaPlayerController.getCurrentPosition(),
+                        mediaPlayerController.getDuration(),
+                        data.speed
+                    )
+                }
+            }
+
+            override fun onPlaybackStarted() {
+                currentData?.let { data ->
+                    _mediaState.value = MediaPlayerServiceState.ServiceActive.MediaState.Playing(
+                        data.chatId,
+                        data.podcastId,
+                        data.episodeId,
+                        mediaPlayerController.getCurrentPosition(),
+                        mediaPlayerController.getDuration(),
+                        data.speed
+                    )
+                }
+            }
+
             override fun onPlaybackCompleted() {
                 currentData?.let { data ->
                     scope.launch(dispatchers.io) {

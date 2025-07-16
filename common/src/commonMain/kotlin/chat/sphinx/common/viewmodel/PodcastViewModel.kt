@@ -69,6 +69,10 @@ class PodcastViewModel(
         _playingEpisodeTime.value = timeMs
     }
 
+    fun clearPlayingState() {
+        _playingEpisodeTime.value = 0L
+    }
+
     fun refreshPodcast(podcastEpisode: PodcastEpisode) {
         scope.launch(dispatchers.mainImmediate) {
             val podcastFlow = when {
