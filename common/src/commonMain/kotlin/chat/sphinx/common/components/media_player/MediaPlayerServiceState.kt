@@ -10,7 +10,17 @@ sealed class MediaPlayerServiceState {
         object ServiceLoading : ServiceActive()
         object ServiceConnected : ServiceActive()
 
+
         sealed class MediaState : ServiceActive() {
+
+            data class Preparing(
+                val chatId: ChatId,
+                val podcastId: String,
+                val episodeId: String,
+                val currentTimeMillis: Long,
+                val durationMillis: Long,
+                val playbackSpeed: Double
+            ) : ServiceActive()
 
             data class Playing(
                 val chatId: ChatId,

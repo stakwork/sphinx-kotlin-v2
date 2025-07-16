@@ -72,6 +72,7 @@ fun PodcastMainPlayer(
     val scope = rememberCoroutineScope()
     val mediaState by mediaPlayerHolder.mediaState.collectAsState()
     var isPlaying by remember { mutableStateOf(false) }
+    var isPreparingToPlay by remember { mutableStateOf(false) }
 
     val isPlayingThisPodcast = remember(mediaState, podcast) {
         val currentPodcastId = podcast.id.value
@@ -86,6 +87,13 @@ fun PodcastMainPlayer(
 
     LaunchedEffect(mediaState) {
         isPlaying = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Playing
+        if (isPlaying) {
+            isPreparingToPlay = false
+        }
+    }
+
+    val isLoading = remember(mediaState) {
+        mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Preparing
     }
 
     var currentTime by remember {
@@ -366,19 +374,33 @@ fun PodcastMainPlayer(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     text = if (isPlayingThisPodcast) formatMillis(currentTime) else "0:00",
                     fontSize = 12.sp,
                     color = primary_blue
                 )
-                Text(
-                    text = formatMillis(duration),
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.tertiary,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = formatMillis(duration),
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
             }
         }
 
@@ -452,9 +474,6 @@ fun PodcastMainPlayer(
                     .background(primary_blue, shape = CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                val isPausedThisEpisode = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Paused &&
-                        (mediaState as MediaPlayerServiceState.ServiceActive.MediaState.Paused).podcastId == podcast.id.value
-
                 IconButton(onClick = {
                     scope.launch {
                         val shouldResume = mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Paused &&
@@ -464,17 +483,15 @@ fun PodcastMainPlayer(
                                 mediaState is MediaPlayerServiceState.ServiceActive.MediaState.Failed
 
                         if (isPlayingThisPodcast && !shouldResume && !shouldRestart) {
-                            // Pause only if currently playing and not in Paused or Ended state
                             mediaPlayerHolder.processUserAction(
                                 UserAction.ServiceAction.Pause(chatId, episode.id.value)
                             )
                         } else {
-                            // Always allow play/resume from paused or ended
-                            val resumeFromTime = currentTime
+                            isPreparingToPlay = true
 
                             podcast.willStartPlayingEpisode(
                                 episodeId = episode.id.value,
-                                time = resumeFromTime.toInt(),
+                                time = currentTime.toInt(),
                                 duration = duration
                             )
 
@@ -486,7 +503,7 @@ fun PodcastMainPlayer(
                                     episodeUrl = episode.episodeUrl,
                                     contentFeedStatus = podcast.getUpdatedContentFeedStatus(),
                                     contentEpisodeStatus = episode.getUpdatedContentEpisodeStatus().copy(
-                                        currentTime = FeedItemDuration(resumeFromTime / 1000L)
+                                        currentTime = FeedItemDuration(currentTime / 1000L)
                                     ),
                                     destinations = podcast.getFeedDestinations()
                                 )

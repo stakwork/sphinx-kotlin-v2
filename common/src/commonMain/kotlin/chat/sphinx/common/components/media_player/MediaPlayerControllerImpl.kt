@@ -22,21 +22,11 @@ class MediaPlayerControllerImpl : MediaPlayerController() {
     override fun play(url: String, startTimeMillis: Long) {
         Platform.runLater {
             try {
-                // Dispose existing player
                 mediaPlayer?.dispose()
 
-                // Convert file path or URL properly
-                val uri = if (url.startsWith("http://") || url.startsWith("https://")) {
-                    url
-                } else {
-                    File(url).toURI().toString()
-                }
-
-                println("Playing media from URI: $uri")
-
+                val uri = if (url.startsWith("http")) url else File(url).toURI().toString()
                 val media = Media(uri)
 
-                // Add error listener to diagnose issues
                 media.setOnError {
                     println("Media error: ${media.error}")
                 }
@@ -45,16 +35,26 @@ class MediaPlayerControllerImpl : MediaPlayerController() {
                     setOnError {
                         println("MediaPlayer error: $error")
                     }
+
                     setOnEndOfMedia {
                         playbackListener?.onPlaybackCompleted()
                     }
+
                     setOnReady {
                         if (startTimeMillis > 0) {
                             seek(javafx.util.Duration.millis(startTimeMillis.toDouble()))
                         }
                         play()
                     }
+
+                    setOnPlaying {
+                        playbackListener?.onPlaybackStarted()
+                    }
                 }
+
+                // Notify UI that we're preparing
+                playbackListener?.onPreparing()
+
             } catch (e: Exception) {
                 println("Exception while trying to play media: ${e.message}")
                 e.printStackTrace()

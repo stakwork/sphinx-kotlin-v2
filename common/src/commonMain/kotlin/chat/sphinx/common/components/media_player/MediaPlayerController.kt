@@ -2,6 +2,8 @@
 
     abstract class MediaPlayerController {
         interface PlaybackListener {
+            fun onPreparing()
+            fun onPlaybackStarted()
             fun onPlaybackCompleted()
         }
         abstract fun play(url: String, startTimeMillis: Long = 0)
