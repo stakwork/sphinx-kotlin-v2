@@ -33,7 +33,7 @@ fun ChatMessageUI(
     chatMessage: ChatMessage,
     chatViewModel: ChatViewModel
 ) {
-    print("rebuilding ${chatMessage.message.id}")
+//    print("rebuilding ${chatMessage.message.id}")
 
     val arrowColor = if (chatMessage.isReceived) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.inversePrimary
     val isPaidInvoice = chatMessage.message.isPaidInvoice
