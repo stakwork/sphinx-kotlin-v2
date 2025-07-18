@@ -73,7 +73,6 @@ fun FeedListUI(
                             FollowingFeedItem(feed = searchResult.toFeed() ?: return@let) {
                                 feedViewModel.onPodcastSearchResultClicked(searchResult)
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
                 }

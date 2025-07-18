@@ -291,7 +291,7 @@ fun ChatMessagesList(
             items,
             key = { _, item -> "${item.message.id}-${item.isSeparator}" }
         ){ index, item ->
-            print("index is $index with value ${item.message.messageContent?.value}")
+//            print("index is $index with value ${item.message.messageContent?.value}")
 
             if (item.isSeparator) {
                 DateSeparator(item)

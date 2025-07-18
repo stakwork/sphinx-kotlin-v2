@@ -34,66 +34,58 @@ fun String.toAnnotatedString(): AnnotatedString {
     val builder = AnnotatedString.Builder()
     var currentIndex = 0
 
-    // Define regex patterns
-    val boldRegex = "\\*\\*(.*?)\\*\\*".toRegex()  // Matches text wrapped in ** (bold)
+    val rawText = this
+    val boldRegex = "\\*\\*(.*?)\\*\\*".toRegex()
     val highlightRegex = "`([^`]*)`".toRegex()
 
-    // Find all matches for bold and highlighted text, associating each with its type
-    val matches = (boldRegex.findAll(this).map { it to "bold" } +
-            highlightRegex.findAll(this).map { it to "highlight" })
+    val matches = (boldRegex.findAll(rawText).map { it to "bold" } +
+            highlightRegex.findAll(rawText).map { it to "highlight" })
         .sortedBy { it.first.range.first }
 
+    val positionMap = mutableListOf<Pair<IntRange, IntRange>>()  // maps raw -> builder
+
     matches.forEach { (matchResult, matchType) ->
-        val start = matchResult.range.first.coerceIn(0, this.length)
-        val end = (matchResult.range.last + 1).coerceIn(0, this.length)
-
-        if (start >= end) return@forEach // Skip invalid ranges
-
+        val fullRange = matchResult.range
         val styledText = matchResult.groups[1]?.value.orEmpty()
 
-        // Add preceding plain text
-        if (currentIndex < start) {
-            builder.append(this.substring(currentIndex, start.coerceIn(0, this.length)))
+        // Append any plain text before this match
+        if (currentIndex < fullRange.first) {
+            val textToAppend = rawText.substring(currentIndex, fullRange.first)
+            builder.append(textToAppend)
         }
 
-        // Add styled text
+        val start = builder.length
         builder.append(styledText)
+        val end = builder.length
 
         val style = when (matchType) {
             "bold" -> boldSpanStyle
             "highlight" -> highlightSpanStyle
             else -> null
         }
-
         style?.let {
-            val styleStart = (builder.length - styledText.length).coerceAtLeast(0)
-            val styleEnd = builder.length.coerceIn(0, builder.length)
-            if (styleStart < styleEnd) {
-                builder.addStyle(
-                    style = it,
-                    start = styleStart,
-                    end = styleEnd
-                )
-            }
+            builder.addStyle(it, start, end)
         }
 
-        // Update current index to the end of the matched range
-        currentIndex = end
+        positionMap.add(fullRange to (start until end))
+        currentIndex = fullRange.last + 1
     }
 
-    // Add any remaining plain text
-    if (currentIndex < this.length) {
-        builder.append(this.substring(currentIndex.coerceIn(0, this.length)))
+    if (currentIndex < rawText.length) {
+        builder.append(rawText.substring(currentIndex))
     }
 
-    // Handle links using SphinxLinkify
+    // Reconstruct the clean text used in builder
+    val builderText = builder.toString()
+
+    // Run linkify on cleaned builder text
     val links = SphinxLinkify.gatherLinks(
-        text = this,
+        text = builderText,
         mask = SphinxLinkify.ALL
     )
     links.forEach { linkSpec ->
-        val linkStart = linkSpec.start.coerceIn(0, this.length)
-        val linkEnd = linkSpec.end.coerceIn(0, this.length)
+        val linkStart = linkSpec.start.coerceIn(0, builderText.length)
+        val linkEnd = linkSpec.end.coerceIn(0, builderText.length)
 
         if (linkStart < linkEnd) {
             builder.addStyle(

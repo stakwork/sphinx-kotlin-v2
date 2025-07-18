@@ -48,7 +48,7 @@ fun main() = application {
     when (AppState.screenState()) {
         ScreenType.SplashScreen -> {
             Window(
-                onCloseRequest = {},
+                onCloseRequest = ::exitApplication,
                 title = "Sphinx",
                 state = WindowState(
                     position = WindowPosition.Aligned(Alignment.Center),
@@ -83,7 +83,7 @@ fun main() = application {
             WebViewInitializing(dashboardViewModel)
 
             Window(
-                onCloseRequest = {},
+                onCloseRequest = ::exitApplication,
                 title = "Sphinx",
                 state = WindowState(
                     position = WindowPosition.Aligned(Alignment.Center),

@@ -418,35 +418,6 @@ class DashboardViewModel(): WindowFocusListener {
         connectManagerRepository.disconnectMqtt()
     }
 
-    private fun getPackageVersion(){
-        val currentAppVersion = "1.0.9"
-
-        viewModelScope.launch(dispatchers.mainImmediate) {
-            // TODO V2 getAppVersions
-//            networkQueryVersion.getAppVersions().collect { loadResponse ->
-//                when (loadResponse) {
-//                    is Response.Error -> {
-//                        _packageVersionAndUpgrade.value = Pair(currentAppVersion, false)
-//                    }
-//                    is Response.Success -> {
-//                        val serverHubVersion = loadResponse.value.kmm
-//
-//                        currentAppVersion.replace(".", "").toIntOrNull()?.let { currentVersion ->
-//                            if (serverHubVersion > currentVersion) {
-//                                _packageVersionAndUpgrade.value = Pair(currentAppVersion, true)
-//                            }
-//                            else {
-//                                _packageVersionAndUpgrade.value = Pair(currentAppVersion, false)
-//                            }
-//                        }
-//                    }
-//                    is LoadResponse.Loading -> {
-//
-//                    }
-//                }
-//            }
-        }
-    }
 
 
     fun kickMemberFromTribe(memberPubKey: LightningNodePubKey, alias: SenderAlias?, chatId: ChatId) {
@@ -471,7 +442,6 @@ class DashboardViewModel(): WindowFocusListener {
         connectManagerRepository.connectAndSubscribeToMqtt()
         triggerSetProfileInfoRestore()
         networkRefresh()
-        getPackageVersion()
         // TODO V2 getAccountBalanceStateFlow
 
         viewModelScope.launch(dispatchers.mainImmediate) {
@@ -590,7 +560,11 @@ class DashboardViewModel(): WindowFocusListener {
 
     override fun windowGainedFocus(p0: WindowEvent?) {
         if (DashboardScreenState.screenState() == DashboardScreenType.Unlocked) {
-            networkRefresh()
+            if (connectManagerRepository.networkStatus.value != NetworkStatus.Connected) {
+                connectManagerRepository.reconnectMqtt()
+            } else {
+                networkRefresh()
+            }
         }
     }
 
@@ -621,36 +595,6 @@ class DashboardViewModel(): WindowFocusListener {
                     }
                 }
             }
-
-//
-//            repositoryDashboard.networkRefreshLatestContacts.collect { response ->
-//                Exhaustive@
-//                when (response) {
-//                    is LoadResponse.Loading -> {
-//                        _networkStateFlow.value = response
-//                    }
-//                    is Response.Error -> {
-//                        _networkStateFlow.value = response
-//                    }
-//                    is Response.Success -> {
-//                        val restoreProgress = response.value
-//
-//                        if (restoreProgress.restoring) {
-//                            _restoreStateFlow.value = restoreProgress
-//                        }
-//                    }
-//                }
-//            }
-//
-//            if (_networkStateFlow.value is Response.Error) {
-//                jobNetworkRefresh?.cancel()
-//            }
-//
-
-//
-//            if (_networkStateFlow.value is Response.Error) {
-//                jobNetworkRefresh?.cancel()
-//            }
         }
     }
 
