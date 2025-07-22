@@ -4,6 +4,7 @@ import CommonButton
 import Roboto
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -28,7 +29,9 @@ import chat.sphinx.common.viewmodel.WebAppViewModel
 import chat.sphinx.platform.imageResource
 import chat.sphinx.utils.getPreferredWindowSize
 import com.multiplatform.webview.jsbridge.WebViewJsBridge
+import com.multiplatform.webview.jsbridge.rememberWebViewJsBridge
 import com.multiplatform.webview.web.WebView
+import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
 import com.multiplatform.webview.web.rememberWebViewState
 import theme.*
@@ -38,6 +41,11 @@ fun WebAppUI(
     dashboardViewModel: DashboardViewModel,
     webAppViewModel: WebAppViewModel
 ) {
+    val webViewNavigator = remember { WebViewNavigator(webAppViewModel.viewModelScope) }
+    val jsBridge = rememberWebViewJsBridge(webViewNavigator)
+
+    initJsBridge(jsBridge, webAppViewModel)
+
     when (dashboardViewModel.getWebViewState()) {
         DashboardViewModel.WebViewState.Loading -> {
             toast("WebView Library is loading, please try again in a few minutes", badge_red)
@@ -74,43 +82,76 @@ fun WebAppUI(
             ),
             icon = sphinxIcon
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize()
-                    .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
-            ) {
-                Text(
-                    text = "Loading. Please wait...",
-                    maxLines = 1,
-                    fontSize = 14.sp,
-                    fontFamily = Roboto,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Top part: WebView content
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .background(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
                 ) {
-                    val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
-                        MaterialTheme {
-                            val webViewState = rememberWebViewState("https://www.google.com")
-                            val webViewNavigator = webAppViewModel.customWebViewNavigator
-                            val jsBridge = webAppViewModel.customJsBridge
+                    Text(
+                        text = "Loading. Please wait...",
+                        maxLines = 1,
+                        fontSize = 14.sp,
+                        fontFamily = Roboto,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
 
-                            initWebView(webViewState)
-                            initJsBridge(jsBridge, webAppViewModel)
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
+                        var webViewInitialized by remember { mutableStateOf(false) }
 
-                            Column(Modifier.fillMaxSize()) {
-                                WebView(
-                                    state = webViewState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    navigator = webViewNavigator,
-                                    webViewJsBridge = jsBridge
-                                )
+                        webViewState?.let { url ->
+                            MaterialTheme {
+
+                                LaunchedEffect(Unit) {
+                                    kotlinx.coroutines.delay(3000L)
+                                    webViewInitialized = true
+                                }
+
+                                if (webViewInitialized) {
+                                    val urlWebViewState = rememberWebViewState(url)
+                                    initWebView(urlWebViewState)
+
+                                    Column(Modifier.fillMaxSize()) {
+                                        WebView(
+                                            state = urlWebViewState,
+                                            modifier = Modifier.fillMaxSize(),
+                                            navigator = webViewNavigator,
+                                            webViewJsBridge = jsBridge
+                                        )
+                                    }
+                                }
                             }
                         }
+                    }
                 }
+
+                // Bottom part: Log message viewer
+//                Box(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .height(200.dp)
+//                        .background(Color.Black)
+//                        .padding(10.dp)
+//                ) {
+//                    LazyColumn {
+//                        items(messages.size) { index ->
+//                            Text(
+//                                text = messages[index],
+//                                color = Color.White,
+//                                fontSize = 12.sp,
+//                                modifier = Modifier.padding(vertical = 4.dp)
+//                            )
+//                        }
+//                    }
+//                }
             }
         }
     }

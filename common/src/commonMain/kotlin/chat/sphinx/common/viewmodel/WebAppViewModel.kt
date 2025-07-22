@@ -33,12 +33,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
+import org.jetbrains.skia.impl.Log
 import uniffi.sphinxrs.makeInvite
 
 class WebAppViewModel {
     val scope = SphinxContainer.appModule.applicationScope
     val dispatchers = SphinxContainer.appModule.dispatchers
-    private val viewModelScope = SphinxContainer.appModule.applicationScope
+    val viewModelScope = SphinxContainer.appModule.applicationScope
     private val sphinxNotificationManager = createSphinxNotificationManager()
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
     private val lightningRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).lightningRepository
@@ -611,12 +612,15 @@ class WebAppViewModel {
 
                     if (invoicePubKey != null && paymentHash != null && invoiceAmount != null) {
                         val routerUrl = connectManagerRepository.retrieveRouterUrl()
+                        val routerPubKey = connectManagerRepository.retrieveRouterPubKey()
 
                         if (routerUrl != null) {
                             viewModelScope.launch {
                                 if (invoice.retrieveLspPubKey() == contactRepository.accountOwner.value?.routeHint?.getLspPubKey()) {
                                     val nnPaymentRequest =
                                         lSatMessage.paymentRequest.toLightningPaymentRequestOrNull() ?: return@launch
+
+                                    println("LSAT: Sending payInvoice without routing info (LSP match)")
 
                                     connectManagerRepository.payInvoice(
                                         paymentRequest = nnPaymentRequest,
@@ -657,11 +661,11 @@ class WebAppViewModel {
                                             is Response.Error -> {}
                                             is Response.Success -> {
                                                 try {
-                                                    val routerPubKey = connectManagerRepository.retrieveRouterPubKey()
-
                                                     val nnPaymentRequest =
                                                         lSatMessage.paymentRequest.toLightningPaymentRequestOrNull()
                                                             ?: return@collect
+
+                                                    println("LSAT: Sending payInvoice with routing info and routerPubKey: $routerPubKey")
 
                                                     connectManagerRepository.payInvoice(
                                                         paymentRequest = nnPaymentRequest,
@@ -676,7 +680,7 @@ class WebAppViewModel {
                                                         if (preimage?.isNotEmpty() == true) {
 
                                                             val lsatToSave = Lsat(
-                                                                paymentRequest = lSatMessage.paymentRequest.toLightningPaymentRequestOrNull(),
+                                                                paymentRequest = nnPaymentRequest,
                                                                 macaroon = macaroon.toMacaroon()!!,
                                                                 issuer = issuer.toLsatIssuer()!!,
                                                                 id = lspIdentifier,
@@ -694,8 +698,7 @@ class WebAppViewModel {
                                                         }
                                                     }
                                                 } catch (e: Exception) {
-                                                    // Handle exception
-                                                }
+                                                    println("LSAT: Exception during payInvoice with routing: ${e.message}")                                                }
                                             }
                                         }
                                     }
