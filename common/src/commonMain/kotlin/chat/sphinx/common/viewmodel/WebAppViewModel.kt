@@ -68,7 +68,9 @@ class WebAppViewModel {
     private val sendPaymentBuilder = SendPayment.Builder()
 
     private var password = generatePassword()
-    private var budget: Int? = null
+
+    private val _budgetStateFlow: MutableStateFlow<Int> = MutableStateFlow(0)
+    val budgetStateFlow: StateFlow<Int> get() = _budgetStateFlow.asStateFlow()
 
     var callback: ((String) -> Unit)? = null
 
@@ -276,32 +278,26 @@ class WebAppViewModel {
         }
     }
 
-    fun processSetBudget() {
+    fun processSetBudget(amount: Int) {
         closeAuthorizeView()
-
         viewModelScope.launch(dispatchers.mainImmediate) {
             delay(1000L)
 
-            _webViewStateFlow?.value?.let { url ->
+            getOwner().nodePubKey?.value?.let { pubkey ->
+                _budgetStateFlow.value = amount
+                println("Budget set to $amount")
 
-                getOwner().nodePubKey?.value?.let { pubkey ->
-                    budget = (budget ?: 0) + (budgetState ?: 0)
+                val message = BridgeMessage(
+                    pubkey = pubkey,
+                    type = TYPE_SETBUDGET,
+                    password = password,
+                    application = APPLICATION_NAME,
+                    budget = amount,
+                    signature = null
+                ).toJson()
 
-                    val message = BridgeMessage(
-                        pubkey = pubkey,
-                        type = TYPE_SETBUDGET,
-                        password = password,
-                        application = APPLICATION_NAME,
-                        budget = (budgetState ?: 0),
-                        signature = null
-                    ).toJson()
-
-                    callback?.let {
-                        it(message)
-                    }
-
-                    callback = null
-                }
+                callback?.let { it(message) }
+                callback = null
             }
         }
     }
@@ -474,7 +470,7 @@ class WebAppViewModel {
             TYPE_GETBUDGET,
             APPLICATION_NAME,
             password,
-            budget ?: 0,
+            budgetStateFlow.value ?: 0,
             true
         ).toJson()
 
@@ -507,16 +503,16 @@ class WebAppViewModel {
         }
     }
 
-    private fun checkCanPay(
-        amount: Int
-    ) : Boolean {
-        if (amount == -1) {
-            return false
-        }
-        if (budget != null && budget!! >= amount) {
-            budget = budget!! - amount
+    private fun checkCanPay(amount: Int): Boolean {
+        val currentBudget = _budgetStateFlow.value
+        println("Checking if can pay: budget=$currentBudget, amount=$amount")
+        if (amount == -1) return false
+        if (currentBudget >= amount) {
+            _budgetStateFlow.value = currentBudget - amount
+            println("Budget after payment: ${_budgetStateFlow.value}")
             return true
         }
+        println("Cannot pay: budget too low")
         return false
     }
 
@@ -596,111 +592,151 @@ class WebAppViewModel {
         val paymentRequest = lSatMessage.paymentRequest.toLightningPaymentRequestOrNull()?.let {
             Bolt11.decode(it)
         }
-        val isBudgetSufficient = paymentRequest?.getSatsAmount()?.value?.toInt()?.let { checkCanPay(it) } ?: false
 
-        if (isBudgetSufficient) {
+        val paymentAmount = paymentRequest?.getSatsAmount()
+        val requestedAmount = paymentAmount?.value?.toInt()
+        val budget = budgetStateFlow.value
+
+
+        val isAmountValid = paymentAmount != null
+        val isBudgetSufficient = budget >= (paymentAmount?.value ?: 0)
+        val areRequiredFieldsPresent = lSatMessage.paymentRequest.isNotEmpty() && macaroon.isNotEmpty() && issuer.isNotEmpty()
+
+
+        if (isAmountValid && isBudgetSufficient && areRequiredFieldsPresent) {
+
             val identifier = connectManagerRepository.getIdFromMacaroon(macaroon)?.toLsatIdentifier()
 
             identifier?.let { lspIdentifier ->
                 val identifierDbRecord = chatRepository.getLsatByIdentifier(lspIdentifier).firstOrNull()
 
                 if (identifierDbRecord == null) {
+
                     val invoice = connectManagerRepository.getInvoiceInfo(lSatMessage.paymentRequest)?.toInvoiceBolt11()
+
                     val invoiceAmount = invoice?.getSatsAmount()?.value
                     val invoicePubKey = invoice?.getPubKey()
                     val paymentHash = invoice?.payment_hash
 
-                    if (invoicePubKey != null && paymentHash != null && invoiceAmount != null) {
+
+                    if (invoicePubKey != null && paymentHash != null && invoiceAmount != null && invoiceAmount <= budget) {
+
                         val routerUrl = connectManagerRepository.retrieveRouterUrl()
                         val routerPubKey = connectManagerRepository.retrieveRouterPubKey()
+
 
                         if (routerUrl != null) {
                             viewModelScope.launch {
                                 if (invoice.retrieveLspPubKey() == contactRepository.accountOwner.value?.routeHint?.getLspPubKey()) {
-                                    val nnPaymentRequest =
-                                        lSatMessage.paymentRequest.toLightningPaymentRequestOrNull() ?: return@launch
+                                    val nnPaymentRequest = lSatMessage.paymentRequest.toLightningPaymentRequestOrNull() ?: return@launch
 
-                                    println("LSAT: Sending payInvoice without routing info (LSP match)")
+                                    try {
+                                        connectManagerRepository.payInvoice(
+                                            paymentRequest = nnPaymentRequest,
+                                            null,
+                                            null,
+                                            milliSatAmount = convertToMilliSat(invoiceAmount),
+                                            paymentHash = paymentHash,
+                                        )
 
-                                    connectManagerRepository.payInvoice(
-                                        paymentRequest = nnPaymentRequest,
-                                        null,
-                                        null,
-                                        milliSatAmount = convertToMilliSat(invoiceAmount),
-                                        paymentHash = paymentHash,
-                                    )
-                                    connectManagerRepository.webViewPreImage.collect { preimage ->
-                                        if (preimage?.isNotEmpty() == true) {
 
-                                            val lsatToSave = Lsat(
-                                                paymentRequest = nnPaymentRequest,
-                                                macaroon = macaroon.toMacaroon()!!,
-                                                issuer = issuer.toLsatIssuer(),
-                                                id = lspIdentifier,
-                                                preimage = preimage.toLsatPreImage(),
-                                                status = LsatStatus.Active,
-                                                createdAt = DateTime.nowUTC().toDateTime(),
-                                                paths = null,
-                                                metaData = null
-                                            )
+                                        connectManagerRepository.webViewPreImage.collect { preimage ->
+                                            if (preimage?.isNotEmpty() == true) {
 
-                                            chatRepository.upsertLsat(lsatToSave)
-                                            connectManagerRepository.clearWebViewPreImage()
+                                                val lsatToSave = Lsat(
+                                                    paymentRequest = nnPaymentRequest,
+                                                    macaroon = macaroon.toMacaroon()!!,
+                                                    issuer = issuer.toLsatIssuer()!!,
+                                                    id = lspIdentifier,
+                                                    preimage = preimage.toLsatPreImage(),
+                                                    status = LsatStatus.Active,
+                                                    createdAt = DateTime.nowUTC().toDateTime(),
+                                                    paths = null,
+                                                    metaData = null
+                                                )
 
-                                            sendLsatSuccess(macaroon, preimage)
-                                        }
-                                    }
-                                } else {
-                                    networkQueryContact.getRoutingNodes(
-                                        routerUrl,
-                                        invoicePubKey,
-                                        convertToMilliSat(invoiceAmount)
-                                    ).collect { response ->
-                                        when (response) {
-                                            is LoadResponse.Loading -> {}
-                                            is Response.Error -> {}
-                                            is Response.Success -> {
-                                                try {
-                                                    val nnPaymentRequest =
-                                                        lSatMessage.paymentRequest.toLightningPaymentRequestOrNull()
-                                                            ?: return@collect
+                                                chatRepository.upsertLsat(lsatToSave)
+                                                connectManagerRepository.clearWebViewPreImage()
 
-                                                    println("LSAT: Sending payInvoice with routing info and routerPubKey: $routerPubKey")
+                                                sendLsatSuccess(macaroon, preimage)
 
-                                                    connectManagerRepository.payInvoice(
-                                                        paymentRequest = nnPaymentRequest,
-                                                        response.value,
-                                                        routerPubKey,
-                                                        milliSatAmount = convertToMilliSat(
-                                                            invoiceAmount
-                                                        ),
-                                                        paymentHash = paymentHash,
-                                                    )
-                                                    connectManagerRepository.webViewPreImage.collect { preimage ->
-                                                        if (preimage?.isNotEmpty() == true) {
-
-                                                            val lsatToSave = Lsat(
-                                                                paymentRequest = nnPaymentRequest,
-                                                                macaroon = macaroon.toMacaroon()!!,
-                                                                issuer = issuer.toLsatIssuer()!!,
-                                                                id = lspIdentifier,
-                                                                preimage = preimage.toLsatPreImage(),
-                                                                status = LsatStatus.Active,
-                                                                createdAt = DateTime.nowUTC().toDateTime(),
-                                                                paths = null,
-                                                                metaData = null
-                                                            )
-
-                                                            chatRepository.upsertLsat(lsatToSave)
-                                                            connectManagerRepository.clearWebViewPreImage()
-
-                                                            sendLsatSuccess(macaroon, preimage)
-                                                        }
-                                                    }
-                                                } catch (e: Exception) {
-                                                    println("LSAT: Exception during payInvoice with routing: ${e.message}")                                                }
+                                                // Exit the collection after successful processing
+                                                return@collect
                                             }
                                         }
+                                    } catch (e: Exception) {
+                                        sendLsatFailure()
+                                    }
+                                } else {
+                                    try {
+                                        networkQueryContact.getRoutingNodes(
+                                            routerUrl,
+                                            invoicePubKey,
+                                            convertToMilliSat(invoiceAmount)
+                                        ).collect { response ->
+
+                                            when (response) {
+                                                is LoadResponse.Loading -> {
+                                                }
+                                                is Response.Error -> {
+                                                    sendLsatFailure()
+                                                }
+                                                is Response.Success -> {
+
+                                                    // Validate routing nodes before proceeding
+                                                    if (response.value.isEmpty()) {
+                                                        sendLsatFailure()
+                                                        return@collect
+                                                    }
+                                                    try {
+                                                        val nnPaymentRequest = lSatMessage.paymentRequest.toLightningPaymentRequestOrNull()
+                                                        if (nnPaymentRequest == null) {
+//                                                            sendLsatFailure()
+                                                            return@collect
+                                                        }
+
+
+                                                        connectManagerRepository.payInvoice(
+                                                            paymentRequest = nnPaymentRequest,
+                                                            response.value,
+                                                            routerPubKey,
+                                                            milliSatAmount = convertToMilliSat(invoiceAmount),
+                                                            paymentHash = paymentHash,
+                                                        )
+
+
+                                                        connectManagerRepository.webViewPreImage.collect { preimage ->
+                                                            if (preimage?.isNotEmpty() == true) {
+
+                                                                val lsatToSave = Lsat(
+                                                                    paymentRequest = nnPaymentRequest,
+                                                                    macaroon = macaroon.toMacaroon()!!,
+                                                                    issuer = issuer.toLsatIssuer()!!,
+                                                                    id = lspIdentifier,
+                                                                    preimage = preimage.toLsatPreImage(),
+                                                                    status = LsatStatus.Active,
+                                                                    createdAt = DateTime.nowUTC().toDateTime(),
+                                                                    paths = null,
+                                                                    metaData = null
+                                                                )
+
+                                                                chatRepository.upsertLsat(lsatToSave)
+                                                                connectManagerRepository.clearWebViewPreImage()
+
+                                                                sendLsatSuccess(macaroon, preimage)
+
+                                                                // Exit the collection after successful processing
+                                                                return@collect
+                                                            }
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        sendLsatFailure()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        sendLsatFailure()
                                     }
                                 }
                             }
@@ -713,7 +749,9 @@ class WebAppViewModel {
                 } else {
                     sendLsatFailure()
                 }
-            } ?: sendLsatFailure()
+            } ?: run {
+                sendLsatFailure()
+            }
         } else {
             sendLsatFailure()
         }
@@ -724,7 +762,7 @@ class WebAppViewModel {
             TYPE_LSAT,
             APPLICATION_NAME,
             1,
-            budget,
+            budgetStateFlow.value,
             password,
             lsat = retrieveLsatString(macaroon, preimage)
         ).toJson()

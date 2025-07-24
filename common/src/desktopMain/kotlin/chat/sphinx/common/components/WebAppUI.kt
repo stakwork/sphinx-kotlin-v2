@@ -163,10 +163,14 @@ fun AuthorizeViewUI(
     budgetField: Boolean
 ) {
     var isOpen by remember { mutableStateOf(true) }
+    var budgetInput by remember { mutableStateOf("") }
 
     if (isOpen) {
         Window(
-            onCloseRequest = { webAppViewModel.closeAuthorizeView() },
+            onCloseRequest = {
+                webAppViewModel.closeAuthorizeView()
+                isOpen = false
+            },
             title = if (budgetField) "Set Budget" else "Authorize",
             state = WindowState(
                 position = WindowPosition.Aligned(Alignment.Center),
@@ -182,44 +186,57 @@ fun AuthorizeViewUI(
                     .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant),
             ) {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(30.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(30.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Top
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().height(55.dp),
+                        Modifier
+                            .fillMaxWidth()
+                            .height(55.dp),
                         horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        content = {
-                            Icon(
-                                Icons.Default.VerifiedUser,
-                                contentDescription = "Verified",
-                                tint = primary_blue,
-                                modifier = Modifier.size(55.dp)
-                            )
-                        }
-                    )
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.VerifiedUser,
+                            contentDescription = "Verified",
+                            tint = primary_blue,
+                            modifier = Modifier.size(55.dp)
+                        )
+                    }
+
                     Text(
                         text = "AUTHORIZE",
                         fontSize = 20.sp,
                         color = sphinx_action_menu,
                         fontWeight = FontWeight.W400,
                         fontFamily = Roboto,
-                        modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 15.dp),
                         textAlign = TextAlign.Center
                     )
+
                     Text(
-                        text = (webAppViewModel.authorizeViewStateFlow.value as? AuthorizeViewState.Opened)?.url ?: "second-brain.sphinx.chat",
+                        text = (webAppViewModel.authorizeViewStateFlow.value as? AuthorizeViewState.Opened)?.url
+                            ?: "second-brain.sphinx.chat",
                         fontSize = 17.sp,
                         color = md_theme_dark_tertiary,
                         fontWeight = FontWeight.W400,
                         fontFamily = Roboto,
-                        modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 20.dp, bottom = 10.dp),
                         textAlign = TextAlign.Center
                     )
+
                     if (budgetField) {
                         Column(
-                            modifier = Modifier.fillMaxWidth().height(170.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(170.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Top
                         ) {
@@ -229,16 +246,21 @@ fun AuthorizeViewUI(
                                 color = sphinx_action_menu,
                                 fontWeight = FontWeight.W400,
                                 fontFamily = Roboto,
-                                modifier = Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 15.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 15.dp, bottom = 15.dp),
                                 textAlign = TextAlign.Center
                             )
+
                             OutlinedTextField(
                                 shape = RoundedCornerShape(28.dp),
-                                value = webAppViewModel.budgetState?.toString() ?: "",
+                                value = budgetInput,
                                 onValueChange = {
-                                    webAppViewModel.onAmountTextChanged(it)
+                                    budgetInput = it.filter { ch -> ch.isDigit() }
                                 },
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
                                 textStyle = TextStyle(
                                     textAlign = TextAlign.Center,
                                     color = Color.White,
@@ -262,30 +284,38 @@ fun AuthorizeViewUI(
                                     cursorColor = primary_blue
                                 )
                             )
+
                             Text(
                                 text = "sats before reauthorizing",
                                 fontSize = 15.sp,
                                 color = sphinx_action_menu,
                                 fontWeight = FontWeight.W400,
                                 fontFamily = Roboto,
-                                modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 15.dp),
                                 textAlign = TextAlign.Center
                             )
                         }
                     } else {
                         Spacer(modifier = Modifier.height(50.dp))
                     }
+
                     Column(
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Bottom
                     ) {
                         CommonButton("AUTHORIZE", fontWeight = FontWeight.W500) {
                             if (budgetField) {
-                                webAppViewModel.processSetBudget()
+                                val amount = budgetInput.toIntOrNull() ?: 0
+                                webAppViewModel.processSetBudget(amount)
                             } else {
                                 webAppViewModel.processAuthorize()
                             }
+                            isOpen = false
                         }
                     }
                 }
