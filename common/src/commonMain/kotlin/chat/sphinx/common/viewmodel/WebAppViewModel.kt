@@ -8,6 +8,8 @@ import chat.sphinx.common.state.AuthorizeViewState
 import chat.sphinx.concepts.network.query.contact.model.PersonDataDto
 import chat.sphinx.concepts.network.query.lightning.model.lightning.*
 import chat.sphinx.concepts.network.query.message.model.PutPaymentRequestDto
+import chat.sphinx.concepts.network.query.webview.SphinxWebViewDto
+import chat.sphinx.concepts.network.query.webview.toSphinxWebViewDtoOrNull
 import chat.sphinx.concepts.repository.message.model.SendPayment
 import chat.sphinx.crypto.common.annotations.RawPasswordAccess
 import chat.sphinx.crypto.common.clazzes.PasswordGenerator
@@ -22,6 +24,7 @@ import chat.sphinx.wrapper.lightning.LightningNodePubKey
 import chat.sphinx.wrapper.lightning.getLspPubKey
 import chat.sphinx.wrapper.lightning.toLightningPaymentRequestOrNull
 import chat.sphinx.wrapper.lsat.*
+import chat.sphinx.wrapper.mqtt.InvoiceBolt11
 import chat.sphinx.wrapper.mqtt.InvoiceBolt11.Companion.toInvoiceBolt11
 import chat.sphinx.wrapper.toDateTime
 import com.multiplatform.webview.jsbridge.IJsMessageHandler
@@ -33,12 +36,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
+import org.jetbrains.skia.impl.Log
 import uniffi.sphinxrs.makeInvite
 
 class WebAppViewModel {
     val scope = SphinxContainer.appModule.applicationScope
     val dispatchers = SphinxContainer.appModule.dispatchers
-    private val viewModelScope = SphinxContainer.appModule.applicationScope
+    val viewModelScope = SphinxContainer.appModule.applicationScope
     private val sphinxNotificationManager = createSphinxNotificationManager()
     private val contactRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).contactRepository
     private val lightningRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).lightningRepository
@@ -47,27 +51,15 @@ class WebAppViewModel {
     private val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
     private val networkQueryContact = SphinxContainer.repositoryModule(sphinxNotificationManager).networkQueryContact
 
-    companion object {
-        const val APPLICATION_NAME = "Sphinx"
-
-        const val TYPE_AUTHORIZE = "AUTHORIZE"
-        const val TYPE_SETBUDGET = "SETBUDGET"
-        const val TYPE_GETBUDGET = "GETBUDGET"
-        const val TYPE_LSAT = "LSAT"
-        const val TYPE_GETLSAT = "GETLSAT"
-        const val TYPE_SIGN = "SIGN"
-        const val TYPE_KEYSEND = "KEYSEND"
-        const val TYPE_UPDATELSAT = "UPDATELSAT"
-        const val TYPE_PAYMENT = "PAYMENT"
-        const val TYPE_UPDATED = "UPDATED"
-        const val TYPE_GETPERSONDATA = "GETPERSONDATA"
-        const val TYPE_GET_SECOND_BRAIN_LIST = "GETSECONDBRAINLIST"
-    }
+    // Main StateFlow for WebView DTO (similar to Android)
+    private val _sphinxWebViewDtoStateFlow: MutableStateFlow<SphinxWebViewDto?> = MutableStateFlow(null)
+    val sphinxWebViewDtoStateFlow: StateFlow<SphinxWebViewDto?> = _sphinxWebViewDtoStateFlow.asStateFlow()
 
     private val sendPaymentBuilder = SendPayment.Builder()
-
     private var password = generatePassword()
-    private var budget: Int? = null
+
+    private val _budgetStateFlow: MutableStateFlow<Int> = MutableStateFlow(0)
+    val budgetStateFlow: StateFlow<Int> get() = _budgetStateFlow.asStateFlow()
 
     var callback: ((String) -> Unit)? = null
 
@@ -89,10 +81,61 @@ class WebAppViewModel {
     val webViewStateFlow: StateFlow<String?>
         get() = _webViewStateFlow.asStateFlow()
 
-    fun toggleWebAppWindow(
-        open: Boolean,
-        url: String?
-    ) {
+    val authorizeViewStateFlow: StateFlow<AuthorizeViewState>
+        get() = _authorizeViewStateFlow.asStateFlow()
+
+    var budgetState: Int? by mutableStateOf(null)
+
+    init {
+        handleWebAppJson()
+    }
+
+    // Central handler for WebView DTO messages (similar to Android's handleWebAppJson)
+    private fun handleWebAppJson() {
+        viewModelScope.launch(dispatchers.mainImmediate) {
+            sphinxWebViewDtoStateFlow.collect { dto ->
+                println("Collecting DTO: $dto")
+                when (dto?.type) {
+                    SphinxWebViewDto.TYPE_AUTHORIZE -> {
+                        openAuthorizeView()
+                    }
+                    SphinxWebViewDto.TYPE_GET_LSAT -> {
+                        processGetLsat()
+                    }
+                    SphinxWebViewDto.TYPE_SET_BUDGET -> {
+                        toggleSetBudgetView()
+                    }
+                    SphinxWebViewDto.TYPE_SIGN -> {
+                        processSign()
+                    }
+                    SphinxWebViewDto.TYPE_LSAT -> {
+                        processLsat()
+                    }
+                    SphinxWebViewDto.TYPE_KEYSEND -> {
+                        sendKeysend()
+                    }
+                    SphinxWebViewDto.TYPE_PAYMENT -> {
+                        processPayment()
+                    }
+                    SphinxWebViewDto.TYPE_UPDATE_LSAT -> {
+                        processUpdateLsat()
+                    }
+                    SphinxWebViewDto.TYPE_GET_PERSON_DATA -> {
+                        processGetPersonData()
+                    }
+                    SphinxWebViewDto.TYPE_GET_BUDGET -> {
+                        processGetBudget()
+                    }
+                    SphinxWebViewDto.TYPE_GET_SECOND_BRAIN_LIST -> {
+                        processGetSecondBrainList()
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    fun toggleWebAppWindow(open: Boolean, url: String?) {
         if (_webAppWindowStateFlow.value != open) {
             _webAppWindowStateFlow.value = open
         }
@@ -104,16 +147,10 @@ class WebAppViewModel {
 
         viewModelScope.launch(dispatchers.io) {
             delay(1000L)
-
             toggleWebViewWindow(url)
         }
         toast("WebView is not available at the moment")
     }
-
-    val authorizeViewStateFlow: StateFlow<AuthorizeViewState>
-        get() = _authorizeViewStateFlow.asStateFlow()
-
-    var budgetState: Int? by mutableStateOf(null)
 
     fun onAmountTextChanged(text: String) {
         var amount: Int? = try {
@@ -129,14 +166,14 @@ class WebAppViewModel {
     }
 
     private fun openAuthorizeView() {
-        _webViewStateFlow?.value?.let { url ->
+        _webViewStateFlow.value?.let { url ->
             val formattedUrl = url.replace("http://", "").replace("https://", "")
             _authorizeViewStateFlow.value = AuthorizeViewState.Opened(formattedUrl, false)
         }
     }
 
     private fun toggleSetBudgetView() {
-        _webViewStateFlow?.value?.let { url ->
+        _webViewStateFlow.value?.let { url ->
             val formattedUrl = url.replace("http://", "").replace("https://", "")
             _authorizeViewStateFlow.value = AuthorizeViewState.Opened(formattedUrl, true)
         }
@@ -146,95 +183,23 @@ class WebAppViewModel {
         _authorizeViewStateFlow.value = AuthorizeViewState.Closed()
     }
 
-    val customWebViewNavigator : WebViewNavigator
-        get() {
-            return WebViewNavigator(CoroutineScope(Dispatchers.IO))
-        }
+    val customWebViewNavigator: WebViewNavigator
+        get() = WebViewNavigator(CoroutineScope(Dispatchers.IO))
 
-    val customJsBridge : WebViewJsBridge
-        get() {
-            return WebViewJsBridge(customWebViewNavigator)
-        }
+    val customJsBridge: WebViewJsBridge
+        get() = WebViewJsBridge(customWebViewNavigator)
 
-    fun onJsBridgeMessageReceived(
-        message: JsMessage,
-        callback: (String) -> Unit
-    ) {
+    // Main entry point for JS messages - now updates the StateFlow instead of direct processing
+    fun onJsBridgeMessageReceived(message: JsMessage, callback: (String) -> Unit) {
         this.callback = callback
-
         println("MESSAGE RECEIVED: $message")
 
         viewModelScope.launch(dispatchers.mainImmediate) {
-
-            message.params.toBridgeAuthorizeMessageOrNull()?.let {
-                if (it.type == TYPE_AUTHORIZE) {
-                    openAuthorizeView()
-                }
-            }
-
-            message.params.toBridgeSetBudgetMessageOrNull()?.let {
-                if (it.type == TYPE_SETBUDGET) {
-                    toggleSetBudgetView()
-                }
-            }
-
-            message.params.toBridgeGetLSATMessageOrNull()?.let {
-                if (it.type == TYPE_GETLSAT) {
-                    processGetLsat(it)
-                }
-            }
-
-            message.params.toBridgeSignMessageOrNull()?.let {
-                if (it.type == TYPE_SIGN) {
-                    processSign(it)
-                }
-            }
-
-            message.params.toBridgeKeysendMessageOrNull()?.let {
-                if (it.type == TYPE_KEYSEND) {
-                    sendKeysend(it)
-                }
-            }
-
-            message.params.toBridgeGetBudgetMessageOrNull()?.let {
-                if (it.type == TYPE_GETBUDGET) {
-                    processGetBudget()
-                }
-            }
-
-            message.params.toBridgeLSatMessageOrNull()?.let {
-                if (it.type == TYPE_LSAT) {
-                    processLsat(it)
-                }
-            }
-
-            message.params.toBridgeUpdateLSatMessageOrNull()?.let {
-                if (it.type == TYPE_UPDATELSAT) {
-                    processUpdateLsat(it)
-                }
-            }
-
-            message.params.toBridgePaymentMessageOrNull()?.let {
-                if (it.type == TYPE_PAYMENT) {
-                    sendPayment(it)
-                }
-            }
-
-            message.params.toBridgeUpdatedMessageOrNull()?.let {
-                if (it.type == TYPE_UPDATED) {
-                    sendUpdatedMessage()
-                }
-            }
-
-            message.params.toBridgeGetPersonDataMessageOrNull()?.let {
-                if (it.type == TYPE_GETPERSONDATA) {
-                    getPersonData()
-                }
-            }
-            message.params.toSendSecondBrainListDataOrNull()?.let {
-                if (it.type == TYPE_GET_SECOND_BRAIN_LIST) {
-                    processGetSecondBrainList(it)
-                }
+            // Parse the message and update the StateFlow
+            message.params.toSphinxWebViewDtoOrNull()?.let { dto ->
+                _sphinxWebViewDtoStateFlow.value = dto
+            } ?: run {
+                println("Failed to parse message: ${message.params}")
             }
         }
     }
@@ -247,66 +212,52 @@ class WebAppViewModel {
 
     fun processAuthorize() {
         closeAuthorizeView()
-
         viewModelScope.launch(dispatchers.mainImmediate) {
             delay(1000L)
+            getOwner().nodePubKey?.value?.let { pubkey ->
+                password = generatePassword()
 
-            _webViewStateFlow?.value?.let { url ->
+                val message = BridgeMessage(
+                    budget = null,
+                    pubkey = pubkey,
+                    type = SphinxWebViewDto.TYPE_AUTHORIZE,
+                    password = password,
+                    application = SphinxWebViewDto.APPLICATION_NAME,
+                    signature = null
+                ).toJson()
 
-                getOwner().nodePubKey?.value?.let { pubkey ->
-                    password = generatePassword()
-
-                    val message = BridgeMessage(
-                        budget = null,
-                        pubkey = pubkey,
-                        type = TYPE_AUTHORIZE,
-                        password = password,
-                        application = APPLICATION_NAME,
-                        signature = null
-                    ).toJson()
-
-                    callback?.let {
-                        it(message)
-                    }
-
-                    callback = null
-                }
+                callback?.invoke(message)
+                callback = null
             }
         }
     }
 
-    fun processSetBudget() {
+    fun processSetBudget(amount: Int) {
         closeAuthorizeView()
-
         viewModelScope.launch(dispatchers.mainImmediate) {
             delay(1000L)
+            getOwner().nodePubKey?.value?.let { pubkey ->
+                _budgetStateFlow.value = amount
+                println("Budget set to $amount")
 
-            _webViewStateFlow?.value?.let { url ->
+                val message = BridgeMessage(
+                    pubkey = pubkey,
+                    type = SphinxWebViewDto.TYPE_SET_BUDGET,
+                    password = password,
+                    application = SphinxWebViewDto.APPLICATION_NAME,
+                    budget = amount,
+                    signature = null
+                ).toJson()
 
-                getOwner().nodePubKey?.value?.let { pubkey ->
-                    budget = (budget ?: 0) + (budgetState ?: 0)
-
-                    val message = BridgeMessage(
-                        pubkey = pubkey,
-                        type = TYPE_SETBUDGET,
-                        password = password,
-                        application = APPLICATION_NAME,
-                        budget = (budgetState ?: 0),
-                        signature = null
-                    ).toJson()
-
-                    callback?.let {
-                        it(message)
-                    }
-
-                    callback = null
-                }
+                callback?.invoke(message)
+                callback = null
             }
         }
     }
 
-    private suspend fun processGetLsat(getLSATMessage: BridgeGetLSATMessage) {
-        val issuer = getLSATMessage.issuer?.toLsatIssuer()
+    private suspend fun processGetLsat() {
+        val webViewDto = sphinxWebViewDtoStateFlow.value
+        val issuer = webViewDto?.issuer?.toLsatIssuer()
 
         val lastLsat = if (issuer != null) {
             chatRepository.getLastLsatByIssuer(issuer).firstOrNull()
@@ -314,12 +265,12 @@ class WebAppViewModel {
             chatRepository.getLastLsatActive().firstOrNull()
         }
 
-        this.password = generatePassword()
+        password = generatePassword()
 
         val message = if (lastLsat != null) {
             SendActiveLSatMessage(
-                type = TYPE_GETLSAT,
-                application = APPLICATION_NAME,
+                type = SphinxWebViewDto.TYPE_GET_LSAT,
+                application = SphinxWebViewDto.APPLICATION_NAME,
                 password = password,
                 macaroon = lastLsat.macaroon.value,
                 paymentRequest = lastLsat.paymentRequest!!.value,
@@ -332,374 +283,124 @@ class WebAppViewModel {
             ).toJson()
         } else {
             SendActiveLSatFailedMessage(
-                type = TYPE_GETLSAT,
-                application = APPLICATION_NAME,
+                type = SphinxWebViewDto.TYPE_GET_LSAT,
+                application = SphinxWebViewDto.APPLICATION_NAME,
                 password = password,
                 success = 0,
-                issuer = issuer?.value!!
+                issuer = issuer?.value ?: ""
             ).toJson()
         }
 
-        callback?.let {
-            it(message)
-        }
+        callback?.invoke(message)
         callback = null
     }
 
-    private fun processSign(bridgeSignMessage: BridgeSignMessage) {
-        val signature = connectManagerRepository.signChallenge(bridgeSignMessage.message)
+    private fun processSign() {
+        val webViewDto = sphinxWebViewDtoStateFlow.value
+        val message = webViewDto?.message
+        val signature = message?.let { connectManagerRepository.signChallenge(it) }
 
-        if (signature != null) {
-            val message = SendSignMessage(
-                TYPE_SIGN,
-                APPLICATION_NAME,
+        val responseMessage = if (signature != null) {
+            SendSignMessage(
+                SphinxWebViewDto.TYPE_SIGN,
+                SphinxWebViewDto.APPLICATION_NAME,
                 password,
                 signature,
                 1
             ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-            callback = null
         } else {
-            val message = SendFailedSignMessage(
-                TYPE_SIGN,
-                APPLICATION_NAME,
+            SendFailedSignMessage(
+                SphinxWebViewDto.TYPE_SIGN,
+                SphinxWebViewDto.APPLICATION_NAME,
                 password,
                 0
             ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
         }
+
+        callback?.invoke(responseMessage)
+        callback = null
     }
 
+    private suspend fun sendKeysend() {
+        val webViewDto = sphinxWebViewDtoStateFlow.value
+        val dest = webViewDto?.dest
+        val amt = webViewDto?.amt
 
-//    private fun sendActiveLSAT(
-//        activeLSatDto: ActiveLsatDto?,
-//        success: Boolean
-//    ) {
-//        activeLSatDto?.let {
-//            this.password = generatePassword()
-//
-//            val message = SendActiveLSatMessage(
-//                TYPE_GETLSAT,
-//                APPLICATION_NAME,
-//                password,
-//                it.macaroon,
-//                it.paymentRequest,
-//                it.preimage,
-//                it.identifier,
-//                success,
-//                it.status,
-//                it.paths ?: ""
-//            ).toJson()
-//
-//            callback?.let {
-//                it(message)
-//            }
-//
-//            callback = null
-//        } ?: run {
-//            this.password = generatePassword()
-//
-//            val message = SendActiveLSatFailedMessage(
-//                TYPE_GETLSAT,
-//                APPLICATION_NAME,
-//                password,
-//                success
-//            ).toJson()
-//
-//            callback?.let {
-//                it(message)
-//            }
-//
-//            callback = null
-//        }
-//    }
-
-    private suspend fun signChallenge(
-        bridgeSignMessage: BridgeSignMessage
-    ) {
-        lightningRepository.signChallenge(bridgeSignMessage.message).collect { loadResponse: LoadResponse<SignChallengeDto, ResponseError> ->
-            Exhaustive@
-            when (loadResponse) {
-                is LoadResponse.Loading -> {}
-                is Response.Error -> {
-//                    sendActiveLSAT(null, false)
-                }
-                is Response.Success -> {
-                    (loadResponse.value as? SignChallengeDto)?.let {
-//                        sendSignMessage(it, true)
-                    } ?: run {
-//                        sendSignMessage(null, true)
-                    }
-                }
-            }
-        }
-    }
-
-    private suspend fun sendKeysend(
-        keysendMessage: BridgeKeysendMessage
-    ) {
-        if (checkCanPay(keysendMessage.amt)) {
-            sendPaymentBuilder.setAmount(keysendMessage.amt.toLong())
-            sendPaymentBuilder.setDestinationKey(LightningNodePubKey(keysendMessage.dest))
+        if (dest != null && amt != null && checkCanPay(amt)) {
+            sendPaymentBuilder.setAmount(amt.toLong())
+            sendPaymentBuilder.setDestinationKey(LightningNodePubKey(dest))
 
             val sendPayment = sendPaymentBuilder.build()
-            val response : Response<Any, ResponseError> = messageRepository.sendPayment(sendPayment)
+            val response: Response<Any, ResponseError> = messageRepository.sendPayment(sendPayment)
 
-            when (response) {
-                is Response.Error -> {
-                    sendKeysendMessage(keysendMessage, false)
-                }
-                is Response.Success -> {
-                    sendKeysendMessage(keysendMessage, true)
-                }
+            val success = when (response) {
+                is Response.Error -> false
+                is Response.Success -> true
             }
+
+            sendKeysendMessage(success)
         } else {
-            sendKeysendMessage(keysendMessage, false)
+            sendKeysendMessage(false)
         }
     }
 
     private fun processGetBudget() {
-        this.password = generatePassword()
+        password = generatePassword()
 
         val message = SendGetBudgetMessage(
-            TYPE_GETBUDGET,
-            APPLICATION_NAME,
+            SphinxWebViewDto.TYPE_GET_BUDGET,
+            SphinxWebViewDto.APPLICATION_NAME,
             password,
-            budget ?: 0,
+            budgetStateFlow.value,
             true
         ).toJson()
 
-        callback?.let {
-            it(message)
-        }
-
+        callback?.invoke(message)
         callback = null
     }
 
-    private fun sendKeysendMessage(
-        keysendMessage: BridgeKeysendMessage,
-        success: Boolean
-    ) {
-        keysendMessage?.let {
-            this.password = generatePassword()
+    private suspend fun processLsat() {
+        val webViewDto = sphinxWebViewDtoStateFlow.value
+        val macaroon = webViewDto?.macaroon
+        val issuer = webViewDto?.issuer
+        val paymentRequestStr = webViewDto?.paymentRequest
 
-            val message = SendKeysendMessage(
-                TYPE_KEYSEND,
-                APPLICATION_NAME,
-                password,
-                success
-            ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
-        }
-    }
-
-    private fun checkCanPay(
-        amount: Int
-    ) : Boolean {
-        if (amount == -1) {
-            return false
-        }
-        if (budget != null && budget!! >= amount) {
-            budget = budget!! - amount
-            return true
-        }
-        return false
-    }
-
-//    private fun sendSignMessage(
-//        signChallengeDto: SignChallengeDto?,
-//        success: Boolean
-//    ) {
-//        signChallengeDto?.let {
-//            this.password = generatePassword()
-//
-//            val message = SendSignMessage(
-//                TYPE_SIGN,
-//                APPLICATION_NAME,
-//                password,
-//                it.sig,
-//                success
-//            ).toJson()
-//
-//            callback?.let {
-//                it(message)
-//            }
-//
-//            callback = null
-//        } ?: run {
-//            this.password = generatePassword()
-//
-//            val message = SendFailedSignMessage(
-//                TYPE_SIGN,
-//                APPLICATION_NAME,
-//                password,
-//                false
-//            ).toJson()
-//
-//            callback?.let {
-//                it(message)
-//            }
-//
-//            callback = null
-//        }
-//    }
-
-    private suspend fun payLSat(lSatMessage: BridgeLSatMessage) {
-        lSatMessage.paymentRequest.toLightningPaymentRequestOrNull()?.let {
-            val decodedPaymentRequest = Bolt11.decode(it)
-
-            decodedPaymentRequest.getSatsAmount()?.value?.toInt()?.let {amount ->
-                if (checkCanPay(amount)) {
-                    val payLsatSto = PayLsatDto(
-                        lSatMessage.macaroon,
-                        lSatMessage.paymentRequest,
-                        lSatMessage.issuer
-                    )
-
-                    lightningRepository.payLSat(payLsatSto).collect { loadResponse: LoadResponse<PayLsatResponseDto, ResponseError> ->
-                        Exhaustive@
-                        when (loadResponse) {
-                            is LoadResponse.Loading -> {}
-                            is Response.Error -> {
-                                sendLSat(lSatMessage, null, false)
-                            }
-                            is Response.Success -> {
-                                sendLSat(lSatMessage, loadResponse.value.lsat, true)
-                            }
-                        }
-                    }
-                } else {
-                    sendLSat(lSatMessage,null, false)
-                }
-            }
-        }
-    }
-
-    private suspend fun processLsat(lSatMessage: BridgeLSatMessage) {
-        val macaroon = lSatMessage.macaroon
-        val issuer = lSatMessage.issuer
-
-        val paymentRequest = lSatMessage.paymentRequest.toLightningPaymentRequestOrNull()?.let {
+        val paymentRequest = paymentRequestStr?.toLightningPaymentRequestOrNull()?.let {
             Bolt11.decode(it)
         }
-        val isBudgetSufficient = paymentRequest?.getSatsAmount()?.value?.toInt()?.let { checkCanPay(it) } ?: false
 
-        if (isBudgetSufficient) {
-            val identifier = connectManagerRepository.getIdFromMacaroon(macaroon)?.toLsatIdentifier()
+        val paymentAmount = paymentRequest?.getSatsAmount()
+        val requestedAmount = paymentAmount?.value?.toInt()
+        val budget = budgetStateFlow.value
+
+        val isAmountValid = paymentAmount != null
+        val isBudgetSufficient = budget >= (paymentAmount?.value ?: 0)
+        val areRequiredFieldsPresent = !paymentRequestStr.isNullOrEmpty() &&
+                !macaroon.isNullOrEmpty() &&
+                !issuer.isNullOrEmpty()
+
+        if (isAmountValid && isBudgetSufficient && areRequiredFieldsPresent) {
+            val identifier = connectManagerRepository.getIdFromMacaroon(macaroon!!)?.toLsatIdentifier()
 
             identifier?.let { lspIdentifier ->
                 val identifierDbRecord = chatRepository.getLsatByIdentifier(lspIdentifier).firstOrNull()
 
                 if (identifierDbRecord == null) {
-                    val invoice = connectManagerRepository.getInvoiceInfo(lSatMessage.paymentRequest)?.toInvoiceBolt11()
+                    val invoice = connectManagerRepository.getInvoiceInfo(paymentRequestStr!!)?.toInvoiceBolt11()
                     val invoiceAmount = invoice?.getSatsAmount()?.value
                     val invoicePubKey = invoice?.getPubKey()
                     val paymentHash = invoice?.payment_hash
 
-                    if (invoicePubKey != null && paymentHash != null && invoiceAmount != null) {
+                    if (invoicePubKey != null && paymentHash != null && invoiceAmount != null && invoiceAmount <= budget) {
                         val routerUrl = connectManagerRepository.retrieveRouterUrl()
+                        val routerPubKey = connectManagerRepository.retrieveRouterPubKey()
 
                         if (routerUrl != null) {
-                            viewModelScope.launch {
-                                if (invoice.retrieveLspPubKey() == contactRepository.accountOwner.value?.routeHint?.getLspPubKey()) {
-                                    val nnPaymentRequest =
-                                        lSatMessage.paymentRequest.toLightningPaymentRequestOrNull() ?: return@launch
-
-                                    connectManagerRepository.payInvoice(
-                                        paymentRequest = nnPaymentRequest,
-                                        null,
-                                        null,
-                                        milliSatAmount = convertToMilliSat(invoiceAmount),
-                                        paymentHash = paymentHash,
-                                    )
-                                    connectManagerRepository.webViewPreImage.collect { preimage ->
-                                        if (preimage?.isNotEmpty() == true) {
-
-                                            val lsatToSave = Lsat(
-                                                paymentRequest = nnPaymentRequest,
-                                                macaroon = macaroon.toMacaroon()!!,
-                                                issuer = issuer.toLsatIssuer(),
-                                                id = lspIdentifier,
-                                                preimage = preimage.toLsatPreImage(),
-                                                status = LsatStatus.Active,
-                                                createdAt = DateTime.nowUTC().toDateTime(),
-                                                paths = null,
-                                                metaData = null
-                                            )
-
-                                            chatRepository.upsertLsat(lsatToSave)
-                                            connectManagerRepository.clearWebViewPreImage()
-
-                                            sendLsatSuccess(macaroon, preimage)
-                                        }
-                                    }
-                                } else {
-                                    networkQueryContact.getRoutingNodes(
-                                        routerUrl,
-                                        invoicePubKey,
-                                        convertToMilliSat(invoiceAmount)
-                                    ).collect { response ->
-                                        when (response) {
-                                            is LoadResponse.Loading -> {}
-                                            is Response.Error -> {}
-                                            is Response.Success -> {
-                                                try {
-                                                    val routerPubKey = connectManagerRepository.retrieveRouterPubKey()
-
-                                                    val nnPaymentRequest =
-                                                        lSatMessage.paymentRequest.toLightningPaymentRequestOrNull()
-                                                            ?: return@collect
-
-                                                    connectManagerRepository.payInvoice(
-                                                        paymentRequest = nnPaymentRequest,
-                                                        response.value,
-                                                        routerPubKey,
-                                                        milliSatAmount = convertToMilliSat(
-                                                            invoiceAmount
-                                                        ),
-                                                        paymentHash = paymentHash,
-                                                    )
-                                                    connectManagerRepository.webViewPreImage.collect { preimage ->
-                                                        if (preimage?.isNotEmpty() == true) {
-
-                                                            val lsatToSave = Lsat(
-                                                                paymentRequest = lSatMessage.paymentRequest.toLightningPaymentRequestOrNull(),
-                                                                macaroon = macaroon.toMacaroon()!!,
-                                                                issuer = issuer.toLsatIssuer()!!,
-                                                                id = lspIdentifier,
-                                                                preimage = preimage.toLsatPreImage(),
-                                                                status = LsatStatus.Active,
-                                                                createdAt = DateTime.nowUTC().toDateTime(),
-                                                                paths = null,
-                                                                metaData = null
-                                                            )
-
-                                                            chatRepository.upsertLsat(lsatToSave)
-                                                            connectManagerRepository.clearWebViewPreImage()
-
-                                                            sendLsatSuccess(macaroon, preimage)
-                                                        }
-                                                    }
-                                                } catch (e: Exception) {
-                                                    // Handle exception
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                            if (issuer != null) {
+                                processLsatPayment(
+                                    paymentRequestStr, macaroon, issuer, lspIdentifier,
+                                    invoiceAmount, invoicePubKey, paymentHash, routerUrl, routerPubKey, invoice
+                                )
                             }
                         } else {
                             sendLsatFailure()
@@ -716,239 +417,218 @@ class WebAppViewModel {
         }
     }
 
-    private fun sendLsatSuccess(macaroon: String, preimage: String) {
-        val message = SendLSatMessage(
-            TYPE_LSAT,
-            APPLICATION_NAME,
-            1,
-            budget,
-            password,
-            lsat = retrieveLsatString(macaroon, preimage)
-        ).toJson()
-        callback?.invoke(message)
-        callback = null
+    private suspend fun processLsatPayment(
+        paymentRequestStr: String,
+        macaroon: String,
+        issuer: String,
+        lspIdentifier: LsatIdentifier,
+        invoiceAmount: Long,
+        invoicePubKey: LightningNodePubKey,
+        paymentHash: String,
+        routerUrl: String,
+        routerPubKey: String?,
+        invoice: InvoiceBolt11
+    ) {
+        viewModelScope.launch {
+            if (invoice.retrieveLspPubKey() == contactRepository.accountOwner.value?.routeHint?.getLspPubKey()) {
+                val nnPaymentRequest = paymentRequestStr.toLightningPaymentRequestOrNull() ?: return@launch
+
+                try {
+                    connectManagerRepository.payInvoice(
+                        paymentRequest = nnPaymentRequest,
+                        null,
+                        null,
+                        milliSatAmount = convertToMilliSat(invoiceAmount),
+                        paymentHash = paymentHash,
+                    )
+
+                    connectManagerRepository.webViewPreImage.collect { preimage ->
+                        if (preimage?.isNotEmpty() == true) {
+                            val lsatToSave = Lsat(
+                                paymentRequest = nnPaymentRequest,
+                                macaroon = macaroon.toMacaroon()!!,
+                                issuer = issuer.toLsatIssuer()!!,
+                                id = lspIdentifier,
+                                preimage = preimage.toLsatPreImage(),
+                                status = LsatStatus.Active,
+                                createdAt = DateTime.nowUTC().toDateTime(),
+                                paths = null,
+                                metaData = null
+                            )
+
+                            chatRepository.upsertLsat(lsatToSave)
+                            connectManagerRepository.clearWebViewPreImage()
+                            sendLsatSuccess(macaroon, preimage)
+                            return@collect
+                        }
+                    }
+                } catch (e: Exception) {
+                    sendLsatFailure()
+                }
+            } else {
+                try {
+                    networkQueryContact.getRoutingNodes(
+                        routerUrl,
+                        invoicePubKey,
+                        convertToMilliSat(invoiceAmount)
+                    ).collect { response ->
+                        when (response) {
+                            is LoadResponse.Loading -> {}
+                            is Response.Error -> {
+                                sendLsatFailure()
+                            }
+                            is Response.Success -> {
+                                if (response.value.isEmpty()) {
+                                    sendLsatFailure()
+                                    return@collect
+                                }
+
+                                try {
+                                    val nnPaymentRequest = paymentRequestStr.toLightningPaymentRequestOrNull()
+                                        ?: return@collect
+
+                                    connectManagerRepository.payInvoice(
+                                        paymentRequest = nnPaymentRequest,
+                                        response.value,
+                                        routerPubKey,
+                                        milliSatAmount = convertToMilliSat(invoiceAmount),
+                                        paymentHash = paymentHash,
+                                    )
+
+                                    connectManagerRepository.webViewPreImage.collect { preimage ->
+                                        if (preimage?.isNotEmpty() == true) {
+                                            val lsatToSave = Lsat(
+                                                paymentRequest = nnPaymentRequest,
+                                                macaroon = macaroon.toMacaroon()!!,
+                                                issuer = issuer.toLsatIssuer()!!,
+                                                id = lspIdentifier,
+                                                preimage = preimage.toLsatPreImage(),
+                                                status = LsatStatus.Active,
+                                                createdAt = DateTime.nowUTC().toDateTime(),
+                                                paths = null,
+                                                metaData = null
+                                            )
+
+                                            chatRepository.upsertLsat(lsatToSave)
+                                            connectManagerRepository.clearWebViewPreImage()
+                                            sendLsatSuccess(macaroon, preimage)
+                                            return@collect
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    sendLsatFailure()
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    sendLsatFailure()
+                }
+            }
+        }
     }
 
-    private fun sendLsatFailure() {
-        val message = SendLSatFailedMessage(
-            TYPE_LSAT,
-            APPLICATION_NAME,
-            0,
-            password
-        ).toJson()
-        callback?.invoke(message)
-        callback = null
-    }
+    private suspend fun processUpdateLsat() {
+        val webViewDto = sphinxWebViewDtoStateFlow.value
 
-    private suspend fun processUpdateLsat(updateLSatMessage: BridgeUpdateLSatMessage) {
-        if (updateLSatMessage.status == LsatStatus.EXPIRED_STRING) {
-            val identifier = updateLSatMessage.identifier.toLsatIdentifier()
+        if (webViewDto?.status == LsatStatus.EXPIRED_STRING) {
+            val identifier = webViewDto.identifier?.toLsatIdentifier()
             val lsatOnDb = identifier?.let { chatRepository.getLsatByIdentifier(it).firstOrNull() }
 
             if (lsatOnDb != null) {
                 chatRepository.updateLsatStatus(identifier, LsatStatus.Expired)
 
                 val message = SendUpdateLSatMessage(
-                    TYPE_UPDATELSAT,
-                    APPLICATION_NAME,
+                    SphinxWebViewDto.TYPE_UPDATE_LSAT,
+                    SphinxWebViewDto.APPLICATION_NAME,
                     password,
                     1,
                     retrieveLsatString(lsatOnDb.macaroon.value, lsatOnDb.preimage?.value),
                 ).toJson()
 
-                callback?.let {
-                    it(message)
-                }
+                callback?.invoke(message)
                 callback = null
             }
         }
     }
 
+    private suspend fun processPayment() {
+        val webViewDto = sphinxWebViewDtoStateFlow.value
+        val paymentRequestStr = webViewDto?.paymentRequest
+        val budget = budgetStateFlow.value
 
-    private fun sendLSat(
-        lSatMessage: BridgeLSatMessage,
-        lsat: String?,
-        success: Boolean
-    ) {
-//        if (lsat != null && success) {
-//            this.password = generatePassword()
-//
-//            val message = SendLSatMessage(
-//                TYPE_LSAT,
-//                APPLICATION_NAME,
-//                password,
-//                lSatMessage.paymentRequest,
-//                lSatMessage.macaroon,
-//                lSatMessage.issuer,
-//                lsat,
-//                budget,
-//                true
-//            ).toJson()
-//
-//            callback?.let {
-//                it(message)
-//            }
-//
-//            callback = null
-//        } else {
-//            this.password = generatePassword()
-//
-//            val message = SendLSatFailedMessage(
-//                TYPE_LSAT,
-//                APPLICATION_NAME,
-//                password,
-//                lSatMessage.paymentRequest,
-//                lSatMessage.macaroon,
-//                lSatMessage.issuer,
-//                false
-//            ).toJson()
-//
-//            callback?.let {
-//                it(message)
-//            }
-//
-//            callback = null
-//        }
-    }
+        val invoice = connectManagerRepository.getInvoiceInfo(paymentRequestStr ?: "")?.toInvoiceBolt11()
+        val paymentAmount = invoice?.getSatsAmount()?.value
+        val invoicePubKey = invoice?.getPubKey()
 
-    private suspend fun updateLSat(updateLSatMessage: BridgeUpdateLSatMessage) {
-        val updateLsatSto = UpdateLsatDto(
-            updateLSatMessage.status
-        )
+        val isAmountValid = paymentAmount != null
+        val isBudgetSufficient = budget >= (paymentAmount ?: 0)
+        val lightningPaymentRequest = paymentRequestStr?.toLightningPaymentRequestOrNull()
+        val ownerLsp = contactRepository.accountOwner.value?.routeHint?.getLspPubKey()
 
-        lightningRepository.updateLSat(
-            updateLSatMessage.identifier,
-            updateLsatSto
-        ).collect { loadResponse: LoadResponse<String, ResponseError> ->
-            Exhaustive@
-            when (loadResponse) {
-                is LoadResponse.Loading -> {}
-                is Response.Error -> {
-                    sendUpdateLSat(updateLSatMessage, null, false)
-                }
-                is Response.Success -> {
-                    loadResponse.value.toPayLsatResponseDtoOrNull()?.let {
-                        sendUpdateLSat(updateLSatMessage, it.lsat, true)
-                    } ?: run {
-                        sendUpdateLSat(updateLSatMessage, null, true)
-                    }
-                }
-            }
-        }
-    }
+        if (isAmountValid && isBudgetSufficient && lightningPaymentRequest != null) {
+            if (invoice?.retrieveLspPubKey() == ownerLsp) {
+                connectManagerRepository.payInvoice(
+                    lightningPaymentRequest,
+                    endHops = null,
+                    routerPubKey = null,
+                    paymentAmount ?: 0
+                )
+                sendPaymentMessage(true)
+            } else {
+                val isAvailableRoute = connectManagerRepository.isRouteAvailable(
+                    invoicePubKey?.value ?: "",
+                    null,
+                    paymentAmount ?: 0
+                )
 
-    private fun sendUpdateLSat(
-        updateLSatMessage: BridgeUpdateLSatMessage,
-        lsat: String?,
-        success: Boolean
-    ) {
-//        if (lsat != null && success) {
-//            this.password = generatePassword()
-//
-//            val message = SendUpdateLSatMessage(
-//                TYPE_UPDATELSAT,
-//                APPLICATION_NAME,
-//                password,
-//                updateLSatMessage.identifier,
-//                updateLSatMessage.status,
-//                lsat,
-//                true
-//            ).toJson()
-//
-//            callback?.let {
-//                it(message)
-//            }
-//
-//            callback = null
-//        } else {
-//            this.password = generatePassword()
-//
-//            val message = SendUpdateLSatFailedMessage(
-//                TYPE_UPDATELSAT,
-//                APPLICATION_NAME,
-//                password,
-//                updateLSatMessage.identifier,
-//                updateLSatMessage.status,
-//                success
-//            ).toJson()
-//
-//            callback?.let {
-//                it(message)
-//            }
-//
-//            callback = null
-//        }
-    }
-
-    private suspend fun sendPayment(bridgePaymentMessage: BridgePaymentMessage) {
-        bridgePaymentMessage.paymentRequest.toLightningPaymentRequestOrNull()?.let {
-            val decodedPaymentRequest = Bolt11.decode(it)
-
-            decodedPaymentRequest.getSatsAmount()?.value?.toInt()?.let {amount ->
-                if (checkCanPay(amount)) {
-                    val putPaymentRequestDto = PutPaymentRequestDto(
-                        bridgePaymentMessage.paymentRequest
+                if (isAvailableRoute) {
+                    connectManagerRepository.payInvoice(
+                        lightningPaymentRequest,
+                        endHops = null,
+                        routerPubKey = null,
+                        paymentAmount ?: 0
                     )
-
-                    messageRepository.payPaymentRequest(putPaymentRequestDto).collect { loadResponse: LoadResponse<Any, ResponseError> ->
-                        Exhaustive@
-                        when (loadResponse) {
-                            is LoadResponse.Loading -> {}
-                            is Response.Error -> {
-                                sendPaymentMessage(bridgePaymentMessage,false)
-                            }
-                            is Response.Success -> {
-                                sendPaymentMessage(bridgePaymentMessage,true)
+                    sendPaymentMessage(true)
+                } else {
+                    val routerUrl = connectManagerRepository.retrieveRouterUrl()
+                    if (invoicePubKey != null && routerUrl != null) {
+                        networkQueryContact.getRoutingNodes(
+                            routerUrl,
+                            invoicePubKey,
+                            paymentAmount ?: 0
+                        ).collect { response ->
+                            when (response) {
+                                is LoadResponse.Loading -> {}
+                                is Response.Error -> sendPaymentMessage(false)
+                                is Response.Success -> {
+                                    try {
+                                        val routerPubKey = connectManagerRepository.retrieveRouterPubKey()
+                                        connectManagerRepository.payInvoice(
+                                            paymentRequest = lightningPaymentRequest,
+                                            response.value,
+                                            routerPubKey,
+                                            milliSatAmount = paymentAmount ?: 0,
+                                        )
+                                        sendPaymentMessage(true)
+                                    } catch (e: Exception) {
+                                        sendPaymentMessage(false)
+                                    }
+                                }
                             }
                         }
+                    } else {
+                        sendPaymentMessage(false)
                     }
-                } else {
-                    sendPaymentMessage(bridgePaymentMessage,false)
                 }
             }
+        } else {
+            sendPaymentMessage(false)
         }
     }
 
-    private fun sendPaymentMessage(
-        bridgePaymentMessage: BridgePaymentMessage,
-        success: Boolean
-    ) {
-        this.password = generatePassword()
-
-        val message = SendPaymentMessage(
-            TYPE_PAYMENT,
-            APPLICATION_NAME,
-            password,
-            bridgePaymentMessage.paymentRequest,
-            success
-        ).toJson()
-
-        callback?.let {
-            it(message)
-        }
-
-        callback = null
-    }
-
-    private fun sendUpdatedMessage() {
-        this.password = generatePassword()
-
-        val message = SendUpdatedMessage(
-            TYPE_UPDATED,
-            APPLICATION_NAME,
-            password
-        ).toJson()
-
-        callback?.let {
-            it(message)
-        }
-
-        callback = null
-    }
-
-    private suspend fun getPersonData() {
-        contactRepository.getPersonData().collect { loadResponse: LoadResponse<PersonDataDto, ResponseError> ->
-            Exhaustive@
+    private suspend fun processGetPersonData() {
+        contactRepository.getPersonData().collect { loadResponse ->
             when (loadResponse) {
                 is LoadResponse.Loading -> {}
                 is Response.Error -> {
@@ -961,64 +641,114 @@ class WebAppViewModel {
         }
     }
 
-    private fun processGetSecondBrainList(sendSecondBrainListData: SendSecondBrainListData) {
-        viewModelScope.launch {
-            contactRepository.accountOwner.value?.nodePubKey?.let { pubKey ->
-
-                val type = sendSecondBrainListData.type
-                val application = sendSecondBrainListData.application
-                password = generatePassword()
-
-                val message = SendAuthMessage(
-                    type = type,
-                    application = application,
-                    password = password,
-                    pubkey = pubKey.value
-                ).toJson()
-
-                callback?.let {
-                    it(message)
-                }
-
-                callback = null
-            }
-        }
+    private fun processGetSecondBrainList() {
+//        viewModelScope.launch {
+//            val webViewDto = sphinxWebViewDtoStateFlow.value
+//            val secondBrainList = chatRepository.getSecondBrainTribes().firstOrNull()
+//                ?.filter { it?.secondBrainUrl != null && it.secondBrainUrl?.value?.isNotEmpty() == true }
+//                ?.map { it!!.secondBrainUrl!!.value }
+//
+//            val message = SendSecondBrainListData(
+//                type = webViewDto?.type ?: "",
+//                application = webViewDto?.application ?: "",
+//                password = password,
+//                secondBrainList = secondBrainList ?: emptyList()
+//            ).toJson()
+//
+//            callback?.invoke(message)
+//            callback = null
+//        }
     }
 
+    // Helper methods
+    private fun sendKeysendMessage(success: Boolean) {
+        password = generatePassword()
+        val message = SendKeysendMessage(
+            SphinxWebViewDto.TYPE_KEYSEND,
+            SphinxWebViewDto.APPLICATION_NAME,
+            password,
+            success
+        ).toJson()
+
+        callback?.invoke(message)
+        callback = null
+    }
+
+    private fun sendLsatSuccess(macaroon: String, preimage: String) {
+        val message = SendLSatMessage(
+            SphinxWebViewDto.TYPE_LSAT,
+            SphinxWebViewDto.APPLICATION_NAME,
+            1,
+            budgetStateFlow.value,
+            password,
+            lsat = retrieveLsatString(macaroon, preimage)
+        ).toJson()
+        callback?.invoke(message)
+        callback = null
+    }
+
+    private fun sendLsatFailure() {
+        val message = SendLSatFailedMessage(
+            SphinxWebViewDto.TYPE_LSAT,
+            SphinxWebViewDto.APPLICATION_NAME,
+            0,
+            password
+        ).toJson()
+        callback?.invoke(message)
+        callback = null
+    }
+
+    private fun sendPaymentMessage(success: Boolean) {
+        password = generatePassword()
+        val message = SendPaymentMessage(
+            SphinxWebViewDto.TYPE_PAYMENT,
+            SphinxWebViewDto.APPLICATION_NAME,
+            password,
+            sphinxWebViewDtoStateFlow.value?.paymentRequest ?: "",
+            success
+        ).toJson()
+
+        callback?.invoke(message)
+        callback = null
+    }
 
     private fun sendPersonDataMessage(personData: PersonDataDto?, success: Boolean) {
-        this.password = generatePassword()
+        password = generatePassword()
 
-        if (personData != null && success) {
-            val message = SendPersonDataMessage(
-                TYPE_GETPERSONDATA,
-                APPLICATION_NAME,
+        val message = if (personData != null && success) {
+            SendPersonDataMessage(
+                SphinxWebViewDto.TYPE_GET_PERSON_DATA,
+                SphinxWebViewDto.APPLICATION_NAME,
                 password,
-                personData!!.publicKey,
-                personData!!.alias,
-                personData!!.photoUrl ?: "",
+                personData.publicKey,
+                personData.alias,
+                personData.photoUrl ?: "",
                 success
             ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
         } else {
-            val message = SendPersonDataFailedMessage(
-                TYPE_GETPERSONDATA,
-                APPLICATION_NAME,
+            SendPersonDataFailedMessage(
+                SphinxWebViewDto.TYPE_GET_PERSON_DATA,
+                SphinxWebViewDto.APPLICATION_NAME,
                 password,
                 success
             ).toJson()
-
-            callback?.let {
-                it(message)
-            }
-
-            callback = null
         }
+
+        callback?.invoke(message)
+        callback = null
+    }
+
+    private fun checkCanPay(amount: Int): Boolean {
+        val currentBudget = _budgetStateFlow.value
+        println("Checking if can pay: budget=$currentBudget, amount=$amount")
+        if (amount == -1) return false
+        if (currentBudget >= amount) {
+            _budgetStateFlow.value = currentBudget - amount
+            println("Budget after payment: ${_budgetStateFlow.value}")
+            return true
+        }
+        println("Cannot pay: budget too low")
+        return false
     }
 
     private fun generatePassword(): String {
@@ -1042,11 +772,11 @@ class WebAppViewModel {
                 } catch (e: Exception) {
                 }
                 delay(25L)
-
                 resolvedOwner!!
             }
         }
     }
+
     private fun convertToMilliSat(amount: Long): Long {
         return amount * 1000
     }
