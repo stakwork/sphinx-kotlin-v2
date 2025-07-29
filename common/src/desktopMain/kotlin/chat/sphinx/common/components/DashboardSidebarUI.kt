@@ -348,7 +348,7 @@ fun DashboardSidebarUI(
 
             AboutSphinxWindow(dashboardViewModel)
             WebAppWindow(dashboardViewModel, webAppViewModel)
-            AuthorizeWindow(webAppViewModel)
+            AuthorizeWindow(webAppViewModel, dashboardViewModel)
             ConfirmationWindow(dashboardViewModel)
         }
 
@@ -583,7 +583,7 @@ fun WebAppWindow(
     dashboardViewModel: DashboardViewModel,
     webAppViewModel: WebAppViewModel
 ) {
-    val webAppWindowState by webAppViewModel.webAppWindowStateFlow.collectAsState()
+    val webAppWindowState by dashboardViewModel.webAppWindowStateFlow.collectAsState()
     if (webAppWindowState) {
         WebAppUI(dashboardViewModel, webAppViewModel)
     }
@@ -591,10 +591,11 @@ fun WebAppWindow(
 
 @Composable
 fun AuthorizeWindow(
-    webAppViewModel: WebAppViewModel
+    webAppViewModel: WebAppViewModel,
+    dashboardViewModel: DashboardViewModel
 ) {
-    val authorizeView by webAppViewModel.authorizeViewStateFlow.collectAsState()
+    val authorizeView by dashboardViewModel.authorizeViewStateFlow.collectAsState()
     (authorizeView as? AuthorizeViewState.Opened)?.let {
-        AuthorizeViewUI(webAppViewModel, it.budgetField)
+        AuthorizeViewUI(webAppViewModel, dashboardViewModel, it.budgetField)
     }
 }

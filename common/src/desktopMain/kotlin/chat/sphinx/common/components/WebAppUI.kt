@@ -63,7 +63,7 @@ fun WebAppUI(
     }
 
     if (!dashboardViewModel.isWebViewLoaded()) {
-        webAppViewModel.toggleWebAppWindow(false, null)
+        dashboardViewModel.toggleWebAppWindow(false, null) // Changed from webAppViewModel
         return
     }
 
@@ -73,7 +73,7 @@ fun WebAppUI(
     if (isOpen) {
         Window(
             onCloseRequest = {
-                webAppViewModel.toggleWebAppWindow(false, null)
+                dashboardViewModel.toggleWebAppWindow(false, null)
             },
             title = "Web App",
             state = WindowState(
@@ -83,7 +83,6 @@ fun WebAppUI(
             icon = sphinxIcon
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Top part: WebView content
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -104,12 +103,11 @@ fun WebAppUI(
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        val webViewState by webAppViewModel.webViewStateFlow.collectAsState()
+                        val webViewState by dashboardViewModel.webViewStateFlow.collectAsState()
                         var webViewInitialized by remember { mutableStateOf(false) }
 
                         webViewState?.let { url ->
                             MaterialTheme {
-
                                 LaunchedEffect(Unit) {
                                     kotlinx.coroutines.delay(3000L)
                                     webViewInitialized = true
@@ -132,34 +130,14 @@ fun WebAppUI(
                         }
                     }
                 }
-
-                // Bottom part: Log message viewer
-//                Box(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .height(200.dp)
-//                        .background(Color.Black)
-//                        .padding(10.dp)
-//                ) {
-//                    LazyColumn {
-//                        items(messages.size) { index ->
-//                            Text(
-//                                text = messages[index],
-//                                color = Color.White,
-//                                fontSize = 12.sp,
-//                                modifier = Modifier.padding(vertical = 4.dp)
-//                            )
-//                        }
-//                    }
-//                }
             }
         }
     }
 }
-
 @Composable
 fun AuthorizeViewUI(
     webAppViewModel: WebAppViewModel,
+    dashboardViewModel: DashboardViewModel,
     budgetField: Boolean
 ) {
     var isOpen by remember { mutableStateOf(true) }
@@ -168,7 +146,7 @@ fun AuthorizeViewUI(
     if (isOpen) {
         Window(
             onCloseRequest = {
-                webAppViewModel.closeAuthorizeView()
+                dashboardViewModel.closeAuthorizeView()
                 isOpen = false
             },
             title = if (budgetField) "Set Budget" else "Authorize",
@@ -220,7 +198,7 @@ fun AuthorizeViewUI(
                     )
 
                     Text(
-                        text = (webAppViewModel.authorizeViewStateFlow.value as? AuthorizeViewState.Opened)?.url
+                        text = (dashboardViewModel.authorizeViewStateFlow.value as? AuthorizeViewState.Opened)?.url
                             ?: "second-brain.sphinx.chat",
                         fontSize = 17.sp,
                         color = md_theme_dark_tertiary,

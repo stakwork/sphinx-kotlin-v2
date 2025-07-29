@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.components.toast
 import chat.sphinx.common.models.ChatMessage
+import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.utils.SphinxFonts
 import chat.sphinx.utils.toAnnotatedString
 import chat.sphinx.wrapper.message.retrieveSphinxCallLink
@@ -25,7 +26,8 @@ import chat.sphinx.wrapper.message.toSphinxCallLink
 
 @Composable
 fun JitsiAudioVideoCall(
-    chatMessage: ChatMessage
+    chatMessage: ChatMessage,
+    dashboardViewModel: DashboardViewModel
 ) {
     val uriHandler = LocalUriHandler.current
     val sphinxCallLink = chatMessage.message.retrieveSphinxCallLink()
@@ -53,7 +55,7 @@ fun JitsiAudioVideoCall(
         Button(
             onClick = {
                 sphinxCallLink?.audioCallLink?.let {
-                    uriHandler.openUri(it)
+                    dashboardViewModel.toggleWebAppWindow(true, it)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -77,8 +79,8 @@ fun JitsiAudioVideoCall(
         if (sphinxCallLink?.startAudioOnly == false) {
             Button(
                 onClick = {
-                    sphinxCallLink?.videoCallLink?.let {
-                        uriHandler.openUri(it)
+                    sphinxCallLink.videoCallLink?.let {
+                        dashboardViewModel.toggleWebAppWindow(true, it)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),

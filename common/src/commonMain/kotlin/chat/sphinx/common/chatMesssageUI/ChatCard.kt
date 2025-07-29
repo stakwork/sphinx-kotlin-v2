@@ -101,7 +101,7 @@ fun ChatCard(
 
         when {
             chatMessage.message.isSphinxCallLink -> {
-                JitsiAudioVideoCall(chatMessage)
+                JitsiAudioVideoCall(chatMessage, chatViewModel.dashboardViewModel)
             }
             chatMessage.message.type == MessageType.DirectPayment -> {
                 DirectPaymentUI(chatMessage, chatViewModel)

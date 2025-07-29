@@ -39,7 +39,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import org.jetbrains.skia.impl.Log
 import uniffi.sphinxrs.makeInvite
 
-class WebAppViewModel {
+class WebAppViewModel(private val dashboardViewModel: DashboardViewModel) {
     val scope = SphinxContainer.appModule.applicationScope
     val dispatchers = SphinxContainer.appModule.dispatchers
     val viewModelScope = SphinxContainer.appModule.applicationScope
@@ -63,26 +63,6 @@ class WebAppViewModel {
 
     var callback: ((String) -> Unit)? = null
 
-    private val _webAppWindowStateFlow: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(false)
-    }
-
-    private val _webViewStateFlow: MutableStateFlow<String?> by lazy {
-        MutableStateFlow(null)
-    }
-
-    private val _authorizeViewStateFlow: MutableStateFlow<AuthorizeViewState> by lazy {
-        MutableStateFlow(AuthorizeViewState.Closed())
-    }
-
-    val webAppWindowStateFlow: StateFlow<Boolean>
-        get() = _webAppWindowStateFlow.asStateFlow()
-
-    val webViewStateFlow: StateFlow<String?>
-        get() = _webViewStateFlow.asStateFlow()
-
-    val authorizeViewStateFlow: StateFlow<AuthorizeViewState>
-        get() = _authorizeViewStateFlow.asStateFlow()
 
     var budgetState: Int? by mutableStateOf(null)
 
@@ -97,13 +77,13 @@ class WebAppViewModel {
                 println("Collecting DTO: $dto")
                 when (dto?.type) {
                     SphinxWebViewDto.TYPE_AUTHORIZE -> {
-                        openAuthorizeView()
+                        dashboardViewModel.openAuthorizeView()
                     }
                     SphinxWebViewDto.TYPE_GET_LSAT -> {
                         processGetLsat()
                     }
                     SphinxWebViewDto.TYPE_SET_BUDGET -> {
-                        toggleSetBudgetView()
+                        dashboardViewModel.toggleSetBudgetView()
                     }
                     SphinxWebViewDto.TYPE_SIGN -> {
                         processSign()
@@ -135,23 +115,6 @@ class WebAppViewModel {
         }
     }
 
-    fun toggleWebAppWindow(open: Boolean, url: String?) {
-        if (_webAppWindowStateFlow.value != open) {
-            _webAppWindowStateFlow.value = open
-        }
-
-        if (!open) {
-            closeAuthorizeView()
-            return
-        }
-
-        viewModelScope.launch(dispatchers.io) {
-            delay(1000L)
-            toggleWebViewWindow(url)
-        }
-        toast("WebView is not available at the moment")
-    }
-
     fun onAmountTextChanged(text: String) {
         var amount: Int? = try {
             text.toInt()
@@ -165,23 +128,6 @@ class WebAppViewModel {
         budgetState = budget
     }
 
-    private fun openAuthorizeView() {
-        _webViewStateFlow.value?.let { url ->
-            val formattedUrl = url.replace("http://", "").replace("https://", "")
-            _authorizeViewStateFlow.value = AuthorizeViewState.Opened(formattedUrl, false)
-        }
-    }
-
-    private fun toggleSetBudgetView() {
-        _webViewStateFlow.value?.let { url ->
-            val formattedUrl = url.replace("http://", "").replace("https://", "")
-            _authorizeViewStateFlow.value = AuthorizeViewState.Opened(formattedUrl, true)
-        }
-    }
-
-    fun closeAuthorizeView() {
-        _authorizeViewStateFlow.value = AuthorizeViewState.Closed()
-    }
 
     val customWebViewNavigator: WebViewNavigator
         get() = WebViewNavigator(CoroutineScope(Dispatchers.IO))
@@ -204,14 +150,8 @@ class WebAppViewModel {
         }
     }
 
-    private fun toggleWebViewWindow(url: String?) {
-        url?.let { nnUrl ->
-            _webViewStateFlow.value = nnUrl
-        }
-    }
-
     fun processAuthorize() {
-        closeAuthorizeView()
+        dashboardViewModel.closeAuthorizeView()
         viewModelScope.launch(dispatchers.mainImmediate) {
             delay(1000L)
             getOwner().nodePubKey?.value?.let { pubkey ->
@@ -233,7 +173,7 @@ class WebAppViewModel {
     }
 
     fun processSetBudget(amount: Int) {
-        closeAuthorizeView()
+        dashboardViewModel.closeAuthorizeView()
         viewModelScope.launch(dispatchers.mainImmediate) {
             delay(1000L)
             getOwner().nodePubKey?.value?.let { pubkey ->
