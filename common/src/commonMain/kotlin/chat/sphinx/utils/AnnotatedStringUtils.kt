@@ -42,20 +42,30 @@ fun String.toAnnotatedString(): AnnotatedString {
             highlightRegex.findAll(rawText).map { it to "highlight" })
         .sortedBy { it.first.range.first }
 
-    val positionMap = mutableListOf<Pair<IntRange, IntRange>>()  // maps raw -> builder
+    // Keeps track of position mapping from rawText index -> builder index
+    val rawToBuilderIndexMap = mutableMapOf<Int, Int>()
+
+    var rawIndex = 0
+    var builderIndex = 0
+
+    fun appendAndMap(text: String) {
+        for (i in text.indices) {
+            rawToBuilderIndexMap[rawIndex++] = builderIndex++
+        }
+        builder.append(text)
+    }
 
     matches.forEach { (matchResult, matchType) ->
         val fullRange = matchResult.range
         val styledText = matchResult.groups[1]?.value.orEmpty()
 
-        // Append any plain text before this match
         if (currentIndex < fullRange.first) {
-            val textToAppend = rawText.substring(currentIndex, fullRange.first)
-            builder.append(textToAppend)
+            val plainText = rawText.substring(currentIndex, fullRange.first)
+            appendAndMap(plainText)
         }
 
         val start = builder.length
-        builder.append(styledText)
+        appendAndMap(styledText)
         val end = builder.length
 
         val style = when (matchType) {
@@ -67,37 +77,38 @@ fun String.toAnnotatedString(): AnnotatedString {
             builder.addStyle(it, start, end)
         }
 
-        positionMap.add(fullRange to (start until end))
         currentIndex = fullRange.last + 1
     }
 
     if (currentIndex < rawText.length) {
-        builder.append(rawText.substring(currentIndex))
+        val remaining = rawText.substring(currentIndex)
+        appendAndMap(remaining)
     }
 
-    // Reconstruct the clean text used in builder
-    val builderText = builder.toString()
-
-    // Run linkify on cleaned builder text
+    // Linkify original raw text
     val links = SphinxLinkify.gatherLinks(
-        text = builderText,
+        text = rawText,
         mask = SphinxLinkify.ALL
     )
-    links.forEach { linkSpec ->
-        val linkStart = linkSpec.start.coerceIn(0, builderText.length)
-        val linkEnd = linkSpec.end.coerceIn(0, builderText.length)
 
-        if (linkStart < linkEnd) {
+    links.forEach { link ->
+        val rawStart = link.start
+        val rawEnd = link.end
+
+        val mappedStart = rawToBuilderIndexMap[rawStart] ?: return@forEach
+        val mappedEnd = rawToBuilderIndexMap[rawEnd - 1]?.plus(1) ?: return@forEach
+
+        if (mappedStart < mappedEnd) {
             builder.addStyle(
                 style = urlSpanStyle,
-                start = linkStart,
-                end = linkEnd
+                start = mappedStart,
+                end = mappedEnd
             )
             builder.addStringAnnotation(
-                tag = linkSpec.tag,
-                annotation = linkSpec.url,
-                start = linkStart,
-                end = linkEnd
+                tag = link.tag,
+                annotation = link.url,
+                start = mappedStart,
+                end = mappedEnd
             )
         }
     }

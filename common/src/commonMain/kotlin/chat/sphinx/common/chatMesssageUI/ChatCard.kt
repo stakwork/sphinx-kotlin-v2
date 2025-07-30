@@ -231,7 +231,10 @@ fun MessageTextLabel(
                 onClick = { offset ->
                     annotatedString.getStringAnnotations(start = offset, end = offset)
                         .firstOrNull()?.let { annotation ->
-                            if (annotation.tag == "URL") {
+                            if (
+                                annotation.tag.equals("URL", ignoreCase = true) ||
+                                annotation.tag.equals("WebURL", ignoreCase = true)
+                            ) {
                                 uriHandler.openUri(annotation.item)
                             }
                         }
