@@ -1,9 +1,7 @@
 package chat.sphinx.common.components
 
 import CommonButton
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -166,131 +164,120 @@ fun QRDetailProfileScreen(
     viewModel: QRCodeViewModel
 ) {
     val clipboardManager: ClipboardManager = LocalClipboardManager.current
+    val qrCodeSize = 200.dp
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
     ) {
-
-        Box(
+        // Close Icon (Top-right)
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = "Close",
+            tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
             modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopStart)
-                .zIndex(2f)
-                .background(Color.Transparent)
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(120.dp)
-                    .height(120.dp)
-                    .padding(top = 24.dp)
-                    .align(Alignment.BottomCenter)
-            ) {
-                PhotoUrlImage(
-                    viewModel.contactQRCodeState.ownerPicture,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape),
-                    firstNameLetter = "Unknown Chat".getInitials(),
-                    color = null,
-                    fontSize = 16
-                )
+                .padding(16.dp)
+                .size(24.dp)
+                .align(Alignment.TopEnd)
+                .clickable { dashboardViewModel.closeFullScreenView() }
+        )
 
-            }
-        }
-
-        Box(
+        // Main Content
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .align(Alignment.TopStart)
-                .padding(top = 60.dp)
-                .zIndex(1f)
-                .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+            // Profile picture
+            PhotoUrlImage(
+                photoUrl = viewModel.contactQRCodeState.ownerPicture,
                 modifier = Modifier
-                    .padding(horizontal = 12.dp, vertical = 12.dp)
-                    .size(20.dp)
-                    .align(Alignment.TopEnd)
-                    .clickable { dashboardViewModel.closeFullScreenView() }
+                    .size(96.dp)
+                    .clip(CircleShape),
+                firstNameLetter = "Unknown Chat".getInitials(),
+                color = null,
+                fontSize = 16
             )
 
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Spacer(Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    text = viewModel.contactQRCodeState.ownerAlias ?: "USERNAME",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.White
-                )
+            // Username
+            Text(
+                text = viewModel.contactQRCodeState.ownerAlias ?: "USERNAME",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = Color.White
+            )
 
-                Spacer(Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-                viewModel.contactQRCodeState.bitMatrix?.let { bitMatrix ->
-                    val qrCodeSize = 200.dp
+            // QR Code
+            viewModel.contactQRCodeState.bitMatrix?.let { bitMatrix ->
+                Box(
+                    modifier = Modifier
+                        .size(qrCodeSize)
+                        .clickable {
+                            clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
+                            viewModel.toast("Code copied to clipboard")
+                        }
+                ) {
+                    Canvas(modifier = Modifier.size(qrCodeSize)) {
+                        val scaleX = size.width / bitMatrix.width
+                        val scaleY = size.height / bitMatrix.height
 
-                    Box(
-                        modifier = Modifier
-                            .size(qrCodeSize)
-                            .clickable {
-                                clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
-                                viewModel.toast("Code copied to clipboard")
-                            }
-                    ) {
-                        Canvas(modifier = Modifier.size(qrCodeSize)) {
-                            val scaleX = size.width / bitMatrix.width
-                            val scaleY = size.height / bitMatrix.height
-
-                            for (x in 0 until bitMatrix.width) {
-                                for (y in 0 until bitMatrix.height) {
-                                    drawRect(
-                                        brush = SolidColor(if (bitMatrix.get(x, y)) Color.Black else Color.White),
-                                        topLeft = Offset(x * scaleX, y * scaleY),
-                                        size = Size(scaleX, scaleY)
-                                    )
-                                }
+                        for (x in 0 until bitMatrix.width) {
+                            for (y in 0 until bitMatrix.height) {
+                                drawRect(
+                                    color = if (bitMatrix.get(x, y)) Color.Black else Color.White,
+                                    topLeft = Offset(x * scaleX, y * scaleY),
+                                    size = Size(scaleX, scaleY)
+                                )
                             }
                         }
                     }
                 }
+            }
 
-                Spacer(Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // QR Code Text (with horizontal scroll for long strings)
+            Box(
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 8.dp)
+            ) {
                 Text(
                     text = viewModel.contactQRCodeState.string,
                     fontSize = 12.sp,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 20.dp)
+                    textAlign = TextAlign.Center
                 )
+            }
 
-                Button(
-                    onClick = {
-                        clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
-                        viewModel.toast("Code copied to clipboard")
-                    },
-                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.DarkGray),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth(0.6f).padding(top = 32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Copy",
-                        tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Copy", color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary)
-                }
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Copy Button
+            Button(
+                onClick = {
+                    clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
+                    viewModel.toast("Code copied to clipboard")
+                },
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color.DarkGray),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = "Copy",
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Copy", color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary)
             }
         }
     }

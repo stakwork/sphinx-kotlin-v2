@@ -83,7 +83,7 @@ actual fun Dashboard(
     val splitterState = rememberSplitPaneState()
     var chatViewModel: ChatViewModel? = null
 
-    val webAppViewModel = remember { WebAppViewModel() }
+    val webAppViewModel = remember { WebAppViewModel(dashboardViewModel) }
     val feedViewModel = remember { FeedViewModel(dashboardViewModel) }
 
     val splitScreenState by dashboardViewModel.splitScreenStateFlow.collectAsState()
@@ -663,7 +663,7 @@ fun SphinxChatDetailTopAppBar(
                     tribeData?.let {
                         if (it.appUrl != null) {
                             IconButton(onClick = {
-                                webAppViewModel.toggleWebAppWindow(true, tribeData?.appUrl?.value)
+                                dashboardViewModel?.toggleWebAppWindow(true, tribeData?.appUrl?.value)
                             }) {
                                 Icon(
                                     Icons.Default.Apps,

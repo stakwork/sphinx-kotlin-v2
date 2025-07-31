@@ -114,6 +114,70 @@ class DashboardViewModel(): WindowFocusListener {
         _floatingPlayerStateFlow.value = null
     }
 
+    // Add to DashboardViewModel class
+    private val _webAppWindowStateFlow: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(false)
+    }
+
+    private val _webViewStateFlow: MutableStateFlow<String?> by lazy {
+        MutableStateFlow(null)
+    }
+
+    val webAppWindowStateFlow: StateFlow<Boolean>
+        get() = _webAppWindowStateFlow.asStateFlow()
+
+    val webViewStateFlow: StateFlow<String?>
+        get() = _webViewStateFlow.asStateFlow()
+
+    fun toggleWebAppWindow(open: Boolean, url: String?) {
+        if (_webAppWindowStateFlow.value != open) {
+            _webAppWindowStateFlow.value = open
+        }
+
+        if (!open) {
+            _webViewStateFlow.value = null
+            return
+        }
+
+        viewModelScope.launch(dispatchers.io) {
+            delay(1000L)
+            toggleWebViewWindow(url)
+        }
+        toast("WebView is not available at the moment")
+    }
+
+    // Add to DashboardViewModel class
+    private val _authorizeViewStateFlow: MutableStateFlow<AuthorizeViewState> by lazy {
+        MutableStateFlow(AuthorizeViewState.Closed())
+    }
+
+    val authorizeViewStateFlow: StateFlow<AuthorizeViewState>
+        get() = _authorizeViewStateFlow.asStateFlow()
+
+    fun openAuthorizeView() {
+        _webViewStateFlow.value?.let { url ->
+            val formattedUrl = url.replace("http://", "").replace("https://", "")
+            _authorizeViewStateFlow.value = AuthorizeViewState.Opened(formattedUrl, false)
+        }
+    }
+
+    fun toggleSetBudgetView() {
+        _webViewStateFlow.value?.let { url ->
+            val formattedUrl = url.replace("http://", "").replace("https://", "")
+            _authorizeViewStateFlow.value = AuthorizeViewState.Opened(formattedUrl, true)
+        }
+    }
+
+    fun closeAuthorizeView() {
+        _authorizeViewStateFlow.value = AuthorizeViewState.Closed()
+    }
+
+    private fun toggleWebViewWindow(url: String?) {
+        url?.let { nnUrl ->
+            _webViewStateFlow.value = nnUrl
+        }
+    }
+
     private fun shouldShowFloatingPlayer(): Boolean {
         val isPodcastPlaying = mediaPlayerHolder.getPlayingContent()?.third == true
         val isOnFeedTab = selectedTabStateFlow.value == 2
