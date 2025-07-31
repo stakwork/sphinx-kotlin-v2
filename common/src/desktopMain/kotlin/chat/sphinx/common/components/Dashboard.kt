@@ -405,6 +405,13 @@ actual fun Dashboard(
                                         MessageListUI(chatViewModel, dashboardViewModel, dashboardChat)
                                     }
                                 }
+
+                                val isGiphyPickerVisible = chatViewModel?.isGiphyPickerVisible?.collectAsState()?.value ?: false
+
+                                if (isGiphyPickerVisible && chatViewModel != null) {
+                                    GiphyPickerUI(chatViewModel!!, Modifier.padding(8.dp))
+                                }
+
                                 AttachmentPreview(
                                     chatViewModel,
                                     Modifier.padding(paddingValues)
@@ -812,7 +819,13 @@ fun SphinxChatDetailBottomAppBar(
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                IconButton(onClick = {}, modifier = Modifier.height(25.dp).width(18.dp)) {
+                IconButton(
+                    onClick = {
+                        chatViewModel?.toggleGiphyPicker()
+                        chatViewModel?.fetchTrendingGifs()
+                    },
+                    modifier = Modifier.height(25.dp).width(18.dp)
+                ) {
                     Image(
                         painter = imageResource(Res.drawable.ic_giphy),
                         contentDescription = "giphy",
