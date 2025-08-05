@@ -64,10 +64,9 @@ import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
 import theme.*
 import java.awt.MediaTracker
+import java.io.ByteArrayInputStream
 import java.net.URL
-import javax.swing.Icon
-import javax.swing.ImageIcon
-import javax.swing.JLabel
+import javax.swing.*
 
 @Composable
 fun ChatCard(
@@ -240,12 +239,11 @@ fun DesktopGifImage(
     url: String,
     modifier: Modifier = Modifier
 ) {
-    KamelImage(
-        resource = asyncPainterResource(data = url),
-        contentDescription = "Animated GIF",
-        modifier = modifier,
-        contentScale = ContentScale.Inside, // maintains aspect ratio
-        onLoading = {
+    var isLoading by remember { mutableStateOf(true) }
+    var hasError by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        if (isLoading) {
             Box(
                 modifier = Modifier.wrapContentSize(),
                 contentAlignment = Alignment.Center
@@ -255,22 +253,60 @@ fun DesktopGifImage(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-        },
-        onFailure = {
+        }
+
+        if (hasError) {
             Box(
                 modifier = Modifier.wrapContentSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Error,
-                    contentDescription = "Error",
+                    contentDescription = "Error loading GIF",
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(24.dp)
                 )
             }
         }
-    )
+
+        SwingPanel(
+            background = androidx.compose.ui.graphics.Color.Transparent,
+            modifier = modifier,
+            factory = {
+                JLabel().apply {
+                    horizontalAlignment = JLabel.CENTER
+                    verticalAlignment = JLabel.CENTER
+
+                    // Load GIF in background thread
+                    Thread {
+                        try {
+                            val imageIcon = ImageIcon(URL(url))
+
+                            // Wait for image to load
+                            if (imageIcon.imageLoadStatus == MediaTracker.COMPLETE) {
+                                SwingUtilities.invokeLater {
+                                    icon = imageIcon
+                                    isLoading = false
+                                }
+                            } else {
+                                SwingUtilities.invokeLater {
+                                    hasError = true
+                                    isLoading = false
+                                }
+                            }
+                        } catch (e: Exception) {
+                            SwingUtilities.invokeLater {
+                                hasError = true
+                                isLoading = false
+                            }
+                        }
+                    }.start()
+                }
+            }
+        )
+    }
 }
+
 @Composable
 fun MessageTextLabel(
     chatMessage: ChatMessage,

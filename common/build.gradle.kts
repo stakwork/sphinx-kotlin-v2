@@ -119,6 +119,7 @@ kotlin {
                 implementation("org.openjfx:javafx-graphics:$javaFxVersion:$platform")
                 implementation("org.openjfx:javafx-media:$javaFxVersion:$platform")
                 implementation("org.openjfx:javafx-swing:$javaFxVersion:$platform")
+                implementation("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:0.7.56")
             }
         }
 
