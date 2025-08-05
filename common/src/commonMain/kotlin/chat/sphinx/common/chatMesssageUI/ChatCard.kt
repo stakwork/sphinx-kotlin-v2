@@ -136,7 +136,7 @@ fun ChatCard(
                     chatMessage.message.feedBoost?.let { feedBoost ->
                         PodcastBoost(feedBoost)
                     }
-                    chatMessage.message.giphyData?.let { giphy ->
+                        chatMessage.message.giphyData?.let { giphy ->
                         GiphyMessageBubble(
                             giphyData = giphy,
                             modifier = Modifier
