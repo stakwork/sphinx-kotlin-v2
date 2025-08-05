@@ -36,12 +36,12 @@ fun GiphyPickerUI(
 
     Box(
         modifier = modifier
-            .fillMaxSize() // Full available space to allow bottom alignment
+            .fillMaxSize()
             .background(Color.Transparent)
     ) {
         Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter) // 👈 Align to bottom here
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(400.dp)
                 .padding(top = 16.dp, start = 8.dp, end = 8.dp, bottom = 8.dp)
@@ -104,6 +104,8 @@ fun GiphyPickerUI(
                 items(gifs.size) { index ->
                     val gif = gifs[index]
                     val gifUrl = gif.images.fixed_width.url
+                    val aspectRatio = gif.images.fixed_width.width.toDouble() / gif.images.fixed_width.height.toDouble()
+                    val gifId = gif.id
 
                     PhotoUrlImage(
                         photoUrl = gifUrl.toPhotoUrl(),
@@ -111,7 +113,11 @@ fun GiphyPickerUI(
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(4.dp))
                             .clickable {
-                                chatViewModel.sendGifMessage(gifUrl)
+                                chatViewModel.sendGifMessage(
+                                    gifUrl = gifUrl,
+                                    aspectRatio = aspectRatio,
+                                    id = gifId
+                                )
                             }
                     )
                 }

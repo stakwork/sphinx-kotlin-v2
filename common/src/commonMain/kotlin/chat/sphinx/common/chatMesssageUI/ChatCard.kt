@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -28,6 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -58,7 +60,14 @@ import chat.sphinx.wrapper.message.media.*
 import chat.sphinx.wrapper.message.retrieveTextToShow
 import chat.sphinx.wrapper.thumbnailUrl
 import chat.sphinx.wrapper.util.getInitials
+import io.kamel.image.KamelImage
+import io.kamel.image.asyncPainterResource
 import theme.*
+import java.awt.MediaTracker
+import java.net.URL
+import javax.swing.Icon
+import javax.swing.ImageIcon
+import javax.swing.JLabel
 
 @Composable
 fun ChatCard(
@@ -127,7 +136,14 @@ fun ChatCard(
                     chatMessage.message.feedBoost?.let { feedBoost ->
                         PodcastBoost(feedBoost)
                     }
-                    chatMessage.message.messageMedia?.let { media ->
+                    chatMessage.message.giphyData?.let { giphy ->
+                        GiphyMessageBubble(
+                            giphyData = giphy,
+                            modifier = Modifier
+                                .wrapContentHeight()
+                                .fillMaxWidth()
+                        )
+                    } ?: chatMessage.message.messageMedia?.let { media ->
                         if (media.mediaType.isImage) {
                             MessageMediaImage(
                                 chatMessage,
@@ -197,6 +213,64 @@ fun ChatCard(
     }
 }
 
+@Composable
+fun GiphyMessageBubble(
+    giphyData: GiphyData,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .wrapContentSize()
+            .padding(8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        DesktopGifImage(
+            url = giphyData.url,
+            modifier = Modifier
+                .wrapContentSize()
+                .defaultMinSize(minWidth = 100.dp, minHeight = 100.dp)
+        )
+    }
+}
+
+
+@Composable
+fun DesktopGifImage(
+    url: String,
+    modifier: Modifier = Modifier
+) {
+    KamelImage(
+        resource = asyncPainterResource(data = url),
+        contentDescription = "Animated GIF",
+        modifier = modifier,
+        contentScale = ContentScale.Inside, // maintains aspect ratio
+        onLoading = {
+            Box(
+                modifier = Modifier.wrapContentSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        onFailure = {
+            Box(
+                modifier = Modifier.wrapContentSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Error,
+                    contentDescription = "Error",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    )
+}
 @Composable
 fun MessageTextLabel(
     chatMessage: ChatMessage,

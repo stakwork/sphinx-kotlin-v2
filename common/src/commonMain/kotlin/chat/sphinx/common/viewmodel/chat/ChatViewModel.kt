@@ -131,20 +131,20 @@ abstract class ChatViewModel(
         }
     }
 
-    fun sendGifMessage(gifUrl: String) {
-        val giphyText = "${GiphyData.MESSAGE_PREFIX}$gifUrl"
-        onMessageTextChanged(TextFieldValue(giphyText))
-        onSendMessage(null)
+    fun sendGifMessage(gifUrl: String, aspectRatio: Double, id: String) {
+        val giphyData = GiphyData(id, gifUrl, aspectRatio, null)
+        editMessageState.giphyPreview.value = giphyData
         isGiphyPickerVisible.value = false
     }
 
 
-    //    fun playAudio(){
+//    fun playAudio() {
 //        scope.launch(dispatchers.mainImmediate) {
 //            resourcesVfs["sound/parte.mp3"].readSound()
 //        }
 //
 //    }
+
     private val isProductionEnvironment = ServersUrlsHelper().getEnvironmentType()
     val audioPlayer = AudioPlayer()
 
@@ -926,6 +926,10 @@ abstract class ChatViewModel(
 
             messageState.attachmentInfo.value?.let { attachmentInfo ->
                 sendMessageBuilder.setAttachmentInfo(attachmentInfo)
+            }
+
+            messageState.giphyPreview.value?.let { giphyData ->
+                sendMessageBuilder.setGiphyData(giphyData)
             }
 
             val sendMessage = sendMessageBuilder.build()
