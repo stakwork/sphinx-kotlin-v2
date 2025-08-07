@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import chat.sphinx.common.chatMesssageUI.DesktopGifImage
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.wrapper.toPhotoUrl
 import com.soywiz.korio.serialization.xml.Xml.Companion.Text
@@ -48,6 +49,7 @@ fun GiphyPickerUI(
                 .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
         ) {
             Spacer(Modifier.height(8.dp))
+
             // Search bar
             CustomTextField(
                 leadingIcon = { Spacer(modifier = Modifier.width(8.dp)) },
@@ -96,7 +98,7 @@ fun GiphyPickerUI(
                 columns = GridCells.Fixed(5),
                 modifier = Modifier
                     .fillMaxSize()
-                    .background( androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant),
+                    .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant),
                 contentPadding = PaddingValues(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -107,8 +109,7 @@ fun GiphyPickerUI(
                     val aspectRatio = gif.images.fixed_width.width.toDouble() / gif.images.fixed_width.height.toDouble()
                     val gifId = gif.id
 
-                    PhotoUrlImage(
-                        photoUrl = gifUrl.toPhotoUrl(),
+                    Box(
                         modifier = Modifier
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(4.dp))
@@ -119,9 +120,15 @@ fun GiphyPickerUI(
                                     id = gifId
                                 )
                             }
-                    )
+                    ) {
+                        DesktopGifImage(
+                            url = gifUrl,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
     }
 }
+

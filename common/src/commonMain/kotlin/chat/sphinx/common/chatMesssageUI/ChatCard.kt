@@ -62,9 +62,21 @@ import chat.sphinx.wrapper.thumbnailUrl
 import chat.sphinx.wrapper.util.getInitials
 import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
+import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import theme.*
 import java.awt.MediaTracker
+import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.URL
+import java.net.http.HttpClient
+import javax.imageio.ImageIO
 import javax.swing.Icon
 import javax.swing.ImageIcon
 import javax.swing.JLabel
@@ -218,59 +230,167 @@ fun GiphyMessageBubble(
     giphyData: GiphyData,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .wrapContentSize()
-            .padding(8.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
+    Box(Modifier.size(200.dp)) {
         DesktopGifImage(
             url = giphyData.url,
-            modifier = Modifier
-                .wrapContentSize()
-                .defaultMinSize(minWidth = 100.dp, minHeight = 100.dp)
+            modifier = modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(4.dp))
         )
     }
 }
-
 
 @Composable
 fun DesktopGifImage(
     url: String,
     modifier: Modifier = Modifier
 ) {
-    KamelImage(
-        resource = asyncPainterResource(data = url),
-        contentDescription = "Animated GIF",
-        modifier = modifier,
-        contentScale = ContentScale.Inside, // maintains aspect ratio
-        onLoading = {
-            Box(
-                modifier = Modifier.wrapContentSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
+    var gifFrames by remember { mutableStateOf<List<ImageBitmap>>(emptyList()) }
+    var currentFrame by remember { mutableStateOf(0) }
+    var isLoading by remember { mutableStateOf(true) }
+    var hasError by remember { mutableStateOf(false) }
+    var frameDuration by remember { mutableStateOf(100L) }
+
+    // Load GIF frames
+    LaunchedEffect(url) {
+        isLoading = true
+        hasError = false
+        try {
+            val frames = loadGifFrames(url)
+            gifFrames = frames
+            isLoading = false
+        } catch (e: Exception) {
+            println("Error loading GIF: ${e.message}")
+            hasError = true
+            isLoading = false
+        }
+    }
+
+    // Animate frames
+    LaunchedEffect(gifFrames) {
+        if (gifFrames.isNotEmpty()) {
+            while (true) {
+                delay(frameDuration)
+                currentFrame = (currentFrame + 1) % gifFrames.size
             }
-        },
-        onFailure = {
-            Box(
-                modifier = Modifier.wrapContentSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Error,
-                    contentDescription = "Error",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(24.dp)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(200.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            isLoading -> {
+                Column(
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(30.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Loading GIF...",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+            }
+            hasError -> {
+                Column(
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.Error,
+                        contentDescription = "Error loading GIF",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Failed to load GIF",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 10.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            gifFrames.isNotEmpty() -> {
+                Image(
+                    bitmap = gifFrames[currentFrame],
+                    contentDescription = "Animated GIF",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit
                 )
             }
         }
-    )
+    }
 }
+
+private suspend fun loadGifFrames(url: String): List<ImageBitmap> = withContext(Dispatchers.IO) {
+    val httpClient = HttpClient()
+    try {
+        val response = httpClient.get(url)
+        val bytes = response.readBytes()
+
+        val input = ByteArrayInputStream(bytes)
+        val readers = ImageIO.getImageReadersByFormatName("gif")
+
+        if (!readers.hasNext()) {
+            val bitmap = org.jetbrains.skia.Image.makeFromEncoded(bytes).toComposeImageBitmap()
+            return@withContext listOf(bitmap)
+        }
+
+        val reader = readers.next()
+        val iis = ImageIO.createImageInputStream(input)
+        reader.input = iis
+
+        val frames = mutableListOf<ImageBitmap>()
+        val numFrames = reader.getNumImages(true)
+
+        for (i in 0 until numFrames) {
+            val bufferedImage = reader.read(i)
+            val bitmap = bufferedImageToImageBitmap(bufferedImage)
+            frames.add(bitmap)
+        }
+
+        reader.dispose()
+        iis.close()
+        frames
+    } finally {
+        httpClient.close()
+    }
+}
+
+private fun bufferedImageToImageBitmap(bufferedImage: BufferedImage): ImageBitmap {
+    val baos = ByteArrayOutputStream()
+    ImageIO.write(bufferedImage, "png", baos)
+    val bytes = baos.toByteArray()
+    return org.jetbrains.skia.Image.makeFromEncoded(bytes).toComposeImageBitmap()
+}
+
+private suspend fun loadImageFromUrl(url: String): ImageBitmap = withContext(Dispatchers.IO) {
+    val response = HttpClient().use { client ->
+        client.get(url)
+    }
+    val bytes = response.readBytes()
+    loadImageBitmap(ByteArrayInputStream(bytes))
+}
+
+private fun loadImageBitmap(inputStream: InputStream): ImageBitmap {
+    return org.jetbrains.skia.Image.makeFromEncoded(inputStream.readBytes()).toComposeImageBitmap()
+}
+
 @Composable
 fun MessageTextLabel(
     chatMessage: ChatMessage,

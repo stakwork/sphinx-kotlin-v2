@@ -147,6 +147,7 @@ kotlin {
                 api(compose.desktop.common)
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 api(compose.desktop.components.splitPane)
+                implementation("org.sejda.imageio:webp-imageio:0.1.6")
             }
         }
 

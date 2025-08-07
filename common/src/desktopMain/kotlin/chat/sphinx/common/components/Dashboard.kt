@@ -886,7 +886,7 @@ fun SphinxChatDetailBottomAppBar(
                         )
                     }
 
-                    // GIF icon with smaller gray background
+                    // GIF icon
                     IconButton(
                         onClick = {
                             chatViewModel?.toggleGiphyPicker()
@@ -913,7 +913,6 @@ fun SphinxChatDetailBottomAppBar(
                         )
                     }
 
-
                     Spacer(Modifier.width(4.dp))
 
                     // Emoji icon
@@ -925,7 +924,7 @@ fun SphinxChatDetailBottomAppBar(
                             Icons.Outlined.EmojiEmotions,
                             contentDescription = "Emoji",
                             tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.size(24.dp).padding(bottom = 4.dp)
+                            modifier = Modifier.size(24.dp).padding(bottom = 1.dp)
                         )
                     }
                 }
