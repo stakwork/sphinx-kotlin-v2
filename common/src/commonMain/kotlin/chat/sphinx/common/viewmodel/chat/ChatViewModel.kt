@@ -16,9 +16,11 @@ import chat.sphinx.concepts.link_preview.model.TribePreviewName
 import chat.sphinx.concepts.link_preview.model.toPreviewImageUrlOrNull
 import chat.sphinx.concepts.meme_input_stream.MemeInputStreamHandler
 import chat.sphinx.concepts.meme_server.MemeServerTokenHandler
+import chat.sphinx.concepts.network.query.save_profile.model.GiphyItem
 import chat.sphinx.concepts.repository.message.model.AttachmentInfo
 import chat.sphinx.concepts.repository.message.model.SendMessage
 import chat.sphinx.di.container.SphinxContainer
+import chat.sphinx.generated.ApiConfig
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
 import chat.sphinx.response.ResponseError
@@ -100,12 +102,49 @@ abstract class ChatViewModel(
     var onNewMessageCallback: (() -> Unit)? = null
     private var messagesSize: Int = 0
 
-//    fun playAudio(){
+    val isGiphyPickerVisible = MutableStateFlow(false)
+    val giphySearchResults = MutableStateFlow<List<GiphyItem>>(emptyList())
+
+    fun toggleGiphyPicker() {
+        isGiphyPickerVisible.value = !isGiphyPickerVisible.value
+    }
+
+    fun searchGiphy(query: String) {
+        val apiKey = ApiConfig.GIPHY_API_KEY
+        scope.launch(dispatchers.io) {
+            networkQueryPeople.searchGifs(query, 0, 25, apiKey).collect { response ->
+                if (response is Response.Success) {
+                    giphySearchResults.value = response.value.data
+                }
+            }
+        }
+    }
+
+    fun fetchTrendingGifs() {
+        val apiKey = ApiConfig.GIPHY_API_KEY
+        scope.launch(dispatchers.io) {
+            networkQueryPeople.getTrendingGifs(0, 25, apiKey).collect { response ->
+                if (response is Response.Success) {
+                    giphySearchResults.value = response.value.data
+                }
+            }
+        }
+    }
+
+    fun sendGifMessage(gifUrl: String, aspectRatio: Double, id: String) {
+        val giphyData = GiphyData(id, gifUrl, aspectRatio, null)
+        editMessageState.giphyPreview.value = giphyData
+        isGiphyPickerVisible.value = false
+    }
+
+
+//    fun playAudio() {
 //        scope.launch(dispatchers.mainImmediate) {
 //            resourcesVfs["sound/parte.mp3"].readSound()
 //        }
 //
 //    }
+
     private val isProductionEnvironment = ServersUrlsHelper().getEnvironmentType()
     val audioPlayer = AudioPlayer()
 
@@ -887,6 +926,10 @@ abstract class ChatViewModel(
 
             messageState.attachmentInfo.value?.let { attachmentInfo ->
                 sendMessageBuilder.setAttachmentInfo(attachmentInfo)
+            }
+
+            messageState.giphyPreview.value?.let { giphyData ->
+                sendMessageBuilder.setGiphyData(giphyData)
             }
 
             val sendMessage = sendMessageBuilder.build()

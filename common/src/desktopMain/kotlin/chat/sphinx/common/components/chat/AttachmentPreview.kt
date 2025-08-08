@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -40,6 +41,8 @@ import chat.sphinx.wrapper.message.media.FileName
 import chat.sphinx.wrapper.message.media.MediaType
 import chat.sphinx.wrapper.message.media.isImage
 import chat.sphinx.wrapper.message.retrieveTextToShow
+import io.kamel.image.KamelImage
+import io.kamel.image.asyncPainterResource
 import okio.Path
 import theme.primary_blue
 import theme.primary_red
@@ -52,32 +55,73 @@ fun AttachmentPreview(
     modifier: Modifier = Modifier,
     isThreadView: Boolean = false
 ) {
-    val attachment = if (!isThreadView) {
-        chatViewModel?.editMessageState?.attachmentInfo?.value
-    } else {
-        chatViewModel?.threadMessageState?.attachmentInfo?.value
-    }
+    val editState = if (!isThreadView) chatViewModel?.editMessageState else chatViewModel?.threadMessageState
 
-    attachment?.let { attachmentInfo ->
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.85f))
-        ) {
-            if (attachmentInfo.mediaType.isImage) {
-                ImageFullScreen(attachmentInfo.filePath) {
-                    chatViewModel?.resetMessageFile(isThreadView)
+    val attachment = editState?.attachmentInfo?.value
+    val giphy = editState?.giphyPreview?.value
+
+    if (attachment == null && giphy == null) return
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.85f))
+    ) {
+        when {
+            giphy != null -> {
+                GifPreview(giphy.url) {
+                    chatViewModel?.editMessageState?.giphyPreview?.value = null
                 }
-            } else {
-                FilePreview(
-                    attachmentInfo.filePath,
-                    attachmentInfo.fileName,
-                    attachmentInfo.mediaType
-                ) {
-                    chatViewModel?.resetMessageFile(isThreadView)
+            }
+            attachment != null -> {
+                if (attachment.mediaType.isImage) {
+                    ImageFullScreen(attachment.filePath) {
+                        chatViewModel?.resetMessageFile(isThreadView)
+                    }
+                } else {
+                    FilePreview(
+                        attachment.filePath,
+                        attachment.fileName,
+                        attachment.mediaType
+                    ) {
+                        chatViewModel?.resetMessageFile(isThreadView)
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun GifPreview(
+    gifUrl: String,
+    onClose: () -> Unit
+) {
+    val resource = asyncPainterResource(data = gifUrl)
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        KamelImage(
+            resource = resource,
+            contentDescription = "GIF Preview",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(40.dp)
+        )
+
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = "Close GIF preview",
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier
+                .padding(20.dp)
+                .align(Alignment.TopStart)
+                .size(30.dp)
+                .clickable(onClick = onClose)
+        )
     }
 }
 

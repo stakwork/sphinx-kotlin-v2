@@ -32,10 +32,14 @@ val generateApiConfig by tasks.registering {
             ?: localProperties.getProperty("WORKFLOW_ID") ?: "0"
         val chaptersToken = findProperty("CHAPTERS_TOKEN")?.toString()
             ?: localProperties.getProperty("CHAPTERS_TOKEN") ?: ""
+        val giphyApiKey = findProperty("GIPHY_API_KEY")?.toString()
+            ?: localProperties.getProperty("GIPHY_API_KEY") ?: ""
 
         val safeWorkflowId = workflowIdStr.toIntOrNull() ?: 0
-
-        val safeToken = chaptersToken
+        val safeChaptersToken = chaptersToken
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+        val safeGiphyKey = giphyApiKey
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
 
@@ -44,7 +48,8 @@ val generateApiConfig by tasks.registering {
 
             object ApiConfig {
                 const val WORKFLOW_ID = $safeWorkflowId
-                const val CHAPTERS_TOKEN = "$safeToken"
+                const val CHAPTERS_TOKEN = "$safeChaptersToken"
+                const val GIPHY_API_KEY = "$safeGiphyKey"
             }
         """.trimIndent()
 
@@ -142,6 +147,7 @@ kotlin {
                 api(compose.desktop.common)
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 api(compose.desktop.components.splitPane)
+                implementation("org.sejda.imageio:webp-imageio:0.1.6")
             }
         }
 

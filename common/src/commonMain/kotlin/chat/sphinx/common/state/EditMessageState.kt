@@ -7,6 +7,7 @@ import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.concepts.repository.message.model.AttachmentInfo
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.ContactId
+import chat.sphinx.wrapper.message.GiphyData
 import okio.Path
 
 data class EditMessageState(
@@ -15,5 +16,6 @@ data class EditMessageState(
     val attachmentInfo: MutableState<AttachmentInfo?> = mutableStateOf(null),
     val chatId: ChatId?,
     val contactId: ContactId? = null,
-    val replyToMessage: MutableState<ChatMessage?> = mutableStateOf(null)
-)
+    val replyToMessage: MutableState<ChatMessage?> = mutableStateOf(null),
+    val giphyPreview: MutableState<GiphyData?> = mutableStateOf(null),
+    )
