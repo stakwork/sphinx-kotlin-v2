@@ -948,7 +948,12 @@ fun SphinxChatDetailBottomAppBar(
                         if (hasContentToSend) {
                             chatViewModel?.onSendMessage(threadUUID?.value)
                         } else {
-                            // TODO: Implement mic functionality
+                            val isRecording = chatViewModel?.isRecording ?: false
+                            if (isRecording) {
+                                chatViewModel?.stopRecording() // Stop recording
+                            } else {
+                                chatViewModel?.startRecording() // Start recording
+                            }
                         }
                     },
                     modifier = Modifier

@@ -29,6 +29,8 @@ import chat.sphinx.utils.UserColorsHelper
 import chat.sphinx.utils.linkify.LinkSpec
 import chat.sphinx.utils.linkify.LinkTag
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
+import chat.sphinx.utils.platform.getFileSystem
+import chat.sphinx.utils.platform.getSphinxDirectory
 import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.chat.*
@@ -57,8 +59,10 @@ import theme.badge_red
 import theme.primary_green
 import utils.deduceMediaType
 import utils.getRandomColorRes
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
+import javax.sound.sampled.*
 
 suspend inline fun MessageMedia.retrieveRemoteMediaInputStream(
     url: String,
@@ -105,6 +109,8 @@ abstract class ChatViewModel(
     val isGiphyPickerVisible = MutableStateFlow(false)
     val giphySearchResults = MutableStateFlow<List<GiphyItem>>(emptyList())
 
+    var isRecording by mutableStateOf(false)
+
     fun toggleGiphyPicker() {
         isGiphyPickerVisible.value = !isGiphyPickerVisible.value
     }
@@ -137,6 +143,125 @@ abstract class ChatViewModel(
         isGiphyPickerVisible.value = false
     }
 
+    private var targetDataLine: TargetDataLine? = null
+    private var audioOutputStream: ByteArrayOutputStream? = null
+    private var recordingThread: Thread? = null
+
+    fun startRecording() {
+        if (!isRecording) {
+            isRecording = true
+            audioOutputStream = ByteArrayOutputStream()
+
+            try {
+                val format = AudioFormat(16000f, 16, 1, true, false)
+                val info = DataLine.Info(TargetDataLine::class.java, format)
+
+                if (!AudioSystem.isLineSupported(info)) {
+                    println("Line not supported!")
+                    return
+                }
+
+                targetDataLine = AudioSystem.getLine(info) as TargetDataLine
+                targetDataLine?.open(format)
+                targetDataLine?.start()
+
+                // Start recording in a separate thread
+                recordingThread = Thread {
+                    val buffer = ByteArray(1024)
+                    while (isRecording && targetDataLine != null) {
+                        val bytesRead = targetDataLine?.read(buffer, 0, buffer.size) ?: 0
+                        if (bytesRead > 0) {
+                            audioOutputStream?.write(buffer, 0, bytesRead)
+                        }
+                    }
+                }
+                recordingThread?.start()
+
+            } catch (e: LineUnavailableException) {
+                e.printStackTrace()
+                isRecording = false
+            }
+        }
+    }
+
+
+    fun stopRecording() {
+        if (isRecording) {
+            isRecording = false
+
+            // Stop recording thread
+            recordingThread?.interrupt()
+            recordingThread = null
+
+            // Stop and close audio line
+            targetDataLine?.stop()
+            targetDataLine?.close()
+            targetDataLine = null
+
+            // Save the recorded audio
+            audioOutputStream?.let { outputStream ->
+                saveAudioRecording(outputStream.toByteArray())
+            }
+
+            audioOutputStream?.close()
+            audioOutputStream = null
+
+            println("Recording stopped and saved.")
+        }
+    }
+
+    private fun saveAudioRecording(audioData: ByteArray) {
+        scope.launch(dispatchers.io) {
+            try {
+                // Create a temporary file for the audio
+                val sphinxDirectory = getSphinxDirectory()
+                val audioFileName = "audio_${System.currentTimeMillis()}.wav"
+                val audioPath = sphinxDirectory / "temp" / audioFileName
+
+                // Ensure the temp directory exists
+                val tempDir = sphinxDirectory / "temp"
+                if (!getFileSystem().exists(tempDir)) {
+                    getFileSystem().createDirectories(tempDir)
+                }
+
+                // Convert raw audio data to WAV format and save
+                saveAsWavFile(audioData, audioPath)
+
+                setAttachmentInfoForAudio(audioPath)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                toast("Failed to save audio recording", badge_red)
+            }
+        }
+    }
+
+    private fun saveAsWavFile(audioData: ByteArray, filePath: Path) {
+        val format = AudioFormat(16000f, 16, 1, true, false)
+
+        getFileSystem().write(filePath) {
+            val audioInputStream = AudioInputStream(
+                audioData.inputStream(),
+                format,
+                audioData.size / format.frameSize.toLong()
+            )
+            AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, this.outputStream())
+            audioInputStream.close()
+        }
+    }
+
+    private fun setAttachmentInfoForAudio(audioPath: Path) {
+        scope.launch(dispatchers.mainImmediate) {
+            val attachmentInfo = AttachmentInfo(
+                filePath = audioPath,
+                mediaType = MediaType.Audio("audio/wav"),
+                fileName = audioPath.name.toFileName(),
+                isLocalFile = true
+            )
+
+            val messageState = editMessageState
+            messageState.attachmentInfo.value = attachmentInfo
+        }
+    }
 
 //    fun playAudio() {
 //        scope.launch(dispatchers.mainImmediate) {
