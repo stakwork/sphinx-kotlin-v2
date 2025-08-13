@@ -207,7 +207,7 @@ abstract class ChatViewModel(
         if (!isRecording && !isThreadRecording) return
         val wasThread = isThreadRecording
 
-        recordingFlag = false // Stop recording immediately
+        recordingFlag = false
 
         targetDataLine?.apply {
             try {
@@ -291,7 +291,6 @@ abstract class ChatViewModel(
             isRecording = false
         }
 
-        // Verify we're cancelling the correct recording context
         val expectedContext = if (isThreadView) "thread" else "main"
         if (currentRecordingContext != expectedContext) {
             println("Warning: Cancelling recording context mismatch. Expected: $expectedContext, Current: $currentRecordingContext")
@@ -400,19 +399,6 @@ abstract class ChatViewModel(
         }
     }
 
-    private fun setAttachmentInfoForAudio(audioPath: Path) {
-        scope.launch(dispatchers.mainImmediate) {
-            val attachmentInfo = AttachmentInfo(
-                filePath = audioPath,
-                mediaType = MediaType.Audio("audio/wav"),
-                fileName = audioPath.name.toFileName(),
-                isLocalFile = true
-            )
-
-            val messageState = editMessageState
-            messageState.attachmentInfo.value = attachmentInfo
-        }
-    }
 
 //    fun playAudio() {
 //        scope.launch(dispatchers.mainImmediate) {
