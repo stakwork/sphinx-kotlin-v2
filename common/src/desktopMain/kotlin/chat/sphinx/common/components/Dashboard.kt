@@ -927,7 +927,7 @@ fun SphinxChatDetailBottomAppBar(
                         )
                     }
 
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(12.dp))
 
                     // Emoji icon
                     IconButton(
