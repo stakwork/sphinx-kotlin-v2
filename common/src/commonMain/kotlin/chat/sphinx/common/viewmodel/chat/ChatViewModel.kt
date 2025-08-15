@@ -29,6 +29,8 @@ import chat.sphinx.utils.UserColorsHelper
 import chat.sphinx.utils.linkify.LinkSpec
 import chat.sphinx.utils.linkify.LinkTag
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
+import chat.sphinx.utils.platform.getFileSystem
+import chat.sphinx.utils.platform.getSphinxDirectory
 import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.PhotoUrl
 import chat.sphinx.wrapper.chat.*
@@ -48,17 +50,17 @@ import chat.sphinx.wrapper_chat.NotificationLevel
 import chat.sphinx.wrapper_chat.isMuteChat
 import chat.sphinx.wrapper_message.ThreadUUID
 import chat.sphinx.wrapper_message.toThreadUUID
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import okio.Path
 import theme.badge_red
 import theme.primary_green
 import utils.deduceMediaType
 import utils.getRandomColorRes
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
+import javax.sound.sampled.*
 
 suspend inline fun MessageMedia.retrieveRemoteMediaInputStream(
     url: String,
@@ -105,6 +107,9 @@ abstract class ChatViewModel(
     val isGiphyPickerVisible = MutableStateFlow(false)
     val giphySearchResults = MutableStateFlow<List<GiphyItem>>(emptyList())
 
+    var isRecording: Boolean by mutableStateOf(false)
+        private set
+
     fun toggleGiphyPicker() {
         isGiphyPickerVisible.value = !isGiphyPickerVisible.value
     }
@@ -135,6 +140,263 @@ abstract class ChatViewModel(
         val giphyData = GiphyData(id, gifUrl, aspectRatio, null)
         editMessageState.giphyPreview.value = giphyData
         isGiphyPickerVisible.value = false
+    }
+
+    var isThreadRecording: Boolean by mutableStateOf(false)
+        private set
+
+    private var currentRecordingContext: String? = null
+    private var recordingJob: Job? = null
+    private var targetDataLine: TargetDataLine? = null
+    private var audioOutputStream: ByteArrayOutputStream? = null
+    @Volatile private var recordingFlag: Boolean = false
+
+    fun startRecording(isThreadView: Boolean = false) {
+        if (isRecording || isThreadRecording) return
+
+        isRecording = !isThreadView
+        isThreadRecording = isThreadView
+        currentRecordingContext = if (isThreadView) "thread" else "main"
+        recordingFlag = true
+        audioOutputStream = ByteArrayOutputStream()
+
+        try {
+            val format = AudioFormat(16000f, 16, 1, true, false)
+            val info = DataLine.Info(TargetDataLine::class.java, format)
+            if (!AudioSystem.isLineSupported(info)) {
+                println("Line not supported!")
+                isRecording = false
+                isThreadRecording = false
+                currentRecordingContext = null
+                recordingFlag = false
+                return
+            }
+            targetDataLine = AudioSystem.getLine(info) as TargetDataLine
+            targetDataLine?.open(format)
+            targetDataLine?.start()
+
+            recordingJob = scope.launch(dispatchers.io) {
+                val buffer = ByteArray(1024)
+                try {
+                    while (isActive && recordingFlag) {
+                        val line = targetDataLine ?: break
+                        val bytesRead = line.read(buffer, 0, buffer.size)
+                        if (bytesRead > 0) {
+                            audioOutputStream?.write(buffer, 0, bytesRead)
+                        }
+                    }
+                } finally { }
+            }
+
+            println("Recording started for context: $currentRecordingContext")
+
+        } catch (e: LineUnavailableException) {
+            e.printStackTrace()
+            isRecording = false
+            isThreadRecording = false
+            currentRecordingContext = null
+            recordingFlag = false
+            targetDataLine?.close()
+            targetDataLine = null
+            audioOutputStream?.close()
+            audioOutputStream = null
+        }
+    }
+
+    fun stopRecording(threadUUID: String?) {
+        if (!isRecording && !isThreadRecording) return
+        val wasThread = isThreadRecording
+
+        recordingFlag = false
+
+        targetDataLine?.apply {
+            try {
+                stop()
+            } catch (e: Exception) {
+                println("Error stopping audio line: ${e.message}")
+            }
+            try {
+                close()
+            } catch (e: Exception) {
+                println("Error closing audio line: ${e.message}")
+            }
+        }
+        targetDataLine = null
+
+        val job = recordingJob
+        recordingJob = null
+        val context = currentRecordingContext
+
+        if (job != null) {
+            scope.launch(dispatchers.io) {
+                try {
+                    job.cancelAndJoin()
+                } catch (e: Exception) {
+                    println("Error cancelling recording job: ${e.message}")
+                }
+
+                audioOutputStream?.let { outputStream ->
+                    saveAudioRecording(
+                        audioData = outputStream.toByteArray(),
+                        threadUUID = if (wasThread) threadUUID else null,
+                        isThreadView = wasThread
+                    )
+                }
+
+                try {
+                    audioOutputStream?.close()
+                } catch (e: Exception) {
+                    println("Error closing audio output stream: ${e.message}")
+                }
+                audioOutputStream = null
+
+                // Reset all recording states
+                isRecording = false
+                isThreadRecording = false
+                currentRecordingContext = null
+
+                println("Recording saved for context: $context")
+            }
+        } else {
+            audioOutputStream?.let { outputStream ->
+                saveAudioRecording(
+                    audioData = outputStream.toByteArray(),
+                    threadUUID = if (wasThread) threadUUID else null,
+                    isThreadView = wasThread
+                )
+            }
+
+            try {
+                audioOutputStream?.close()
+            } catch (e: Exception) {
+                println("Error closing audio output stream: ${e.message}")
+            }
+            audioOutputStream = null
+
+            // Reset all recording states
+            isRecording = false
+            isThreadRecording = false
+            currentRecordingContext = null
+
+            println("Recording saved for context: $context")
+        }
+    }
+
+    fun cancelRecording(isThreadView: Boolean = false) {
+        if (!isRecording && !isThreadRecording) return
+
+        if (isThreadView) {
+            isThreadRecording = false
+        } else {
+            isRecording = false
+        }
+
+        val expectedContext = if (isThreadView) "thread" else "main"
+        if (currentRecordingContext != expectedContext) {
+            println("Warning: Cancelling recording context mismatch. Expected: $expectedContext, Current: $currentRecordingContext")
+        }
+
+        isRecording = false
+        recordingFlag = false
+
+        try {
+            targetDataLine?.stop()
+            println("Audio line stopped (cancelled) for context: $currentRecordingContext")
+        } catch (e: Exception) {
+            println("Error stopping audio line during cancellation: ${e.message}")
+        }
+
+        try {
+            targetDataLine?.close()
+            println("Audio line closed (cancelled) for context: $currentRecordingContext")
+        } catch (e: Exception) {
+            println("Error closing audio line during cancellation: ${e.message}")
+        }
+        targetDataLine = null
+
+        val job = recordingJob
+        recordingJob = null
+        val context = currentRecordingContext
+
+        scope.launch(dispatchers.io) {
+            try {
+                job?.cancelAndJoin()
+                println("Recording job cancelled for context: $context")
+            } catch (e: Exception) {
+                println("Error cancelling recording job: ${e.message}")
+            }
+
+            try {
+                audioOutputStream?.close()
+                println("Audio output stream closed (cancelled) for context: $context")
+            } catch (e: Exception) {
+                println("Error closing audio output stream during cancellation: ${e.message}")
+            }
+            audioOutputStream = null
+
+            // Reset context
+            isThreadRecording = false
+            currentRecordingContext = null
+
+            println("Recording cancelled for context: $context")
+        }
+    }
+
+    private fun saveAudioRecording(audioData: ByteArray, threadUUID: String?, isThreadView: Boolean) {
+        scope.launch(dispatchers.io) {
+            try {
+                // Create a temporary file for the audio
+                val sphinxDirectory = getSphinxDirectory()
+                val audioFileName = "audio_${System.currentTimeMillis()}_${if (isThreadView) "thread" else "main"}.wav"
+                val audioPath = sphinxDirectory / "temp" / audioFileName
+
+                // Ensure the temp directory exists
+                val tempDir = sphinxDirectory / "temp"
+                if (!getFileSystem().exists(tempDir)) {
+                    getFileSystem().createDirectories(tempDir)
+                }
+
+                // Convert raw audio data to WAV format and save
+                saveAsWavFile(audioData, audioPath)
+
+                setAttachmentInfoForAudio(audioPath, isThreadView)
+                onSendMessage(threadUUID)
+
+                println("Audio recording saved: $audioFileName for ${if (isThreadView) "thread" else "main"} view")
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                toast("Failed to save audio recording", badge_red)
+            }
+        }
+    }
+
+    private fun setAttachmentInfoForAudio(audioPath: Path, isThreadView: Boolean) {
+        scope.launch(dispatchers.mainImmediate) {
+            val attachmentInfo = AttachmentInfo(
+                filePath = audioPath,
+                mediaType = MediaType.Audio("audio/wav"),
+                fileName = audioPath.name.toFileName(),
+                isLocalFile = true
+            )
+
+            val messageState = if (isThreadView) threadMessageState else editMessageState
+            messageState.attachmentInfo.value = attachmentInfo
+        }
+    }
+
+    private fun saveAsWavFile(audioData: ByteArray, filePath: Path) {
+        val format = AudioFormat(16000f, 16, 1, true, false)
+
+        getFileSystem().write(filePath) {
+            val audioInputStream = AudioInputStream(
+                audioData.inputStream(),
+                format,
+                audioData.size / format.frameSize.toLong()
+            )
+            AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, this.outputStream())
+            audioInputStream.close()
+        }
     }
 
 

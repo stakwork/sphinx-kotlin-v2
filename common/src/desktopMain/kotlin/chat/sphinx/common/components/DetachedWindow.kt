@@ -88,7 +88,8 @@ fun DetachedWindow(
                             SphinxChatDetailBottomAppBar(
                                 dashboardChat = null,
                                 chatViewModel = threadChatViewModel,
-                                threadUUID = threadUUID
+                                threadUUID = threadUUID,
+                                isThreadView = false
                             )
                         }
                     ) { innerPadding ->

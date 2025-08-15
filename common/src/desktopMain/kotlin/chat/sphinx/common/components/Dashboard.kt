@@ -2,6 +2,7 @@ package chat.sphinx.common.components
 
 import CommonButton
 import Roboto
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -185,7 +186,7 @@ actual fun  Dashboard(
                                             )
                                         },
                                         bottomBar = {
-                                            SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                            SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel, isThreadView = false)
                                         }
                                     ) { paddingValues ->
                                         Column(
@@ -227,7 +228,8 @@ actual fun  Dashboard(
                                             SphinxChatDetailBottomAppBar(
                                                 dashboardChat,
                                                 chatViewModel,
-                                                screen.threadUUID
+                                                screen.threadUUID,
+                                                true
                                             )
                                         }
                                     }
@@ -770,8 +772,20 @@ fun SphinxChatDetailTopAppBar(
 fun SphinxChatDetailBottomAppBar(
     dashboardChat: DashboardChat?,
     chatViewModel: ChatViewModel?,
-    threadUUID: ThreadUUID? = null
+    threadUUID: ThreadUUID? = null,
+    isThreadView: Boolean = false
 ) {
+    val isRecording = if (isThreadView) {
+        chatViewModel?.isThreadRecording == true
+    } else {
+        chatViewModel?.isRecording == true && chatViewModel?.isThreadRecording != true
+    }
+
+    if (isRecording && chatViewModel != null) {
+        RecordingBottomBar(chatViewModel, threadUUID, isThreadView)
+        return
+    }
+
     val scope = rememberCoroutineScope()
 
     var textFieldValueState by remember {
@@ -837,7 +851,7 @@ fun SphinxChatDetailBottomAppBar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        val textValue = if (threadUUID != null) {
+                        val textValue = if (isThreadView) {
                             chatViewModel?.threadMessageState?.messageText?.value ?: TextFieldValue("")
                         } else {
                             chatViewModel?.editMessageState?.messageText?.value ?: TextFieldValue("")
@@ -872,7 +886,7 @@ fun SphinxChatDetailBottomAppBar(
                                 val proposedText = newValue.text
                                 val proposedTextBytes = proposedText.toByteArray().size
                                 if (proposedTextBytes <= 592) {
-                                    if (threadUUID != null) {
+                                    if (isThreadView) {
                                         chatViewModel?.onThreadMessageTextChanged(newValue)
                                     } else {
                                         chatViewModel?.onMessageTextChanged(newValue)
@@ -913,7 +927,7 @@ fun SphinxChatDetailBottomAppBar(
                         )
                     }
 
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(12.dp))
 
                     // Emoji icon
                     IconButton(
@@ -932,12 +946,11 @@ fun SphinxChatDetailBottomAppBar(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 // Show PriceChip only when text is not empty
-
-                val messageState = if (threadUUID != null) chatViewModel?.threadMessageState else chatViewModel?.editMessageState
+                val messageState = if (isThreadView) chatViewModel?.threadMessageState else chatViewModel?.editMessageState
                 val hasContentToSend = canSendMessage(messageState)
                 val hasText = messageState?.messageText?.value?.text?.isNotBlank() ?: false
 
-                if (hasText && threadUUID == null) {
+                if (hasText && !isThreadView) {
                     PriceChip(chatViewModel)
                     Spacer(modifier = Modifier.width(10.dp))
                 }
@@ -948,7 +961,12 @@ fun SphinxChatDetailBottomAppBar(
                         if (hasContentToSend) {
                             chatViewModel?.onSendMessage(threadUUID?.value)
                         } else {
-                            // TODO: Implement mic functionality
+                            val isRecording = chatViewModel?.isRecording ?: false
+                            if (isRecording) {
+                                chatViewModel?.stopRecording(threadUUID?.value)
+                            } else {
+                                chatViewModel?.startRecording(isThreadView)
+                            }
                         }
                     },
                     modifier = Modifier
@@ -965,6 +983,101 @@ fun SphinxChatDetailBottomAppBar(
                 }
 
                 Spacer(modifier = Modifier.width(10.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordingBottomBar(
+    chatViewModel: ChatViewModel,
+    threadUUID: ThreadUUID?,
+    isThreadView: Boolean = false
+) {
+    var seconds by remember { mutableIntStateOf(0) }
+    val isRecording = if (isThreadView) {
+        chatViewModel.isThreadRecording
+    } else {
+        chatViewModel.isRecording
+    }
+
+    LaunchedEffect(isRecording) {
+        seconds = 0
+        if (isRecording) while (true) { kotlinx.coroutines.delay(1000); seconds += 1 }
+    }
+    val infinite = rememberInfiniteTransition(label = "pulse")
+    val dotAlpha by infinite.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "dotAlpha"
+    )
+    fun fmt(t: Int) = "%02d:%02d".format(t / 60, t % 60)
+
+    Surface(
+        color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(Dp.Unspecified, 60.dp)
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(Modifier.weight(1f))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(badge_red.copy(alpha = dotAlpha))
+                )
+                Text(
+                    text = fmt(seconds),
+                    fontSize = 20.sp,
+                    color = Color.White
+                )
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            // cancel
+            IconButton(
+                onClick = { chatViewModel.cancelRecording(isThreadView) },
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(badge_red)
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Discard recording",
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            // accept
+            IconButton(
+                onClick = { chatViewModel.stopRecording(threadUUID?.value) },
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(primary_green)
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Done,
+                    contentDescription = "Use recording",
+                    tint = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
     }

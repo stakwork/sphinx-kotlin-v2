@@ -72,9 +72,15 @@ fun MessageAudio(
                 )
             }
         }
-        Box(
-            modifier = Modifier.width(190.dp).padding(start = 8.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                // cap width so it never goes full-screen, but can shrink if needed
+                .widthIn(max = 320.dp)      // 300–320dp works well; pick your taste
+                .height(68.dp)
+                .padding(horizontal = 8.dp, vertical = 12.dp)
         ) {
+            // ...
             Slider(
                 value = audioState?.progress?.toFloat() ?: 0f,
                 onValueChange = {},
@@ -82,15 +88,26 @@ fun MessageAudio(
                     activeTrackColor = MaterialTheme.colorScheme.secondary,
                     inactiveTrackColor = MaterialTheme.colorScheme.onBackground,
                     thumbColor = MaterialTheme.colorScheme.secondary
-                )
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
             )
-        }
-        Box(
-            modifier = Modifier.width(68.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            val seconds = (audioState?.length ?: 0) - (audioState?.currentTime ?: 0)
-            Text(seconds.toAudioTimeFormat(), color = MaterialTheme.colorScheme.tertiary)
+
+            Box(
+                modifier = Modifier
+                    .widthIn(min = 56.dp)
+                    .wrapContentHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                val seconds = (audioState?.length ?: 0) - (audioState?.currentTime ?: 0)
+                Text(
+                    text = seconds.toAudioTimeFormat(),
+                    color = MaterialTheme.colorScheme.tertiary,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
         }
     }
 }
