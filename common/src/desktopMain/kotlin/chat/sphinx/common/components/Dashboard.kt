@@ -80,7 +80,7 @@ private fun Modifier.cursorForHorizontalResize(): Modifier =
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
-actual fun  Dashboard(
+actual fun Dashboard(
     dashboardViewModel: DashboardViewModel
 ) {
     val splitterState = rememberSplitPaneState()
@@ -485,7 +485,7 @@ actual fun  Dashboard(
             )
 
             ImageFullScreen(fullScreenImageState)
-
+            VideoFullScreen(fullScreenVideoState)
 
             DetachedWindow(
                 dashboardViewModel = dashboardViewModel,

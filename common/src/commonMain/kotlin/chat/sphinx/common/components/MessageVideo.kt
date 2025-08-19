@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.Res
+import chat.sphinx.common.state.fullScreenVideoState
 import chat.sphinx.common.viewmodel.chat.retrieveRemoteMediaInputStream
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.platform.imageResource
@@ -53,8 +54,6 @@ fun MessageVideo(
     val localFilepath = messageMedia?.localFile
     val url = messageMedia?.url?.value ?: ""
 
-
-
     if (message.isPaidPendingMessage && chatMessage.isReceived) {
         PaidVideoOverlay(modifier)
     } else {
@@ -63,12 +62,12 @@ fun MessageVideo(
                 chatViewModel.downloadFileMedia(message, chatMessage.isSent)
             }
         }
+
         if (localFilepath != null) {
             Box(
                 modifier = Modifier.height(250.dp).fillMaxWidth(),
                 contentAlignment = Alignment.Center
-            )
-            {
+            ) {
                 Image(
                     painter = imageResource(Res.drawable.ic_video_place_holder),
                     contentDescription = "",
@@ -78,13 +77,16 @@ fun MessageVideo(
                     color = Color.Black.copy(alpha = 0.5f),
                     modifier = Modifier.fillMaxSize()
                 ) {}
+
                 Icon(
                     Icons.Default.PlayCircleOutline,
                     contentDescription = "Play Button",
                     tint = Color.White,
-                    modifier = Modifier.size(80.dp).clickable {
-                        toast("Video Player not implemented yet, save the file to watch the video")
-                    }
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clickable {
+                            fullScreenVideoState.value = localFilepath
+                        }
                 )
             }
         } else if (videoLoadError.value) {
@@ -94,7 +96,7 @@ fun MessageVideo(
                 modifier = Modifier.aspectRatio(1f)
             )
         } else {
-           VideoLoadingView(modifier)
+            VideoLoadingView(modifier)
         }
     }
 }

@@ -23,3 +23,4 @@ object AppState {
 }
 
 val fullScreenImageState = mutableStateOf<Path?>(null)
+val fullScreenVideoState = mutableStateOf<Path?>(null)
