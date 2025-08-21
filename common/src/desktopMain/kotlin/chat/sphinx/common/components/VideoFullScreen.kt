@@ -86,8 +86,13 @@ fun EnhancedVideoPlayer(
     onPlayerReady: (VideoPlayerController) -> Unit = {},
     showControls: Boolean = true
 ) {
-    val holder = remember(filePath) { EnhancedFxPlayerHolder() }
-    val controller = remember(filePath) { VideoPlayerController(holder) }
+    println("EnhancedVideoPlayer START filePath=$filePath")
+
+    val holder = remember { EnhancedFxPlayerHolder() }
+    val controller = remember { VideoPlayerController(holder) }
+
+    println("remember holder.id=${holder} controller=${System.identityHashCode(controller)} for filePath=$filePath")
+
 
     val themeColor = MaterialTheme.colorScheme.onSurfaceVariant
     val bgAwt = remember(themeColor) { themeColor.toAwt() }
@@ -98,7 +103,9 @@ fun EnhancedVideoPlayer(
     }
 
     DisposableEffect(filePath) {
+        println("DisposableEffect START for filePath=$filePath holder.id=${holder}")
         onDispose {
+            println("DisposableEffect onDispose for filePath=$filePath holder.id=${holder}")
             holder.cleanup()
         }
     }
@@ -107,58 +114,35 @@ fun EnhancedVideoPlayer(
         SwingPanel(
             modifier = Modifier.fillMaxSize(),
             factory = {
-                val jfxPanel = JFXPanel().also { panel ->
-                    panel.background = bgAwt
-                    holder.jfxPanel = panel
+                val jfxPanel = JFXPanel().also {
+                    it.background = bgAwt
+                    holder.jfxPanel = it
                 }
 
+                // Ensure FX runtime never auto-exits when last window/player stops.
                 Platform.runLater {
                     try {
-                        val uri = File(filePath).toURI().toString()
-                        val media = Media(uri).apply {
-                            errorProperty().addListener { _, _, err ->
-                                onError("Media Error: ${err?.message ?: "unknown"}")
-                            }
-                        }
-
-                        val player = MediaPlayer(media).also {
-                            holder.player = it
-                            controller.initialize(it)
-                        }
-
-                        player.setOnError {
-                            val msg = player.error?.message ?: "MediaPlayer Error (unknown)"
-                            onError(msg)
-                        }
+                        javafx.application.Platform.setImplicitExit(false)
 
                         val root = StackPane().apply {
                             minWidth = StackPane.USE_COMPUTED_SIZE
                             minHeight = StackPane.USE_COMPUTED_SIZE
                         }
-
-                        val scene = Scene(root).apply {
-                            fill = bgFx
-                        }
+                        val scene = Scene(root).apply { fill = bgFx }
                         jfxPanel.scene = scene
 
-                        val mediaView = MediaView(player).apply {
+                        val mv = MediaView().apply {
                             isPreserveRatio = true
                             isSmooth = true
                         }
+                        mv.fitWidthProperty().bind(root.widthProperty())
+                        mv.fitHeightProperty().bind(root.heightProperty())
+                        StackPane.setAlignment(mv, Pos.CENTER)
+                        root.children.add(mv)
 
-                        mediaView.fitWidthProperty().bind(root.widthProperty())
-                        mediaView.fitHeightProperty().bind(root.heightProperty())
-                        StackPane.setAlignment(mediaView, Pos.CENTER)
-                        root.children.add(mediaView)
-
-                        player.setOnReady {
-                            holder.isReady = true
-                            if (autoPlay) player.play()
-                        }
-                    } catch (e: MediaException) {
-                        onError("MediaException: ${e.message}")
+                        holder.mediaView = mv
                     } catch (t: Throwable) {
-                        onError("Video init failed: ${t.message}")
+                        onError("FX init failed: ${t.message}")
                     }
                 }
 
@@ -167,6 +151,50 @@ fun EnhancedVideoPlayer(
             update = { jfxPanel ->
                 jfxPanel.background = bgAwt
                 jfxPanel.scene?.fill = bgFx
+
+                if (holder.currentPath != filePath) {
+                    holder.currentPath = filePath
+                    val uri = File(filePath).toURI().toString()
+
+                    Platform.runLater {
+                        try {
+                            // Dispose old player (safe if null)
+                            holder.player?.let { old ->
+                                try { old.stop() } catch (_: Exception) {}
+                                try { old.dispose() } catch (_: Exception) {}
+                            }
+
+                            val media = Media(uri).apply {
+                                errorProperty().addListener { _, _, err ->
+                                    onError("Media Error: ${err?.message ?: "unknown"}")
+                                }
+                            }
+
+                            val player = MediaPlayer(media)
+                            holder.player = player
+                            controller.initialize(player)
+
+                            // Attach to existing MediaView (created in factory)
+                            val mv = holder.mediaView
+                            if (mv != null) {
+                                mv.mediaPlayer = player
+                            } else {
+                                onError("MediaView not ready; FX scene not initialized")
+                                return@runLater
+                            }
+
+                            player.setOnReady {
+                                holder.isReady = true
+                                if (autoPlay) player.play()
+                            }
+                            player.setOnError {
+                                onError(player.error?.message ?: "MediaPlayer Error (unknown)")
+                            }
+                        } catch (t: Throwable) {
+                            onError("Reload failed: ${t.message}")
+                        }
+                    }
+                }
             }
         )
     }
@@ -344,7 +372,6 @@ fun VideoControlsBar(
         )
 
         // 7) Volume
-
         Box(modifier = Modifier.padding(start = 4.dp)) {
             // --- inside the volume Box in VideoControlsBar() ---
             IconButton(
@@ -373,7 +400,6 @@ fun VideoControlsBar(
         }
 
         // 8) Playback speed (popup above)
-// 8) Playback speed (popup above)
         Box(
             modifier = Modifier.padding(start = 2.dp)
         ) {
@@ -414,7 +440,7 @@ private fun VolumePopup(
 
     Popup(
         popupPositionProvider = positionProvider,
-        properties = PopupProperties(focusable = true), // back/esc dismiss
+        properties = PopupProperties(focusable = true),
         onDismissRequest = onDismiss
     ) {
         Card(

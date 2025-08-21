@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import javafx.application.Platform
 import javafx.embed.swing.JFXPanel
 import javafx.scene.media.MediaPlayer
+import javafx.scene.media.MediaView
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -31,17 +32,19 @@ class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
         private set
 
     fun initialize(mediaPlayer: MediaPlayer) {
+        println("Controller.initialize() mediaPlayer=${System.identityHashCode(mediaPlayer)} holder? ${System.identityHashCode(holder)}")
         this.player = mediaPlayer
 
         Platform.runLater {
             mediaPlayer.setOnReady {
+                println("Controller: setOnReady; duration=${mediaPlayer.totalDuration.toMillis()}")
                 isReady = true
                 duration = mediaPlayer.totalDuration.toMillis().toLong()
             }
 
-            mediaPlayer.setOnPlaying { isPlaying = true }
-            mediaPlayer.setOnPaused { isPlaying = false }
-            mediaPlayer.setOnStopped { isPlaying = false }
+            mediaPlayer.setOnPlaying { println("Controller: setOnPlaying"); isPlaying = true }
+            mediaPlayer.setOnPaused { println("Controller: setOnPaused"); isPlaying = false }
+            mediaPlayer.setOnStopped { println("Controller: setOnStopped"); isPlaying = false }
 
             mediaPlayer.currentTimeProperty().addListener { _, _, newTime ->
                 currentTime = newTime.toMillis().toLong()
@@ -109,17 +112,17 @@ class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
 class EnhancedFxPlayerHolder(
     var jfxPanel: JFXPanel? = null,
     var player: MediaPlayer? = null,
-    var isReady: Boolean = false
+    var isReady: Boolean = false,
+    var currentPath: String? = null,
+    var mediaView: MediaView? = null
 ) {
     fun cleanup() {
-        player?.let { p ->
-            Platform.runLater {
-                try { p.stop() } catch (_: Exception) {}
-                try { p.dispose() } catch (_: Exception) {}
-            }
+        // Don’t touch the Scene/JFXPanel here. Only stop/dispose the player.
+        Platform.runLater {
+            try { player?.stop() } catch (_: Exception) {}
+            try { player?.dispose() } catch (_: Exception) {}
+            player = null
+            isReady = false
         }
-        player = null
-        jfxPanel = null
-        isReady = false
     }
 }
