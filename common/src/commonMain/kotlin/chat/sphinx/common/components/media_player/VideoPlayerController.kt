@@ -62,7 +62,7 @@ class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
     var isReady by mutableStateOf(false)
         private set
 
-    fun initialize(mediaPlayer: MediaPlayer, autoPlay: Boolean = false) {
+    fun initialize(mediaPlayer: MediaPlayer, autoPlay: Boolean = true) {
         this.player = mediaPlayer
 
         Platform.runLater {
