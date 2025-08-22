@@ -86,12 +86,10 @@ fun EnhancedVideoPlayer(
     onPlayerReady: (VideoPlayerController) -> Unit = {},
     showControls: Boolean = true
 ) {
-    println("EnhancedVideoPlayer START filePath=$filePath")
 
     val holder = remember { EnhancedFxPlayerHolder() }
     val controller = remember { VideoPlayerController(holder) }
 
-    println("remember holder.id=${holder} controller=${System.identityHashCode(controller)} for filePath=$filePath")
 
 
     val themeColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -103,9 +101,7 @@ fun EnhancedVideoPlayer(
     }
 
     DisposableEffect(filePath) {
-        println("DisposableEffect START for filePath=$filePath holder.id=${holder}")
         onDispose {
-            println("DisposableEffect onDispose for filePath=$filePath holder.id=${holder}")
             holder.cleanup()
         }
     }
