@@ -47,7 +47,11 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import chat.sphinx.common.components.media_player.EnhancedFxPlayerHolder
 import chat.sphinx.common.components.media_player.VideoPlayerController
+import chat.sphinx.common.state.FullScreenVideoData
+import chat.sphinx.utils.saveFile
+import chat.sphinx.wrapper.message.media.FileName
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import theme.primary_blue
 
 private fun Color.toAwt(): AwtColor =
@@ -59,9 +63,9 @@ private fun Color.toFx(): FxColor =
 
 @Composable
 fun VideoFullScreen(
-    fullScreenVideoState: MutableState<Path?>
+    fullScreenVideoState: MutableState<FullScreenVideoData?>
 ) {
-    fullScreenVideoState.value?.let { videoPath ->
+    fullScreenVideoState.value?.let { videoData ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -70,13 +74,14 @@ fun VideoFullScreen(
                     fullScreenVideoState.value = null
                 })
         ) {
-            VideoFullScreenContent(videoPath) {
+            VideoFullScreenContent(
+                videoData = videoData
+            ) {
                 fullScreenVideoState.value = null
             }
         }
     }
 }
-
 @Composable
 fun EnhancedVideoPlayer(
     filePath: String,
@@ -544,17 +549,18 @@ private fun PlaybackSpeedPopup(
 
 @Composable
 fun VideoFullScreenContent(
-    path: Path,
+    videoData: FullScreenVideoData,
     callback: () -> Unit
 ) {
     var controller by remember { mutableStateOf<VideoPlayerController?>(null) }
+    val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
         EnhancedVideoPlayer(
-            filePath = path.toString(),
+            filePath = videoData.path.toString(),
             modifier = Modifier
                 .size(width = 640.dp, height = 480.dp),
             autoPlay = true,
@@ -574,20 +580,39 @@ fun VideoFullScreenContent(
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Close fullscreen video",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clickable(enabled = true) { callback() }
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Close fullscreen video",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clickable(enabled = true) { callback() }
+                    )
+
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = "Save video",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clickable(enabled = true) {
+                                scope.launch {
+                                    val fileName = videoData.chatMessage.message.messageMedia?.fileName
+                                        ?: FileName("video.mp4")
+                                    saveFile(fileName, videoData.path)
+                                }
+                            }
+                    )
+                }
 
                 controller?.let {
                     VideoControlsOverlay(
                         controller = it,
-                        modifier = Modifier
-                            .wrapContentSize()
+                        modifier = Modifier.wrapContentSize()
                     )
                 }
             }

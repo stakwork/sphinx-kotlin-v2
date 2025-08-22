@@ -29,7 +29,6 @@ class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
         val w = media.width
         val h = media.height
 
-        // Check for rotation metadata first
         val rotationFromMeta = media.metadata["rotate"]?.toString()?.toDoubleOrNull() ?: 0.0
 
 
@@ -63,7 +62,7 @@ class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
     var isReady by mutableStateOf(false)
         private set
 
-    fun initialize(mediaPlayer: MediaPlayer) {
+    fun initialize(mediaPlayer: MediaPlayer, autoPlay: Boolean = false) {
         this.player = mediaPlayer
 
         Platform.runLater {
@@ -72,14 +71,16 @@ class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
                 isReady = true
                 duration = durMs
 
-                // Get natural dimensions and detect rotation
                 val media = mediaPlayer.media
                 val w = media.width
                 val h = media.height
                 val requiredRotation = detectRequiredRotation(media)
 
+                if (autoPlay) {
+                    mediaPlayer.play()
+                    isPlaying = true
+                }
 
-                // Apply rotation to MediaView if needed
                 holder.mediaView?.let { mv ->
                     if (requiredRotation != 0.0) {
                         mv.rotate = requiredRotation
@@ -88,10 +89,8 @@ class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
                     }
                 }
 
-                // Optional peek at metadata keys/values (handy for debugging device-recorded files)
                 if (media.metadata.isNotEmpty()) {
                     media.metadata.forEach { (k, v) ->
-                        // Log rotation-related metadata
                         if (k.contains("rotat", ignoreCase = true) ||
                             k.contains("orient", ignoreCase = true) ||
                             k.contains("transform", ignoreCase = true)) {
@@ -100,6 +99,13 @@ class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
                 }
             }
 
+            mediaPlayer.statusProperty().addListener { _, _, newStatus ->
+                when (newStatus) {
+                    MediaPlayer.Status.PLAYING -> isPlaying = true
+                    MediaPlayer.Status.PAUSED, MediaPlayer.Status.STOPPED -> isPlaying = false
+                    else -> {}
+                }
+            }
 
             mediaPlayer.currentTimeProperty().addListener { _, _, newTime ->
                 currentTime = newTime.toMillis().toLong()

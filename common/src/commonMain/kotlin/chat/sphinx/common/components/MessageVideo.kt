@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.Res
+import chat.sphinx.common.state.FullScreenVideoData
 import chat.sphinx.common.state.fullScreenVideoState
 import chat.sphinx.common.viewmodel.chat.retrieveRemoteMediaInputStream
 import chat.sphinx.di.container.SphinxContainer
@@ -85,7 +86,11 @@ fun MessageVideo(
                     modifier = Modifier
                         .size(80.dp)
                         .clickable {
-                            fullScreenVideoState.value = localFilepath
+                            fullScreenVideoState.value = FullScreenVideoData(
+                                path = localFilepath,
+                                chatMessage = chatMessage,
+                                chatViewModel = chatViewModel
+                            )
                         }
                 )
             }
