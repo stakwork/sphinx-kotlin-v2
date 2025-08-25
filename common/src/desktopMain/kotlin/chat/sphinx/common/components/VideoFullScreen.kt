@@ -21,24 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.toArgb
-import javafx.application.Platform
-import javafx.embed.swing.JFXPanel
+import androidx.compose.ui.graphics.*
 import javafx.geometry.Pos
-import javafx.scene.Group
-import javafx.scene.Scene
 import javafx.scene.layout.StackPane
-import javafx.scene.media.Media
 import javafx.scene.media.MediaException
-import javafx.scene.media.MediaPlayer
-import javafx.scene.media.MediaView
 import okio.Path
 import java.io.File
 import java.awt.Color as AwtColor
 import javafx.scene.paint.Color as FxColor
-import androidx.compose.ui.graphics.Color // Compose Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
@@ -52,7 +42,29 @@ import chat.sphinx.utils.saveFile
 import chat.sphinx.wrapper.message.media.FileName
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import theme.primary_blue
+import javafx.animation.PauseTransition
+import javafx.embed.swing.JFXPanel
+import javafx.embed.swing.SwingFXUtils
+import javafx.scene.Group
+import javafx.scene.Scene
+import javafx.scene.SnapshotParameters
+import javafx.scene.media.Media
+import javafx.scene.media.MediaPlayer
+import javafx.scene.media.MediaView
+import javafx.beans.value.ChangeListener
+import java.io.ByteArrayOutputStream
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+import org.jetbrains.skia.Image
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.CompletableDeferred
+import javafx.application.Platform
+import javafx.util.Duration
+import javax.swing.SwingUtilities
 
 private fun Color.toAwt(): AwtColor =
     AwtColor(red, green, blue, alpha)
@@ -619,3 +631,4 @@ fun VideoFullScreenContent(
         }
     }
 }
+
