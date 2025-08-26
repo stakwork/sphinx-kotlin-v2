@@ -2,6 +2,8 @@ package chat.sphinx.common.state
 
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import chat.sphinx.common.models.ChatMessage
+import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import okio.Path
 
 enum class ScreenType {
@@ -22,4 +24,12 @@ object AppState {
     }
 }
 
+data class FullScreenVideoData(
+    val path: Path,
+    val chatMessage: ChatMessage,
+    val chatViewModel: ChatViewModel
+)
+
 val fullScreenImageState = mutableStateOf<Path?>(null)
+val fullScreenVideoState = mutableStateOf<FullScreenVideoData?>(null)
+
