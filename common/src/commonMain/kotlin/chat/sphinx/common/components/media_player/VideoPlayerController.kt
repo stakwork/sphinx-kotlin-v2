@@ -7,16 +7,15 @@ import javafx.application.Platform
 import javafx.embed.swing.JFXPanel
 import javafx.scene.media.MediaPlayer
 import javafx.scene.media.MediaView
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlin.time.Duration
 import kotlin.jvm.JvmName
 
 
 class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
     private var player: MediaPlayer? = null
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.Default + job)
 
     private fun orientationOf(width: Int, height: Int): String = when {
         width <= 0 || height <= 0 -> "unknown"
@@ -119,23 +118,25 @@ class VideoPlayerController(private val holder: EnhancedFxPlayerHolder) {
         startTimeUpdater()
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     private fun startTimeUpdater() {
-        GlobalScope.launch {
-            while (true) {
-                delay(1000)
-                player?.let { p ->
-                    Platform.runLater {
-                        if (!p.currentTime.isUnknown) {
-                            currentTime = p.currentTime.toMillis().toLong()
-                        }
-                        if (!p.totalDuration.isUnknown) {
-                            duration = p.totalDuration.toMillis().toLong()
-                        }
+        scope.launch {
+            while (isActive) {
+                val p = player ?: break
+                Platform.runLater {
+                    if (!p.currentTime.isUnknown) {
+                        currentTime = p.currentTime.toMillis().toLong()
+                    }
+                    if (!p.totalDuration.isUnknown) {
+                        duration = p.totalDuration.toMillis().toLong()
                     }
                 }
+                delay(250)
             }
         }
+    }
+
+    fun close() {
+        job.cancel()
     }
 
     fun play() { Platform.runLater { player?.play() } }
