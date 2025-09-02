@@ -31,14 +31,11 @@ import chat.sphinx.utils.linkify.LinkTag
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.utils.platform.getFileSystem
 import chat.sphinx.utils.platform.getSphinxDirectory
-import chat.sphinx.wrapper.DateTime
-import chat.sphinx.wrapper.PhotoUrl
+import chat.sphinx.wrapper.*
 import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.contact.getColorKey
 import chat.sphinx.wrapper.dashboard.ChatId
-import chat.sphinx.wrapper.getMinutesDifferenceWithDateTime
-import chat.sphinx.wrapper.isDifferentDayThan
 import chat.sphinx.wrapper.lightning.*
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.message.media.MediaType
@@ -581,6 +578,14 @@ abstract class ChatViewModel(
                 toast("Waiting for admin approval", delay = 3000L)
             }
         }
+    }
+
+    suspend fun getUnseenReceivedMessages(): Flow<List<Message>?> {
+        return repositoryDashboard.getUnseenReceivedMessages()
+    }
+
+    suspend fun getUnseenReceivedMentions(): Flow<List<Message>?> {
+        return repositoryDashboard.getUnseenReceivedMentions()
     }
 
     private suspend fun processChatMessages(chat: Chat, messages: List<Message>, isThreadView: Boolean) {
@@ -1563,7 +1568,25 @@ abstract class ChatViewModel(
 
             val owner = getOwner()
             val color = getColorFor(contact, chat)
-            val unseenMessagesFlow = repositoryDashboard.getUnseenMessagesByChatId(chat.id)
+
+            val unseenMessages = getUnseenReceivedMessages().firstOrNull()
+            val unseenMessagesByChatId: Map<ChatId, List<Message>> = unseenMessages?.groupBy { it.chatId } ?: mapOf()
+
+            val unseenMentions = getUnseenReceivedMentions().firstOrNull()
+            val unseenMentionsByChatId: Map<ChatId, List<Message>> = unseenMentions?.groupBy { it.chatId } ?: mapOf()
+
+            val chatUnseenMessagesCount = if (!chat.seen.isTrue()) {
+                unseenMessagesByChatId[chat.id]?.size ?: 0
+            } else {
+                0
+            }
+
+            // For tribes/groups:
+            val chatUnseenMentionsCount = if (!chat.seen.isTrue()) {
+                unseenMentionsByChatId[chat.id]?.size ?: 0
+            } else {
+                0
+            }
 
             if (nnChat.isTribe()) {
                 val unseenMentionsFlow = repositoryDashboard.getUnseenMentionsByChatId(chat.id)
@@ -1573,8 +1596,8 @@ abstract class ChatViewModel(
                     message,
                     owner,
                     color,
-                    unseenMessagesFlow,
-                    unseenMentionsFlow
+                    chatUnseenMessagesCount,
+                    chatUnseenMentionsCount
                 )
             } else {
                 contact?.let { nnContact ->
@@ -1583,7 +1606,7 @@ abstract class ChatViewModel(
                         message,
                         nnContact,
                         color,
-                        unseenMessagesFlow
+                        chatUnseenMessagesCount
                     )
                 }
             }

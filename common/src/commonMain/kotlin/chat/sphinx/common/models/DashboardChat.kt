@@ -63,8 +63,8 @@ sealed class DashboardChat {
     abstract val dashboardChatId: String?
     abstract val notify: NotificationLevel?
 
-    abstract val unseenMessageFlow: Flow<Long?>?
-    abstract val unseenMentionsFlow: Flow<Long?>?
+    abstract val unseenMessagesCount: Int?
+    abstract val unseenMentionsCount: Int?
 
     abstract fun getDisplayTime(today00: DateTime): String
 
@@ -291,7 +291,7 @@ sealed class DashboardChat {
             override val message: Message?,
             val contact: Contact,
             override val color: Int?,
-            override val unseenMessageFlow: Flow<Long?>?,
+            override val unseenMessagesCount: Int,
         ): Active() {
 
             init {
@@ -312,7 +312,7 @@ sealed class DashboardChat {
             override val notify: NotificationLevel?
                 get() = chat.notify
 
-            override val unseenMentionsFlow: Flow<Long?>?
+            override val unseenMentionsCount: Int?
                 get() = null
 
             override fun getMessageSender(message: Message, withColon: Boolean): String {
@@ -339,8 +339,8 @@ sealed class DashboardChat {
             override val message: Message?,
             override val owner: Contact?,
             override val color: Int?,
-            override val unseenMessageFlow: Flow<Long?>?,
-            override val unseenMentionsFlow: Flow<Long?>?,
+            override val unseenMessagesCount: Int?,
+            override val unseenMentionsCount: Int?
         ): Active() {
 
             override val chatName: String?
@@ -404,10 +404,10 @@ sealed class DashboardChat {
             override val notify: NotificationLevel?
                 get() = null
 
-            override val unseenMessageFlow: Flow<Long?>?
+            override val unseenMessagesCount: Int?
                 get() = null
 
-            override val unseenMentionsFlow: Flow<Long?>?
+            override val unseenMentionsCount: Int?
                 get() = null
 
             @ExperimentalStdlibApi
@@ -454,10 +454,10 @@ sealed class DashboardChat {
             override val sortBy: Long
                 get() = Long.MAX_VALUE
 
-            override val unseenMessageFlow: Flow<Long?>?
+            override val unseenMessagesCount: Int?
                 get() = null
 
-            override val unseenMentionsFlow: Flow<Long?>?
+            override val unseenMentionsCount: Int?
                 get() = null
 
             @JvmName("getChatName1")
