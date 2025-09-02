@@ -96,6 +96,11 @@ abstract class ChatViewModel(
     private val mediaCacheHandler = SphinxContainer.appModule.mediaCacheHandler
     private val linkPreviewHandler = SphinxContainer.networkModule.linkPreviewHandler
 
+    private var currentMessageLimit = 100L
+    private val messageLimitFlow = MutableStateFlow(100L)
+    private var isLoadingMore = false
+    private val totalMessagesCount = MutableStateFlow<Long?>(null)
+
     val networkQueryPeople = SphinxContainer.networkModule.networkQuerySaveProfile
 
     private val colorsHelper = UserColorsHelper(SphinxContainer.appModule.dispatchers)
@@ -526,22 +531,48 @@ abstract class ChatViewModel(
         messagesLoadJob?.cancel()
     }
 
+    val isLoadingMoreMessages = MutableStateFlow(false)
+
     private suspend fun loadChatMessages() {
         getChat()?.let { chat ->
-            messageRepository.getAllMessagesToShowByChatId(chat.id, 50).firstOrNull()?.let { messages ->
-                processChatMessages(chat, messages, false)
+            // Collect total messages count
+            scope.launch(dispatchers.io) {
+                messageRepository.getAllMessagesCountByChatId(chat.id).collect { count ->
+                    totalMessagesCount.value = count
+                }
             }
 
-            delay(500L)
-
-            messageRepository.getAllMessagesToShowByChatId(chat.id, 1000).distinctUntilChanged().collect { messages ->
-                processChatMessages(chat, messages, false)
-            }
+            // Load messages with pagination
+            messageLimitFlow
+                .flatMapLatest { limit ->
+                    messageRepository.getAllMessagesToShowByChatId(chat.id, limit).distinctUntilChanged()
+                }
+                .flowOn(dispatchers.io)
+                .collect { messages ->
+                    processChatMessages(chat, messages, false)
+                    isLoadingMore = false
+                    isLoadingMoreMessages.value = false
+                }
         } ?: run {
             MessageListState.screenState(
                 MessageListData.EmptyMessageListData
             )
         }
+    }
+
+    fun loadMoreMessages() {
+        if (messageLimitFlow.value >= (totalMessagesCount.value ?: 0)) return
+        if (isLoadingMore) return
+
+        isLoadingMore = true
+        isLoadingMoreMessages.value = true
+        currentMessageLimit += 100
+        messageLimitFlow.value = currentMessageLimit
+    }
+
+    fun resetMessageLimit() {
+        currentMessageLimit = 100
+        messageLimitFlow.value = currentMessageLimit
     }
 
     private suspend fun checkChatStatus() {

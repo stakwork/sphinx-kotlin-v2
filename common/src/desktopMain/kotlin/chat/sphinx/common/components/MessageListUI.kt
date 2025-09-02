@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -272,13 +273,13 @@ fun ChatMessagesList(
     dashboardViewModel: DashboardViewModel
 ) {
     val scope = rememberCoroutineScope()
+    val isLoadingMore by chatViewModel.isLoadingMoreMessages.collectAsState()
 
     LazyColumn(
         state = listState,
         reverseLayout = true,
         contentPadding = PaddingValues(8.dp)
     ) {
-
         chatViewModel.onNewMessageCallback = {
             scope.launch {
                 if (listState.firstVisibleItemIndex <= 1) {
@@ -290,8 +291,13 @@ fun ChatMessagesList(
         itemsIndexed(
             items,
             key = { _, item -> "${item.message.id}-${item.isSeparator}" }
-        ){ index, item ->
-//            print("index is $index with value ${item.message.messageContent?.value}")
+        ) { index, item ->
+
+            LaunchedEffect(index) {
+                if (index >= items.size - 10 && !isLoadingMore) {
+                    chatViewModel.loadMoreMessages()
+                }
+            }
 
             if (item.isSeparator) {
                 DateSeparator(item)
