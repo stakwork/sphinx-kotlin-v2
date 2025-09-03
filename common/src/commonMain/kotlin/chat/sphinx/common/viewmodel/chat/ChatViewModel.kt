@@ -958,38 +958,67 @@ abstract class ChatViewModel(
         }
     }
 
+    private val _currentThreadUUID = MutableStateFlow<String?>(null)
+    val currentThreadUUID: StateFlow<String?> = _currentThreadUUID.asStateFlow()
+
+    private var currentThreadJob: Job? = null
+
+    fun clearCurrentThread() {
+        currentThreadJob?.cancel()
+        currentThreadJob = null
+        _currentThreadUUID.value = null
+
+        threadMessageState = threadInitialState()
+
+        MessageListState.threadScreenState(MessageListData.EmptyMessageListData)
+    }
+
     fun navigateToThreadChat(threadUUID: String?, fromThreadsScreen: Boolean) {
+        if (threadUUID == null) return
+
+        clearCurrentThread()
+
+        _currentThreadUUID.value = threadUUID
+
         scope.launch(dispatchers.mainImmediate) {
             val chat = getChat()
-            val thread = threadUUID?.toThreadUUID()
+            val thread = threadUUID.toThreadUUID()
 
-            if (chat != null) {
+            if (chat != null && thread != null) {
                 dashboardViewModel.toggleSplitScreen(
                     true, DashboardViewModel.SplitContentType.Thread(
                         chat.id,
-                        thread!!,
+                        thread,
                         fromThreadsScreen
                     )
                 )
 
-                messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread)
-                    .collectLatest { messages ->
+                currentThreadJob?.cancel()
+                currentThreadJob = scope.launch(dispatchers.io) {
+                    try {
+                        messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread)
+                            .distinctUntilChanged()
+                            .collectLatest { messages ->
+                                val originalMessageUUID = thread.value.let { MessageUUID(it) }
+                                val originalMessage = messageRepository.getMessageByUUID(originalMessageUUID).firstOrNull()
 
-                        val originalMessageUUID = thread?.value?.let { MessageUUID(it) }
+                                val completeThread = listOf(originalMessage) + messages.reversed()
+                                val filteredMessages = completeThread.filterNotNull()
 
-                        val originalMessageFlow = originalMessageUUID?.let { uuid ->
-                            messageRepository.getMessageByUUID(uuid).distinctUntilChanged()
-                        }
-
-                        val originalMessage = originalMessageFlow?.firstOrNull()
-
-                        val completeThread = listOf(originalMessage) + messages.reversed()
-
-                        processChatMessages(chat, completeThread.filterNotNull().toList(), true)
+                                // Process messages for thread view
+                                withContext(dispatchers.mainImmediate) {
+                                    processChatMessages(chat, filteredMessages, true)
+                                }
+                            }
+                    } catch (e: Exception) {
+                        // Handle cancellation or other errors
+                        println("Thread loading cancelled or failed: ${e.message}")
                     }
+                }
             }
         }
     }
+
 
     fun payContactInvoice(message: Message) {
         dashboardViewModel.toggleConfirmationWindow(true, ConfirmationType.PayInvoice(message))
