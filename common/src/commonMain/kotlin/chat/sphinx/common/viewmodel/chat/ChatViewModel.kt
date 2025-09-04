@@ -588,6 +588,20 @@ abstract class ChatViewModel(
         return repositoryDashboard.getUnseenReceivedMentions()
     }
 
+    // Add this helper method to ChatViewModel
+    private fun isCurrentlySelectedChat(chatId: ChatId): Boolean {
+        return when (val chatDetailState = ChatDetailState.screenState()) {
+            is ChatDetailData.SelectedChatDetailData.SelectedContactChatDetail -> {
+                chatDetailState.chatId == chatId
+            }
+            is ChatDetailData.SelectedChatDetailData.SelectedTribeChatDetail -> {
+                chatDetailState.chatId == chatId
+            }
+            else -> false
+        }
+    }
+
+    // Modify processChatMessages method
     private suspend fun processChatMessages(chat: Chat, messages: List<Message>, isThreadView: Boolean) {
         val owner = getOwner()
         val contact = getContact()
@@ -624,9 +638,7 @@ abstract class ChatViewModel(
         }
 
         messagesList.withIndex().forEach { (index, message) ->
-
             val colors = getColorsMapFor(message, contactColorInt, tribeAdmin)
-
             val previousMessage: Message? = if (index > 0) messagesList[index - 1] else null
             val nextMessage: Message? = if (index < messagesList.size - 1) messagesList[index + 1] else null
 
@@ -639,11 +651,7 @@ abstract class ChatViewModel(
 
             groupingDate = groupingDateAndBubbleBackground.first
 
-
-            if (
-                previousMessage == null ||
-                message.date.isDifferentDayThan(previousMessage.date)
-            ) {
+            if (previousMessage == null || message.date.isDifferentDayThan(previousMessage.date)) {
                 chatMessages.add(
                     ChatMessage(
                         chat,
@@ -652,9 +660,7 @@ abstract class ChatViewModel(
                         colors,
                         timezoneMap,
                         accountOwner = { owner },
-                        boostMessage = {
-                            boostMessage(chat, message.uuid)
-                        },
+                        boostMessage = { boostMessage(chat, message.uuid) },
                         flagMessage = {},
                         deleteMessage = {},
                         isSeparator = true,
@@ -672,9 +678,7 @@ abstract class ChatViewModel(
                     colors,
                     timezoneMap,
                     accountOwner = { owner },
-                    boostMessage = {
-                        boostMessage(chat, message.uuid)
-                    },
+                    boostMessage = { boostMessage(chat, message.uuid) },
                     flagMessage = {
                         confirm(
                             "Confirm Flagging message",
@@ -697,29 +701,31 @@ abstract class ChatViewModel(
             )
         }
 
-        if (isThreadView) {
-            MessageListState.threadScreenState(
-                MessageListData.PopulatedMessageListData(
-                    chat.id,
-                    chatMessages.reversed()
+        if (isCurrentlySelectedChat(chat.id)) {
+            if (isThreadView) {
+                MessageListState.threadScreenState(
+                    MessageListData.PopulatedMessageListData(
+                        chat.id,
+                        chatMessages.reversed()
+                    )
                 )
-            )
-        } else {
-            MessageListState.screenState(
-                MessageListData.PopulatedMessageListData(
-                    chat.id,
-                    chatMessages.reversed()
+            } else {
+                MessageListState.screenState(
+                    MessageListData.PopulatedMessageListData(
+                        chat.id,
+                        chatMessages.reversed()
+                    )
                 )
-            )
+            }
         }
 
         if (messagesSize != messages.size) {
             messagesSize = messages.size
-
             delay(200L)
             onNewMessageCallback?.invoke()
         }
     }
+
 
     private fun filterAndSortMessagesIfNecessary(
         chat: Chat,

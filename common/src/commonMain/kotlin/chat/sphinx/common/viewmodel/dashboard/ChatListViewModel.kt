@@ -302,6 +302,7 @@ class ChatListViewModel {
         )
     }
 
+
     private suspend fun updateChatListContacts(contacts: List<Contact>, unseenMessagesByChatId: Map<ChatId, List<Message>>) {
         collectionLock.withLock {
             contactsCollectionInitialized = true
