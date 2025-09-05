@@ -1,6 +1,7 @@
 package chat.sphinx.common.viewmodel.chat
 
 import androidx.annotation.ColorInt
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -588,7 +589,6 @@ abstract class ChatViewModel(
         return repositoryDashboard.getUnseenReceivedMentions()
     }
 
-    // Add this helper method to ChatViewModel
     private fun isCurrentlySelectedChat(chatId: ChatId): Boolean {
         return when (val chatDetailState = ChatDetailState.screenState()) {
             is ChatDetailData.SelectedChatDetailData.SelectedContactChatDetail -> {
@@ -601,7 +601,14 @@ abstract class ChatViewModel(
         }
     }
 
-    // Modify processChatMessages method
+    private fun isCurrentlySelectedThread(threadUUID: String): Boolean {
+        return when (val splitContent = dashboardViewModel.splitScreenStateFlow.value.type) {
+            is DashboardViewModel.SplitContentType.Thread -> {
+                splitContent.threadUUID.value == threadUUID
+            }
+            else -> false
+        }
+    }
     private suspend fun processChatMessages(chat: Chat, messages: List<Message>, isThreadView: Boolean) {
         val owner = getOwner()
         val contact = getContact()
@@ -701,15 +708,24 @@ abstract class ChatViewModel(
             )
         }
 
-        if (isCurrentlySelectedChat(chat.id)) {
-            if (isThreadView) {
+        val shouldUpdateChatScreen = isCurrentlySelectedChat(chat.id)
+
+        val shouldUpdateThreadScreen = if (isThreadView) {
+            val threadUUID = _currentThreadUUID.value
+            threadUUID != null && isCurrentlySelectedThread(threadUUID)
+        } else {
+            false
+        }
+
+        if (shouldUpdateChatScreen) {
+            if (isThreadView && shouldUpdateThreadScreen) {
                 MessageListState.threadScreenState(
                     MessageListData.PopulatedMessageListData(
                         chat.id,
                         chatMessages.reversed()
                     )
                 )
-            } else {
+            } else if (!isThreadView) {
                 MessageListState.screenState(
                     MessageListData.PopulatedMessageListData(
                         chat.id,
