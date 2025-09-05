@@ -1,6 +1,7 @@
 package chat.sphinx.common.viewmodel.chat
 
 import androidx.annotation.ColorInt
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -31,14 +32,11 @@ import chat.sphinx.utils.linkify.LinkTag
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.utils.platform.getFileSystem
 import chat.sphinx.utils.platform.getSphinxDirectory
-import chat.sphinx.wrapper.DateTime
-import chat.sphinx.wrapper.PhotoUrl
+import chat.sphinx.wrapper.*
 import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.contact.getColorKey
 import chat.sphinx.wrapper.dashboard.ChatId
-import chat.sphinx.wrapper.getMinutesDifferenceWithDateTime
-import chat.sphinx.wrapper.isDifferentDayThan
 import chat.sphinx.wrapper.lightning.*
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.message.media.MediaType
@@ -95,6 +93,11 @@ abstract class ChatViewModel(
     val memeInputStreamHandler = SphinxContainer.networkModule.memeInputStreamHandler
     private val mediaCacheHandler = SphinxContainer.appModule.mediaCacheHandler
     private val linkPreviewHandler = SphinxContainer.networkModule.linkPreviewHandler
+
+    private var currentMessageLimit = 100L
+    private val messageLimitFlow = MutableStateFlow(100L)
+    private var isLoadingMore = false
+    private val totalMessagesCount = MutableStateFlow<Long?>(null)
 
     val networkQueryPeople = SphinxContainer.networkModule.networkQuerySaveProfile
 
@@ -526,22 +529,48 @@ abstract class ChatViewModel(
         messagesLoadJob?.cancel()
     }
 
+    val isLoadingMoreMessages = MutableStateFlow(false)
+
     private suspend fun loadChatMessages() {
         getChat()?.let { chat ->
-            messageRepository.getAllMessagesToShowByChatId(chat.id, 50).firstOrNull()?.let { messages ->
-                processChatMessages(chat, messages, false)
+            // Collect total messages count
+            scope.launch(dispatchers.io) {
+                messageRepository.getAllMessagesCountByChatId(chat.id).collect { count ->
+                    totalMessagesCount.value = count
+                }
             }
 
-            delay(500L)
-
-            messageRepository.getAllMessagesToShowByChatId(chat.id, 1000).distinctUntilChanged().collect { messages ->
-                processChatMessages(chat, messages, false)
-            }
+            // Load messages with pagination
+            messageLimitFlow
+                .flatMapLatest { limit ->
+                    messageRepository.getAllMessagesToShowByChatId(chat.id, limit).distinctUntilChanged()
+                }
+                .flowOn(dispatchers.io)
+                .collect { messages ->
+                    processChatMessages(chat, messages, false)
+                    isLoadingMore = false
+                    isLoadingMoreMessages.value = false
+                }
         } ?: run {
             MessageListState.screenState(
                 MessageListData.EmptyMessageListData
             )
         }
+    }
+
+    fun loadMoreMessages() {
+        if (messageLimitFlow.value >= (totalMessagesCount.value ?: 0)) return
+        if (isLoadingMore) return
+
+        isLoadingMore = true
+        isLoadingMoreMessages.value = true
+        currentMessageLimit += 100
+        messageLimitFlow.value = currentMessageLimit
+    }
+
+    fun resetMessageLimit() {
+        currentMessageLimit = 100
+        messageLimitFlow.value = currentMessageLimit
     }
 
     private suspend fun checkChatStatus() {
@@ -552,6 +581,34 @@ abstract class ChatViewModel(
         }
     }
 
+    suspend fun getUnseenReceivedMessages(): Flow<List<Message>?> {
+        return repositoryDashboard.getUnseenReceivedMessages()
+    }
+
+    suspend fun getUnseenReceivedMentions(): Flow<List<Message>?> {
+        return repositoryDashboard.getUnseenReceivedMentions()
+    }
+
+    private fun isCurrentlySelectedChat(chatId: ChatId): Boolean {
+        return when (val chatDetailState = ChatDetailState.screenState()) {
+            is ChatDetailData.SelectedChatDetailData.SelectedContactChatDetail -> {
+                chatDetailState.chatId == chatId
+            }
+            is ChatDetailData.SelectedChatDetailData.SelectedTribeChatDetail -> {
+                chatDetailState.chatId == chatId
+            }
+            else -> false
+        }
+    }
+
+    private fun isCurrentlySelectedThread(threadUUID: String): Boolean {
+        return when (val splitContent = dashboardViewModel.splitScreenStateFlow.value.type) {
+            is DashboardViewModel.SplitContentType.Thread -> {
+                splitContent.threadUUID.value == threadUUID
+            }
+            else -> false
+        }
+    }
     private suspend fun processChatMessages(chat: Chat, messages: List<Message>, isThreadView: Boolean) {
         val owner = getOwner()
         val contact = getContact()
@@ -588,9 +645,7 @@ abstract class ChatViewModel(
         }
 
         messagesList.withIndex().forEach { (index, message) ->
-
             val colors = getColorsMapFor(message, contactColorInt, tribeAdmin)
-
             val previousMessage: Message? = if (index > 0) messagesList[index - 1] else null
             val nextMessage: Message? = if (index < messagesList.size - 1) messagesList[index + 1] else null
 
@@ -603,11 +658,7 @@ abstract class ChatViewModel(
 
             groupingDate = groupingDateAndBubbleBackground.first
 
-
-            if (
-                previousMessage == null ||
-                message.date.isDifferentDayThan(previousMessage.date)
-            ) {
+            if (previousMessage == null || message.date.isDifferentDayThan(previousMessage.date)) {
                 chatMessages.add(
                     ChatMessage(
                         chat,
@@ -616,9 +667,7 @@ abstract class ChatViewModel(
                         colors,
                         timezoneMap,
                         accountOwner = { owner },
-                        boostMessage = {
-                            boostMessage(chat, message.uuid)
-                        },
+                        boostMessage = { boostMessage(chat, message.uuid) },
                         flagMessage = {},
                         deleteMessage = {},
                         isSeparator = true,
@@ -636,9 +685,7 @@ abstract class ChatViewModel(
                     colors,
                     timezoneMap,
                     accountOwner = { owner },
-                    boostMessage = {
-                        boostMessage(chat, message.uuid)
-                    },
+                    boostMessage = { boostMessage(chat, message.uuid) },
                     flagMessage = {
                         confirm(
                             "Confirm Flagging message",
@@ -661,29 +708,40 @@ abstract class ChatViewModel(
             )
         }
 
-        if (isThreadView) {
-            MessageListState.threadScreenState(
-                MessageListData.PopulatedMessageListData(
-                    chat.id,
-                    chatMessages.reversed()
-                )
-            )
+        val shouldUpdateChatScreen = isCurrentlySelectedChat(chat.id)
+
+        val shouldUpdateThreadScreen = if (isThreadView) {
+            val threadUUID = _currentThreadUUID.value
+            threadUUID != null && isCurrentlySelectedThread(threadUUID)
         } else {
-            MessageListState.screenState(
-                MessageListData.PopulatedMessageListData(
-                    chat.id,
-                    chatMessages.reversed()
+            false
+        }
+
+        if (shouldUpdateChatScreen) {
+            if (isThreadView && shouldUpdateThreadScreen) {
+                MessageListState.threadScreenState(
+                    MessageListData.PopulatedMessageListData(
+                        chat.id,
+                        chatMessages.reversed()
+                    )
                 )
-            )
+            } else if (!isThreadView) {
+                MessageListState.screenState(
+                    MessageListData.PopulatedMessageListData(
+                        chat.id,
+                        chatMessages.reversed()
+                    )
+                )
+            }
         }
 
         if (messagesSize != messages.size) {
             messagesSize = messages.size
-
             delay(200L)
             onNewMessageCallback?.invoke()
         }
     }
+
 
     private fun filterAndSortMessagesIfNecessary(
         chat: Chat,
@@ -922,38 +980,67 @@ abstract class ChatViewModel(
         }
     }
 
+    private val _currentThreadUUID = MutableStateFlow<String?>(null)
+    val currentThreadUUID: StateFlow<String?> = _currentThreadUUID.asStateFlow()
+
+    private var currentThreadJob: Job? = null
+
+    fun clearCurrentThread() {
+        currentThreadJob?.cancel()
+        currentThreadJob = null
+        _currentThreadUUID.value = null
+
+        threadMessageState = threadInitialState()
+
+        MessageListState.threadScreenState(MessageListData.EmptyMessageListData)
+    }
+
     fun navigateToThreadChat(threadUUID: String?, fromThreadsScreen: Boolean) {
+        if (threadUUID == null) return
+
+        clearCurrentThread()
+
+        _currentThreadUUID.value = threadUUID
+
         scope.launch(dispatchers.mainImmediate) {
             val chat = getChat()
-            val thread = threadUUID?.toThreadUUID()
+            val thread = threadUUID.toThreadUUID()
 
-            if (chat != null) {
+            if (chat != null && thread != null) {
                 dashboardViewModel.toggleSplitScreen(
                     true, DashboardViewModel.SplitContentType.Thread(
                         chat.id,
-                        thread!!,
+                        thread,
                         fromThreadsScreen
                     )
                 )
 
-                messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread)
-                    .collectLatest { messages ->
+                currentThreadJob?.cancel()
+                currentThreadJob = scope.launch(dispatchers.io) {
+                    try {
+                        messageRepository.getAllMessagesToShowByChatId(chat.id, 0, thread)
+                            .distinctUntilChanged()
+                            .collectLatest { messages ->
+                                val originalMessageUUID = thread.value.let { MessageUUID(it) }
+                                val originalMessage = messageRepository.getMessageByUUID(originalMessageUUID).firstOrNull()
 
-                        val originalMessageUUID = thread?.value?.let { MessageUUID(it) }
+                                val completeThread = listOf(originalMessage) + messages.reversed()
+                                val filteredMessages = completeThread.filterNotNull()
 
-                        val originalMessageFlow = originalMessageUUID?.let { uuid ->
-                            messageRepository.getMessageByUUID(uuid).distinctUntilChanged()
-                        }
-
-                        val originalMessage = originalMessageFlow?.firstOrNull()
-
-                        val completeThread = listOf(originalMessage) + messages.reversed()
-
-                        processChatMessages(chat, completeThread.filterNotNull().toList(), true)
+                                // Process messages for thread view
+                                withContext(dispatchers.mainImmediate) {
+                                    processChatMessages(chat, filteredMessages, true)
+                                }
+                            }
+                    } catch (e: Exception) {
+                        // Handle cancellation or other errors
+                        println("Thread loading cancelled or failed: ${e.message}")
                     }
+                }
             }
         }
     }
+
 
     fun payContactInvoice(message: Message) {
         dashboardViewModel.toggleConfirmationWindow(true, ConfirmationType.PayInvoice(message))
@@ -1532,7 +1619,25 @@ abstract class ChatViewModel(
 
             val owner = getOwner()
             val color = getColorFor(contact, chat)
-            val unseenMessagesFlow = repositoryDashboard.getUnseenMessagesByChatId(chat.id)
+
+            val unseenMessages = getUnseenReceivedMessages().firstOrNull()
+            val unseenMessagesByChatId: Map<ChatId, List<Message>> = unseenMessages?.groupBy { it.chatId } ?: mapOf()
+
+            val unseenMentions = getUnseenReceivedMentions().firstOrNull()
+            val unseenMentionsByChatId: Map<ChatId, List<Message>> = unseenMentions?.groupBy { it.chatId } ?: mapOf()
+
+            val chatUnseenMessagesCount = if (!chat.seen.isTrue()) {
+                unseenMessagesByChatId[chat.id]?.size ?: 0
+            } else {
+                0
+            }
+
+            // For tribes/groups:
+            val chatUnseenMentionsCount = if (!chat.seen.isTrue()) {
+                unseenMentionsByChatId[chat.id]?.size ?: 0
+            } else {
+                0
+            }
 
             if (nnChat.isTribe()) {
                 val unseenMentionsFlow = repositoryDashboard.getUnseenMentionsByChatId(chat.id)
@@ -1542,8 +1647,8 @@ abstract class ChatViewModel(
                     message,
                     owner,
                     color,
-                    unseenMessagesFlow,
-                    unseenMentionsFlow
+                    chatUnseenMessagesCount,
+                    chatUnseenMentionsCount
                 )
             } else {
                 contact?.let { nnContact ->
@@ -1552,7 +1657,7 @@ abstract class ChatViewModel(
                         message,
                         nnContact,
                         color,
-                        unseenMessagesFlow
+                        chatUnseenMessagesCount
                     )
                 }
             }

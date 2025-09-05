@@ -11,9 +11,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -48,6 +46,7 @@ fun ThreadsListUI(
 ) {
     val threadItems by threadsViewModel.threadItems.collectAsState(initial = emptyList())
     val listState = rememberLazyListState()
+    val selectedThreadUUID by chatViewModel?.currentThreadUUID?.collectAsState() ?: remember { mutableStateOf(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(md_theme_dark_background)) {
         if (threadItems.isEmpty()) {
@@ -59,9 +58,12 @@ fun ThreadsListUI(
             ) {
                 itemsIndexed(
                     items = threadItems,
-                    key = { index, thread -> thread.uuid }
+                    key = { index, thread -> "${thread.uuid}_${index}" }
                 ) { index, thread ->
-                    ThreadItemUI(thread = thread, chatViewModel = chatViewModel)
+                    ThreadItemUI(
+                        thread = thread,
+                        chatViewModel = chatViewModel,
+                    )
                 }
             }
 
@@ -96,7 +98,7 @@ fun ThreadsEmptyScreen() {
 @Composable
 fun ThreadItemUI(
     thread: ThreadItem,
-    chatViewModel: ChatViewModel?
+    chatViewModel: ChatViewModel?,
 ) {
     Card(
         modifier = Modifier

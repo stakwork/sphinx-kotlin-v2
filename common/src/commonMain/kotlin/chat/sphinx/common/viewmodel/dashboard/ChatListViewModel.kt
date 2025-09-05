@@ -18,8 +18,10 @@ import chat.sphinx.wrapper.chat.ChatStatus
 import chat.sphinx.wrapper.chat.getColorKey
 import chat.sphinx.wrapper.chat.isConversation
 import chat.sphinx.wrapper.contact.*
+import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.ContactId
 import chat.sphinx.wrapper.invite.Invite
+import chat.sphinx.wrapper.isTrue
 import chat.sphinx.wrapper.lightning.NodeBalance
 import chat.sphinx.wrapper.message.*
 import kotlinx.coroutines.delay
@@ -72,45 +74,71 @@ class ChatListViewModel {
     private val collectionLock = Mutex()
     private val updateDashboardChatLock = Mutex()
 
+    suspend fun getUnseenReceivedMessages(): Flow<List<Message>?> {
+        return repositoryDashboard.getUnseenReceivedMessages()
+    }
+
+    suspend fun getUnseenReceivedMentions(): Flow<List<Message>?> {
+        return repositoryDashboard.getUnseenReceivedMentions()
+    }
+
     init {
         scope.launch(dispatchers.mainImmediate) {
             repositoryDashboard.getAllNotBlockedContacts.distinctUntilChanged().collect { contacts ->
-                updateChatListContacts(contacts)
+                val unseenMessages = getUnseenReceivedMessages().firstOrNull()
+                val unseenMessagesByChatId: Map<ChatId, List<Message>> = unseenMessages?.groupBy { it.chatId } ?: mapOf()
+
+                updateChatListContacts(contacts, unseenMessagesByChatId)
             }
         }
 
         scope.launch(dispatchers.mainImmediate) {
+            delay(25L)
 
             repositoryDashboard.getAllChatsFlow.distinctUntilChanged().collect { chats ->
+                val unseenMessages = getUnseenReceivedMessages().firstOrNull()
+                val unseenMessagesByChatId: Map<ChatId, List<Message>> = unseenMessages?.groupBy { it.chatId } ?: mapOf()
+
+                val unseenMentions = getUnseenReceivedMentions().firstOrNull()
+                val unseenMentionsByChatId: Map<ChatId, List<Message>> = unseenMentions?.groupBy { it.chatId } ?: mapOf()
+
                 collectionLock.withLock {
                     chatsCollectionInitialized = true
 
                     val newList = ArrayList<DashboardChat>(chats.size)
                     val contactsAdded = mutableListOf<ContactId>()
 
-                        for (chat in chats) {
-                            val message: Message? = chat.latestMessageId?.let {
-                                repositoryDashboard.getMessageById(it).firstOrNull()
+                    for (chat in chats) {
+                        val message: Message? = chat.latestMessageId?.let {
+                            repositoryDashboard.getMessageById(it).firstOrNull()
+                        }
+
+                        // Calculate unseen message counts
+                        val chatUnseenMessagesCount = if (!chat.seen.isTrue()) {
+                            unseenMessagesByChatId[chat.id]?.size ?: 0
+                        } else {
+                            0
+                        }
+
+                        val chatUnseenMentionsCount = if (!chat.seen.isTrue()) {
+                            unseenMentionsByChatId[chat.id]?.size ?: 0
+                        } else {
+                            0
+                        }
+
+                        if (chat.type.isConversation()) {
+                            val contactId: ContactId = chat.contactIds.lastOrNull() ?: continue
+
+                            val contact: Contact = repositoryDashboard.getContactById(contactId)
+                                .firstOrNull() ?: continue
+
+                            (ChatDetailState.screenState() as? ChatDetailData.SelectedChatDetailData.SelectedContactDetail)?.let {
+                                if (contactId == it.contactId) {
+                                    reloadChatDetailsOnFirstMessageSent(chat, contact, it. dashboardChat, chatUnseenMessagesCount)
+                                }
                             }
 
-                            if (chat.type.isConversation()) {
-                                val contactId: ContactId = chat.contactIds.lastOrNull() ?: continue
-
-                                val contact: Contact = repositoryDashboard.getContactById(contactId)
-                                    .firstOrNull() ?: continue
-
-                                (ChatDetailState.screenState() as? ChatDetailData.SelectedChatDetailData.SelectedContactDetail)?.let {
-                                    if (contactId == it.contactId) {
-                                        reloadChatDetailsOnFirstMessageSent(chat, contact, it.dashboardChat)
-                                    }
-                                }
-
-                                if (contact.status is ContactStatus.Pending) {
-                                    newList.add(
-                                        DashboardChat.Inactive.Conversation(contact, null)
-                                    )
-                                }
-
+                            if (contact.status is ContactStatus.Pending) {
                                 if (contact.isInviteContact()) {
                                     var contactInvite: Invite? = null
 
@@ -125,85 +153,52 @@ class ChatListViewModel {
                                             DashboardChat.Inactive.Invite(contact, contactInvite!!, null)
                                         )
                                     }
-                                }
-
-                                if (!contact.isBlocked() && chat.status is ChatStatus.Approved) {
-                                    contactsAdded.add(contactId)
-
+                                } else {
                                     newList.add(
-                                        DashboardChat.Active.Conversation(
-                                            chat,
-                                            message,
-                                            contact,
-                                            getColorFor(contact, chat),
-                                            repositoryDashboard.getUnseenMessagesByChatId(chat.id),
-                                        )
+                                        DashboardChat.Inactive.Conversation(contact, null)
                                     )
                                 }
-                            } else {
+                            }
+
+                            if (!contact.isBlocked() && chat.status is ChatStatus.Approved) {
+                                contactsAdded.add(contactId)
+
                                 newList.add(
-                                    DashboardChat.Active.GroupOrTribe(
+                                    DashboardChat.Active.Conversation(
                                         chat,
                                         message,
-                                        accountOwnerStateFlow.value,
-                                        getColorFor(null, chat),
-                                        repositoryDashboard.getUnseenMessagesByChatId(chat.id),
-                                        repositoryDashboard.getUnseenMentionsByChatId(chat.id)
+                                        contact,
+                                        getColorFor(contact, chat),
+                                        chatUnseenMessagesCount,
                                     )
                                 )
                             }
+                        } else {
+                            newList.add(
+                                DashboardChat.Active.GroupOrTribe(
+                                    chat,
+                                    message,
+                                    accountOwnerStateFlow.value,
+                                    getColorFor(null, chat),
+                                    chatUnseenMessagesCount,
+                                    chatUnseenMentionsCount
+                                )
+                            )
+                        }
                     }
 
-//                    if (contactsCollectionInitialized) {
-//                        withContext(dispatchers.default) {
-//                            for (contact in _contactsStateFlow.value) {
-//
-//                                if (!contactsAdded.contains(contact.id)) {
-//                                    if (contact.isInviteContact()) {
-//                                        var contactInvite: Invite? = null
-//
-//                                        contact.inviteId?.let { inviteId ->
-//                                            contactInvite = withContext(dispatchers.io) {
-//                                                repositoryDashboard.getInviteById(inviteId).firstOrNull()
-//                                            }
-//                                        }
-//
-//                                        if (contactInvite != null) {
-//                                            newList.add(
-//                                                DashboardChat.Inactive.Invite(
-//                                                    contact,
-//                                                    contactInvite!!,
-//                                                    getColorFor(contact, null)
-//                                                )
-//                                            )
-//                                            continue
-//                                        }
-//                                    }
-//                                    newList.add(
-//                                        DashboardChat.Inactive.Conversation(contact, getColorFor(contact, null))
-//                                    )
-//                                }
-//
-//                            }
-//                        }
-//                    }
                     dashboardChats = ArrayList(newList.sortedByDescending { it.sortBy })
                     filterChats(searchText.value)
                 }
             }
         }
-
-//        scope.launch(dispatchers.mainImmediate) {
-//            repositoryDashboard.getAllInvites.distinctUntilChanged().collect {
-//                updateChatListContacts(_contactsStateFlow.value)
-//            }
-//        }
     }
 
     private suspend fun reloadChatDetailsOnFirstMessageSent(
         chat: Chat,
         contact: Contact,
-        dashboardChat: DashboardChat
+        dashboardChat: DashboardChat,
+        chatUnseenMessagesCount: Int
     ) {
         val message: Message? = chat.latestMessageId?.let {
             repositoryDashboard.getMessageById(it).firstOrNull()
@@ -214,7 +209,7 @@ class ChatListViewModel {
             message,
             contact,
             dashboardChat.color,
-            dashboardChat.unseenMessageFlow
+            chatUnseenMessagesCount
         )
 
         ChatDetailState.screenState(
@@ -307,7 +302,8 @@ class ChatListViewModel {
         )
     }
 
-    private suspend fun updateChatListContacts(contacts: List<Contact>) {
+
+    private suspend fun updateChatListContacts(contacts: List<Contact>, unseenMessagesByChatId: Map<ChatId, List<Message>>) {
         collectionLock.withLock {
             contactsCollectionInitialized = true
 
@@ -423,7 +419,7 @@ class ChatListViewModel {
                                         chat.message,
                                         contact,
                                         getColorFor(contact, chat.chat),
-                                        chat.unseenMessageFlow
+                                        chat.unseenMessagesCount
                                     )
                                 }
                             }
@@ -433,18 +429,21 @@ class ChatListViewModel {
                             //Contact unblocked
                             repositoryDashboard.getConversationByContactIdFlow(contact.id)
                                 .firstOrNull()?.let { contactChat ->
-                                val message: Message? = contactChat.latestMessageId?.let {
-                                    repositoryDashboard.getMessageById(it).firstOrNull()
-                                }
+                                    val message: Message? = contactChat.latestMessageId?.let {
+                                        repositoryDashboard.getMessageById(it).firstOrNull()
+                                    }
+                                    val chatUnseenMessages =
+                                        if (!contactChat.seen.isTrue()) unseenMessagesByChatId[contactChat.id] else emptyList()
 
-                                updatedContactChat = DashboardChat.Active.Conversation(
-                                    contactChat,
-                                    message,
-                                    contact,
-                                    getColorFor(contact, contactChat),
-                                    repositoryDashboard.getUnseenMessagesByChatId(contactChat.id)
-                                )
-                            }
+
+                                    updatedContactChat = DashboardChat.Active.Conversation(
+                                        contactChat,
+                                        message,
+                                        contact,
+                                        getColorFor(contact, contactChat),
+                                        chatUnseenMessages?.size ?: 0
+                                    )
+                                }
                         }
 
                         currentChats.add(updatedContactChat)

@@ -133,18 +133,13 @@ actual fun Dashboard(
                     is ChatDetailData.SelectedChatDetailData.SelectedContactDetail -> {
                         ChatContactViewModel(null, chatDetailState.contactId!!, dashboardViewModel)
                     }
-
                     is ChatDetailData.SelectedChatDetailData.SelectedContactChatDetail -> {
                         ChatContactViewModel(chatDetailState.chatId!!, chatDetailState.contactId!!, dashboardViewModel)
                     }
-
                     is ChatDetailData.SelectedChatDetailData.SelectedTribeChatDetail -> {
                         ChatTribeViewModel(chatDetailState.chatId!!, dashboardViewModel)
                     }
-
-                    else -> {
-                        null
-                    }
+                    else -> null
                 }
 
                 first(if (isSidebarHidden) 0.dp else 300.dp) {

@@ -247,9 +247,9 @@ fun ChatRow(
                             modifier = Modifier.height(20.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            val unseenCountState = dashboardChat.unseenMessageFlow?.collectAsState(0)
-                            val unseenMentionsCountState = dashboardChat.unseenMentionsFlow?.collectAsState(0)
-                            val isUnseen = (dashboardChat.hasUnseenMessages() || unseenCountState?.value ?: 0 > 0)
+                            val unseenCountState = dashboardChat.unseenMessagesCount
+                            val unseenMentionsCountState = dashboardChat.unseenMentionsCount
+                            val isUnseen = ((dashboardChat.hasUnseenMessages() || (unseenCountState ?: 0) > 0))
 
                             Text(
                                 text = lastMessage,
@@ -264,19 +264,19 @@ fun ChatRow(
                             )
 
                             unseenMentionsCountState?.let {
-                                if (it.value != 0L) {
-                                    MessageCount("@ ${it.value.toString()}")
+                                if (it.toLong() != 0L) {
+                                    MessageCount("@ ${it.toString()}")
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
                             }
 
                             unseenCountState?.let {
-                                if (it.value != 0L) {
+                                if (it.toLong() != 0L) {
                                     val isChatMutedOrOnlyMentions =
                                         (dashboardChat.notify?.isMuteChat() == true || dashboardChat.notify?.isOnlyMentions() == true)
 
                                     MessageCount(
-                                        it.value.toString(),
+                                        it.toString(),
                                         if (isChatMutedOrOnlyMentions) {
                                             wash_out_received
                                         } else {
