@@ -7,12 +7,10 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
@@ -31,6 +29,8 @@ import chat.sphinx.common.chatMesssageUI.ChatMessageUI
 import chat.sphinx.common.chatMesssageUI.DateSeparator
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.models.DashboardChat
+import chat.sphinx.common.models.isIncomingMessage
+import chat.sphinx.common.state.ContentState.scope
 import chat.sphinx.common.state.MessageListData
 import chat.sphinx.common.state.MessageListState
 import chat.sphinx.common.viewmodel.DashboardViewModel
@@ -52,6 +52,7 @@ fun MessageListUI(
 ) {
     chatViewModel.screenInit()
     val isInactiveConversation = dashboardChat is DashboardChat.Inactive.Conversation
+    val localScope = rememberCoroutineScope()
 
     Box {
         if (isThreadView) {
@@ -67,6 +68,31 @@ fun MessageListUI(
                     val items = mutableStateListOf<ChatMessage>()
                     items.addAll(chatMessages)
 
+                    val isAtBottom by rememberIsAtBottom(listState)
+                    var bottomAnchorMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
+                    var unseenIncomingWhileScrolledUp by remember(messageListData.chatId) { mutableStateOf(0) }
+
+                    LaunchedEffect(isAtBottom, items) {
+                        if (isAtBottom) {
+                            val latest = items.firstOrNull { !it.isSeparator }
+                            bottomAnchorMessageId = latest?.message?.id?.value
+                            unseenIncomingWhileScrolledUp = 0
+                        }
+                    }
+
+                    LaunchedEffect(items) {
+                        if (!isAtBottom && bottomAnchorMessageId != null) {
+                            var count = 0
+                            for (m in items) {
+                                if (m.isSeparator) continue
+                                // We scan from newest (index 0) until we hit the anchor
+                                if (m.message.id.value == bottomAnchorMessageId) break
+                                if (m.isIncomingMessage()) count++
+                            }
+                            unseenIncomingWhileScrolledUp = count
+                        }
+                    }
+
                     if (chatMessages.isEmpty()) {
                         ChatEmptyScreen(isInactiveConversation, dashboardChat)
                     } else {
@@ -76,6 +102,22 @@ fun MessageListUI(
                             chatViewModel,
                             dashboardViewModel
                         )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.BottomEnd
+                        ) {
+                            ScrollToBottomButton(
+                                visible = !isAtBottom,
+                                unreadIncomingCount = unseenIncomingWhileScrolledUp,
+                                onClick = {
+                                    localScope.launch {
+                                        listState.animateScrollToItem(0)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .padding(end = 16.dp, bottom = 16.dp)
+                            )
+                        }
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.BottomCenter
@@ -104,6 +146,30 @@ fun MessageListUI(
                     val items = mutableStateListOf<ChatMessage>()
                     items.addAll(chatMessages)
 
+                    val isAtBottom by rememberIsAtBottom(listState)
+                    var bottomAnchorMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
+                    var unseenIncomingWhileScrolledUp by remember(messageListData.chatId) { mutableStateOf(0) }
+
+                    LaunchedEffect(isAtBottom, items) {
+                        if (isAtBottom) {
+                            val latest = items.firstOrNull { !it.isSeparator }
+                            bottomAnchorMessageId = latest?.message?.id?.value
+                            unseenIncomingWhileScrolledUp = 0
+                        }
+                    }
+
+                    LaunchedEffect(items) {
+                        if (!isAtBottom && bottomAnchorMessageId != null) {
+                            var count = 0
+                            for (m in items) {
+                                if (m.isSeparator) continue
+                                if (m.message.id.value == bottomAnchorMessageId) break
+                                if (m.isIncomingMessage()) count++
+                            }
+                            unseenIncomingWhileScrolledUp = count
+                        }
+                    }
+
                     if (chatMessages.isEmpty()) {
                         ChatEmptyScreen(isInactiveConversation, dashboardChat)
                     } else {
@@ -113,6 +179,22 @@ fun MessageListUI(
                             chatViewModel,
                             dashboardViewModel
                         )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.BottomEnd
+                        ) {
+                            ScrollToBottomButton(
+                                visible = !isAtBottom,
+                                unreadIncomingCount = unseenIncomingWhileScrolledUp,
+                                onClick = {
+                                    localScope.launch {
+                                        listState.animateScrollToItem(0)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .padding(end = 16.dp, bottom = 16.dp)
+                            )
+                        }
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.BottomCenter
@@ -307,6 +389,54 @@ fun ChatMessagesList(
                     chatViewModel
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ScrollToBottomButton(
+    visible: Boolean,
+    unreadIncomingCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!visible) return
+
+    Box(modifier = modifier) {
+        FilledIconButton(
+            onClick = onClick,
+            modifier = Modifier.size(44.dp),
+            shape = CircleShape,
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor =MaterialTheme.colorScheme.onBackground
+            )
+        ) {
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowDown,
+                contentDescription = "Scroll to bottom",
+            )
+        }
+
+        if (unreadIncomingCount > 0) {
+            Box(
+                modifier = Modifier
+                    .offset(x = (-8).dp, y = (-6).dp)
+            ) {
+                MessageCount(unreadIncomingCount.toString())
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberIsAtBottom(listState: LazyListState): State<Boolean> {
+    // reverseLayout = true -> bottom == index 0 with 0px offset
+    return remember(listState) {
+        derivedStateOf {
+            val atStart = listState.firstVisibleItemIndex == 0
+            val atOffset = listState.firstVisibleItemScrollOffset == 0
+            atStart && atOffset
         }
     }
 }
