@@ -65,14 +65,55 @@ fun MessageListUI(
                     val listState = remember(messageListData.chatId) { LazyListState() }
 
                     val chatMessages = messageListData.messages.dropLast(2)
-                    val items = mutableStateListOf<ChatMessage>()
-                    items.addAll(chatMessages)
+                    val items = remember(messageListData.chatId) { mutableStateListOf<ChatMessage>() }
+
+                    var previousItemsSize by remember(messageListData.chatId) { mutableStateOf(0) }
+                    var previousLastMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
+                    var wasAtBottom by remember(messageListData.chatId) { mutableStateOf(true) }
 
                     val isAtBottom by rememberIsAtBottom(listState)
                     var bottomAnchorMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
                     var unseenIncomingWhileScrolledUp by remember(messageListData.chatId) { mutableStateOf(0) }
 
-                    LaunchedEffect(isAtBottom, items) {
+                    // Update items and handle scrolling
+                    LaunchedEffect(chatMessages) {
+                        val newSize = chatMessages.size
+                        val currentLastMessageId = chatMessages.firstOrNull()?.message?.id?.value
+
+                        val hasNewMessages = newSize > previousItemsSize && previousItemsSize > 0
+                        val hasNewMessage = currentLastMessageId != previousLastMessageId && previousLastMessageId != null
+
+                        updateItemsEfficiently(items, chatMessages)
+
+                        // Scroll to bottom if there are new messages and user was at bottom
+                        if ((hasNewMessages || hasNewMessage) && wasAtBottom) {
+                            kotlinx.coroutines.delay(10)
+                            listState.scrollToItem(0, 0)
+                        }
+
+                        previousItemsSize = newSize
+                        previousLastMessageId = currentLastMessageId
+                    }
+
+                    // Track if user is at bottom
+                    LaunchedEffect(isAtBottom) {
+                        wasAtBottom = isAtBottom
+                    }
+
+                    LaunchedEffect(messageListData.chatId) {
+                        chatViewModel.onNewMessageCallback = {
+                            localScope.launch {
+                                // Force scroll to bottom for any new message when at bottom
+                                if (wasAtBottom) {
+                                    kotlinx.coroutines.delay(50)
+                                    listState.animateScrollToItem(0, 0)
+                                    wasAtBottom = true
+                                }
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(isAtBottom, items.size) {
                         if (isAtBottom) {
                             val latest = items.firstOrNull { !it.isSeparator }
                             bottomAnchorMessageId = latest?.message?.id?.value
@@ -80,12 +121,11 @@ fun MessageListUI(
                         }
                     }
 
-                    LaunchedEffect(items) {
+                    LaunchedEffect(items.size, bottomAnchorMessageId) {
                         if (!isAtBottom && bottomAnchorMessageId != null) {
                             var count = 0
                             for (m in items) {
                                 if (m.isSeparator) continue
-                                // We scan from newest (index 0) until we hit the anchor
                                 if (m.message.id.value == bottomAnchorMessageId) break
                                 if (m.isIncomingMessage()) count++
                             }
@@ -100,7 +140,8 @@ fun MessageListUI(
                             items,
                             listState,
                             chatViewModel,
-                            dashboardViewModel
+                            dashboardViewModel,
+                            shouldSetCallback = false
                         )
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -111,7 +152,8 @@ fun MessageListUI(
                                 unreadIncomingCount = unseenIncomingWhileScrolledUp,
                                 onClick = {
                                     localScope.launch {
-                                        listState.animateScrollToItem(0)
+                                        listState.animateScrollToItem(0, 0)
+                                        wasAtBottom = true
                                     }
                                 },
                                 modifier = Modifier
@@ -143,14 +185,56 @@ fun MessageListUI(
                     val listState = remember(messageListData.chatId) { LazyListState() }
 
                     val chatMessages = messageListData.messages
-                    val items = mutableStateListOf<ChatMessage>()
-                    items.addAll(chatMessages)
+                    val items = remember(messageListData.chatId) { mutableStateListOf<ChatMessage>() }
+
+                    // Track previous size and messages to detect new messages
+                    var previousItemsSize by remember(messageListData.chatId) { mutableStateOf(0) }
+                    var previousLastMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
+                    var wasAtBottom by remember(messageListData.chatId) { mutableStateOf(true) }
 
                     val isAtBottom by rememberIsAtBottom(listState)
                     var bottomAnchorMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
                     var unseenIncomingWhileScrolledUp by remember(messageListData.chatId) { mutableStateOf(0) }
 
-                    LaunchedEffect(isAtBottom, items) {
+                    // Update items and handle scrolling
+                    LaunchedEffect(chatMessages) {
+                        val newSize = chatMessages.size
+                        val currentLastMessageId = chatMessages.firstOrNull()?.message?.id?.value
+
+                        val hasNewMessages = newSize > previousItemsSize && previousItemsSize > 0
+                        val hasNewMessage = currentLastMessageId != previousLastMessageId && previousLastMessageId != null
+
+                        updateItemsEfficiently(items, chatMessages)
+
+                        // Scroll to bottom if there are new messages and user was at bottom
+                        if ((hasNewMessages || hasNewMessage) && wasAtBottom) {
+                            kotlinx.coroutines.delay(10)
+                            listState.scrollToItem(0, 0)
+                        }
+
+                        previousItemsSize = newSize
+                        previousLastMessageId = currentLastMessageId
+                    }
+
+                    // Track if user is at bottom
+                    LaunchedEffect(isAtBottom) {
+                        wasAtBottom = isAtBottom
+                    }
+
+                    LaunchedEffect(messageListData.chatId) {
+                        chatViewModel.onNewMessageCallback = {
+                            localScope.launch {
+                                // Force scroll to bottom for any new message when at bottom
+                                if (wasAtBottom) {
+                                    kotlinx.coroutines.delay(50)
+                                    listState.animateScrollToItem(0, 0)
+                                    wasAtBottom = true
+                                }
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(isAtBottom, items.size) {
                         if (isAtBottom) {
                             val latest = items.firstOrNull { !it.isSeparator }
                             bottomAnchorMessageId = latest?.message?.id?.value
@@ -158,7 +242,7 @@ fun MessageListUI(
                         }
                     }
 
-                    LaunchedEffect(items) {
+                    LaunchedEffect(items.size, bottomAnchorMessageId) {
                         if (!isAtBottom && bottomAnchorMessageId != null) {
                             var count = 0
                             for (m in items) {
@@ -177,7 +261,8 @@ fun MessageListUI(
                             items,
                             listState,
                             chatViewModel,
-                            dashboardViewModel
+                            dashboardViewModel,
+                            shouldSetCallback = false
                         )
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -188,7 +273,8 @@ fun MessageListUI(
                                 unreadIncomingCount = unseenIncomingWhileScrolledUp,
                                 onClick = {
                                     localScope.launch {
-                                        listState.animateScrollToItem(0)
+                                        listState.animateScrollToItem(0, 0)
+                                        wasAtBottom = true
                                     }
                                 },
                                 modifier = Modifier
@@ -210,6 +296,59 @@ fun MessageListUI(
                     }
                 }
             }
+        }
+    }
+}
+
+private fun updateItemsEfficiently(
+    items: SnapshotStateList<ChatMessage>,
+    newMessages: List<ChatMessage>
+) {
+    if (items.size == newMessages.size &&
+        items.zip(newMessages).all { (a, b) -> a.message.id == b.message.id }) {
+        return
+    }
+
+    if (newMessages.size > items.size) {
+        val sizeDiff = newMessages.size - items.size
+
+        val existingMessagesMatch = items.size == 0 ||
+                items.zip(newMessages.drop(sizeDiff)).all { (existing, new) ->
+                    existing.message.id == new.message.id
+                }
+
+        if (existingMessagesMatch) {
+            val newMessagesToAdd = newMessages.take(sizeDiff)
+            newMessagesToAdd.reversed().forEach { newMessage ->
+                items.add(0, newMessage)
+            }
+            return
+        }
+    }
+
+    val itemsToRemove = items.toList()
+    items.clear()
+    items.addAll(newMessages)
+}
+
+@Composable
+private fun rememberIsAtBottom(listState: LazyListState): State<Boolean> {
+    return remember(listState) {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val firstVisibleIndex = listState.firstVisibleItemIndex
+            val firstVisibleOffset = listState.firstVisibleItemScrollOffset
+
+            // Consider at bottom if:
+            // 1. At absolute bottom (index 0, offset 0)
+            // 2. Very close to bottom (within 50 pixels)
+            // 3. Only one item visible and it's the first item
+            val atAbsoluteBottom = firstVisibleIndex == 0 && firstVisibleOffset == 0
+            val nearBottom = firstVisibleIndex == 0 && firstVisibleOffset <= 50
+            val singleItemAtTop = layoutInfo.visibleItemsInfo.size == 1 &&
+                    layoutInfo.visibleItemsInfo.firstOrNull()?.index == 0
+
+            atAbsoluteBottom || nearBottom || singleItemAtTop
         }
     }
 }
@@ -352,7 +491,8 @@ fun ChatMessagesList(
     items: SnapshotStateList<ChatMessage>,
     listState: LazyListState,
     chatViewModel: ChatViewModel,
-    dashboardViewModel: DashboardViewModel
+    dashboardViewModel: DashboardViewModel,
+    shouldSetCallback: Boolean = true
 ) {
     val scope = rememberCoroutineScope()
     val isLoadingMore by chatViewModel.isLoadingMoreMessages.collectAsState()
@@ -362,10 +502,13 @@ fun ChatMessagesList(
         reverseLayout = true,
         contentPadding = PaddingValues(8.dp)
     ) {
-        chatViewModel.onNewMessageCallback = {
-            scope.launch {
-                if (listState.firstVisibleItemIndex <= 1) {
-                    listState.scrollToItem(0)
+        // Only set callback if needed (for backward compatibility)
+        if (shouldSetCallback) {
+            chatViewModel.onNewMessageCallback = {
+                scope.launch {
+                    if (listState.firstVisibleItemIndex <= 1 && listState.firstVisibleItemScrollOffset <= 100) {
+                        listState.scrollToItem(0, 0)
+                    }
                 }
             }
         }
@@ -425,18 +568,6 @@ private fun ScrollToBottomButton(
             ) {
                 MessageCount(unreadIncomingCount.toString())
             }
-        }
-    }
-}
-
-@Composable
-private fun rememberIsAtBottom(listState: LazyListState): State<Boolean> {
-    // reverseLayout = true -> bottom == index 0 with 0px offset
-    return remember(listState) {
-        derivedStateOf {
-            val atStart = listState.firstVisibleItemIndex == 0
-            val atOffset = listState.firstVisibleItemScrollOffset == 0
-            atStart && atOffset
         }
     }
 }
