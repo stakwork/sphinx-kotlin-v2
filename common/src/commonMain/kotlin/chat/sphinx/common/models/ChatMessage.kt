@@ -21,6 +21,10 @@ import chat.sphinx.wrapper.tribe.TribeJoinLink
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+fun ChatMessage.isIncomingMessage(): Boolean {
+    return !isSeparator && isReceived
+}
+
 class ChatMessage(
     val chat: Chat,
     val contact: Contact?,
