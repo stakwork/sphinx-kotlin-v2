@@ -196,12 +196,15 @@ class ChatTribeViewModel(
     override var threadMessageState: EditMessageState by mutableStateOf(threadInitialState())
 
     override fun initialState(): EditMessageState = EditMessageState(
-        chatId = chatId
+        chatId = chatId,
+        messageText = mutableStateOf(getInitialMessageText())
     )
 
     override fun threadInitialState(): EditMessageState = EditMessageState(
         chatId = chatId,
+        messageText = mutableStateOf(getInitialThreadMessageText(_currentThreadUUID.value))
     )
+
 
     override fun aliasMatcher(text: String) {
         if (!text.contains("@") || text.isEmpty()) {

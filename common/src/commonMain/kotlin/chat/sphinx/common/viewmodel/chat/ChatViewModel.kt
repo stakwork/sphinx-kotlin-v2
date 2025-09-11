@@ -145,6 +145,52 @@ abstract class ChatViewModel(
         isGiphyPickerVisible.value = false
     }
 
+    companion object {
+        private val sessionTextStorage = mutableMapOf<String, TextFieldValue>()
+        private val sessionThreadTextStorage = mutableMapOf<String, TextFieldValue>()
+
+        fun getSessionText(chatId: ChatId?): TextFieldValue {
+            return chatId?.let {
+                sessionTextStorage[it.value.toString()]
+            } ?: TextFieldValue("")
+        }
+
+        fun setSessionText(chatId: ChatId?, text: TextFieldValue) {
+            chatId?.let {
+                if (text.text.isBlank()) {
+                    sessionTextStorage.remove(it.value.toString())
+                } else {
+                    sessionTextStorage[it.value.toString()] = text
+                }
+            }
+        }
+
+        fun getSessionThreadText(chatId: ChatId?, threadUUID: String?): TextFieldValue? {
+            return if (chatId != null && threadUUID != null) {
+                sessionThreadTextStorage["${chatId.value}_${threadUUID}"]
+            } else null ?: TextFieldValue("")
+        }
+
+        fun setSessionThreadText(chatId: ChatId?, threadUUID: String?, text: TextFieldValue) {
+            if (chatId != null && threadUUID != null) {
+                val key = "${chatId.value}_${threadUUID}"
+                if (text.text.isBlank()) {
+                    sessionThreadTextStorage.remove(key)
+                } else {
+                    sessionThreadTextStorage[key] = text
+                }
+            }
+        }
+    }
+
+    protected fun getInitialMessageText(): TextFieldValue {
+        return getSessionText(chatId)
+    }
+
+    protected fun getInitialThreadMessageText(threadUUID: String?): TextFieldValue {
+        return getSessionThreadText(chatId, threadUUID) ?: TextFieldValue("")
+    }
+
     var isThreadRecording: Boolean by mutableStateOf(false)
         private set
 
@@ -980,7 +1026,7 @@ abstract class ChatViewModel(
         }
     }
 
-    private val _currentThreadUUID = MutableStateFlow<String?>(null)
+    val _currentThreadUUID = MutableStateFlow<String?>(null)
     val currentThreadUUID: StateFlow<String?> = _currentThreadUUID.asStateFlow()
 
     private var currentThreadJob: Job? = null
@@ -1153,6 +1199,9 @@ abstract class ChatViewModel(
             return
         }
         editMessageState.messageText.value = text
+
+        setSessionText(chatId, text)
+
         aliasMatcher(text.text)
     }
 
@@ -1165,6 +1214,9 @@ abstract class ChatViewModel(
             return
         }
         threadMessageState.messageText.value = text
+
+        setSessionThreadText(chatId, _currentThreadUUID.value, text)
+
         aliasMatcher(text.text)
     }
 
@@ -1288,13 +1340,11 @@ abstract class ChatViewModel(
                     messageRepository.sendMessage(message)
 
                     if (threadUUID == null) {
-                        setEditMessageState {
-                            initialState()
-                        }
+                        setSessionText(chatId, TextFieldValue(""))
+                        setEditMessageState { initialState() }
                     } else {
-                        setThreadMessageState {
-                            threadInitialState()
-                        }
+                        setSessionThreadText(chatId, threadUUID, TextFieldValue(""))
+                        setThreadMessageState { threadInitialState() }
                     }
 
                     delay(200L)
