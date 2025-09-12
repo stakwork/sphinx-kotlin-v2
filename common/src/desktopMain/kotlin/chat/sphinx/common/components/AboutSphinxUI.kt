@@ -62,7 +62,7 @@ fun AboutSphinx(dashboardViewModel: DashboardViewModel) {
                 Spacer(Modifier.height(8.dp))
 
                 Text(
-                    text = "Version " + "1.0.15",
+                    text = "Version " + "1.0.16",
                     color = MaterialTheme.colorScheme.tertiary,
                     fontFamily = Roboto,
                     fontWeight = FontWeight.Light,
