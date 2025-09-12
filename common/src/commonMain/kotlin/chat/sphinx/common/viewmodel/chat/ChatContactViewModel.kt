@@ -134,11 +134,13 @@ class ChatContactViewModel(
     override fun initialState(): EditMessageState = EditMessageState(
         chatId = chatId,
         contactId = contactId,
+        messageText = mutableStateOf(getInitialMessageText())
     )
 
     override fun threadInitialState(): EditMessageState = EditMessageState(
         chatId = chatId,
         contactId = contactId,
+        messageText = mutableStateOf(getInitialThreadMessageText(_currentThreadUUID.value))
     )
 
     override fun getUniqueKey(): String {
