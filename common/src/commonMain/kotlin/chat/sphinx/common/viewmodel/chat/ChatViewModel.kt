@@ -183,7 +183,11 @@ abstract class ChatViewModel(
         }
     }
 
-    protected fun getInitialMessageText(): TextFieldValue {
+    fun getInitialThreadTextForUUID(threadUUID: String?): TextFieldValue {
+        return getInitialThreadMessageText(threadUUID)
+    }
+
+    fun getInitialMessageText(): TextFieldValue {
         return getSessionText(chatId)
     }
 
@@ -1036,8 +1040,6 @@ abstract class ChatViewModel(
         currentThreadJob = null
         _currentThreadUUID.value = null
 
-        threadMessageState = threadInitialState()
-
         MessageListState.threadScreenState(MessageListData.EmptyMessageListData)
     }
 
@@ -1162,6 +1164,13 @@ abstract class ChatViewModel(
 
     abstract fun threadInitialState(): EditMessageState
 
+    fun initializeThreadMessageText(threadUUID: String?) {
+        if (threadUUID != null) {
+            val initialText = getInitialThreadMessageText(threadUUID)
+            threadMessageState.messageText.value = initialText
+        }
+    }
+
     abstract fun getUniqueKey(): String
 
     private inline fun setEditMessageState(update: EditMessageState.() -> EditMessageState) {
@@ -1205,7 +1214,7 @@ abstract class ChatViewModel(
         aliasMatcher(text.text)
     }
 
-    fun onThreadMessageTextChanged(text: TextFieldValue) {
+    fun onThreadMessageTextChanged(text: TextFieldValue, threadUUID: String?) {
         if (
             threadMessageState.messageText.value.text == text.text &&
             (text.selection.start == 0 || text.selection.start == text.text.length) &&
@@ -1215,7 +1224,7 @@ abstract class ChatViewModel(
         }
         threadMessageState.messageText.value = text
 
-        setSessionThreadText(chatId, _currentThreadUUID.value, text)
+        setSessionThreadText(chatId, threadUUID, text)
 
         aliasMatcher(text.text)
     }

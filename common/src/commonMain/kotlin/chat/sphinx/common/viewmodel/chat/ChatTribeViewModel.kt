@@ -202,7 +202,7 @@ class ChatTribeViewModel(
 
     override fun threadInitialState(): EditMessageState = EditMessageState(
         chatId = chatId,
-        messageText = mutableStateOf(getInitialThreadMessageText(_currentThreadUUID.value))
+        messageText = mutableStateOf(TextFieldValue(""))
     )
 
 
