@@ -770,6 +770,12 @@ fun SphinxChatDetailBottomAppBar(
     threadUUID: ThreadUUID? = null,
     isThreadView: Boolean = false
 ) {
+    LaunchedEffect(threadUUID?.value, isThreadView) {
+        if (isThreadView && threadUUID != null && chatViewModel != null) {
+            chatViewModel.initializeThreadMessageText(threadUUID.value)
+        }
+    }
+
     val isRecording = if (isThreadView) {
         chatViewModel?.isThreadRecording == true
     } else {
@@ -782,14 +788,6 @@ fun SphinxChatDetailBottomAppBar(
     }
 
     val scope = rememberCoroutineScope()
-
-    var textFieldValueState by remember {
-        mutableStateOf(
-            TextFieldValue(
-                text = ""
-            )
-        )
-    }
 
     Surface(
         color = androidx.compose.material3.MaterialTheme.colorScheme.background,
@@ -882,7 +880,7 @@ fun SphinxChatDetailBottomAppBar(
                                 val proposedTextBytes = proposedText.toByteArray().size
                                 if (proposedTextBytes <= 592) {
                                     if (isThreadView) {
-                                        chatViewModel?.onThreadMessageTextChanged(newValue)
+                                        chatViewModel?.onThreadMessageTextChanged(newValue, threadUUID?.value)
                                     } else {
                                         chatViewModel?.onMessageTextChanged(newValue)
                                     }

@@ -4,6 +4,7 @@ package chat.sphinx.common.viewmodel.chat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.TextFieldValue
 import chat.sphinx.common.state.EditMessageState
 import chat.sphinx.common.state.PinMessageState
 import chat.sphinx.common.viewmodel.DashboardViewModel
@@ -140,7 +141,7 @@ class ChatContactViewModel(
     override fun threadInitialState(): EditMessageState = EditMessageState(
         chatId = chatId,
         contactId = contactId,
-        messageText = mutableStateOf(getInitialThreadMessageText(_currentThreadUUID.value))
+        messageText = mutableStateOf(TextFieldValue(""))
     )
 
     override fun getUniqueKey(): String {
