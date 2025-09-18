@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import chat.sphinx.common.state.BackupKeysState
+import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.PinAuthenticationViewModel
 import chat.sphinx.concepts.authentication.coordinator.AuthenticationRequest
 import chat.sphinx.concepts.authentication.coordinator.AuthenticationResponse
@@ -36,6 +37,17 @@ class PinExportKeysViewModel : PinAuthenticationViewModel() {
         backupKeysState = initialState()
     }
 
+    fun onPinVerificationSuccess(dashboardViewModel: DashboardViewModel) {
+        backupKeysState.restoreString?.let { keys ->
+            dashboardViewModel.showFullScreenView(
+                DashboardViewModel.FullScreenView.BackupKeysQR(
+                    title = "BACKUP KEYS",
+                    words = keys
+                )
+            )
+            dashboardViewModel.toggleBackUpWindow(false)
+        }
+    }
 
     @OptIn(RawPasswordAccess::class, InternalAPI::class)
     override fun onAuthenticationSucceed() {

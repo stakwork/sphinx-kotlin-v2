@@ -11,6 +11,7 @@ import androidx.compose.material.*
 import androidx.compose.material.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -41,6 +44,7 @@ import chat.sphinx.common.state.ContentState
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.ProfileViewModel
 import chat.sphinx.common.viewmodel.ResetPinViewModel
+import chat.sphinx.common.viewmodel.contact.QRCodeViewModel
 import chat.sphinx.common.viewmodel.dashboard.PinExportKeysViewModel
 import chat.sphinx.response.LoadResponse
 import chat.sphinx.response.Response
@@ -51,6 +55,7 @@ import chat.sphinx.wrapper.lightning.asFormattedString
 import chat.sphinx.wrapper.message.media.isImage
 import theme.badge_red
 import kotlinx.coroutines.launch
+import org.jetbrains.skiko.ClipboardManager
 import utils.deduceMediaType
 
 @Composable
@@ -501,7 +506,6 @@ fun BackupKeys(
     dashboardViewModel: DashboardViewModel
 ) {
     val pinExportKeysViewModel = remember { PinExportKeysViewModel() }
-    val clipboardManager = LocalClipboardManager.current
 
     Window(
         onCloseRequest = { dashboardViewModel.toggleBackUpWindow(false) },
@@ -516,12 +520,120 @@ fun BackupKeys(
         PINScreen(
             pinExportKeysViewModel,
             descriptionMessage = "Enter your PIN to encrypt the keys. You will need it when restoring account on other device",
-            successMessage = if (backupKeysState.restoreString != null) "Back up key copied to clipboard" else null,
+            successMessage = null,
             errorMessage = if (backupKeysState.error) "Backup keys failed" else null,
         )
 
         backupKeysState.restoreString?.let {
-            clipboardManager.setText(it.toAnnotatedString())
+            LaunchedEffect(it) {
+                pinExportKeysViewModel.onPinVerificationSuccess(dashboardViewModel)
+            }
+        }
+    }
+}
+
+@Composable
+fun BackupKeysQRScreen(
+    dashboardViewModel: DashboardViewModel,
+    title: String,
+    words: String,
+    preferredSize: DpSize
+) {
+    val clipboardManager: androidx.compose.ui.platform.ClipboardManager = LocalClipboardManager.current
+    val qrCodeViewModel = remember { QRCodeViewModel(title, words) }
+
+    Box(
+        modifier = Modifier
+            .size(preferredSize)
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            TopHeaderContainer(
+                title = "Mnemonic words",
+                onClose = { dashboardViewModel.closeFullScreenView() }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight()
+                        .padding(32.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(end = 24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.TouchApp,
+                            contentDescription = "QR Code",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(30.dp)
+                        )
+
+                        Text(
+                            text = "CLICK TO COPY",
+                            fontFamily = SphinxFonts.montserratFamily,
+                            color = Color.Gray,
+                            fontSize = 10.sp
+                        )
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+
+                    // QR Code
+                    qrCodeViewModel.contactQRCodeState.bitMatrix?.let { bitMatrix ->
+                        val qrCodeSize = 200.dp
+
+                        Box(
+                            modifier = Modifier
+                                .size(qrCodeSize)
+                                .clickable {
+                                    clipboardManager.setText(words.toAnnotatedString())
+                                    qrCodeViewModel.toast("Keys copied to clipboard")
+                                }
+                        ) {
+                            Canvas(modifier = Modifier.size(qrCodeSize)) {
+                                val scaleX = size.width / bitMatrix.width
+                                val scaleY = size.height / bitMatrix.height
+
+                                for (x in 0 until bitMatrix.width) {
+                                    for (y in 0 until bitMatrix.height) {
+                                        drawRect(
+                                            brush = SolidColor(if (bitMatrix.get(x, y)) Color.Black else Color.White),
+                                            topLeft = Offset(x * scaleX, y * scaleY),
+                                            size = Size(scaleX, scaleY)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // Backup words text
+                    Text(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                            .clickable {
+                                clipboardManager.setText(words.toAnnotatedString())
+                                qrCodeViewModel.toast("Keys copied to clipboard")
+                            },
+                        text = words,
+                        fontFamily = SphinxFonts.montserratFamily,
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                }
+            }
         }
     }
 }
