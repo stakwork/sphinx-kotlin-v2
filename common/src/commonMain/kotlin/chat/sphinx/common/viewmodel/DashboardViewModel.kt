@@ -83,6 +83,7 @@ class DashboardViewModel(): WindowFocusListener {
         data class ContactScreen(val screen: ContactScreenState?) : FullScreenView()
         data class CreateTribeScreen(val chatId: ChatId?) : FullScreenView()
         data class QRDetailFullScreen(val title: String?, val value: String?): FullScreenView()
+        data class BackupKeysQR(val title: String, val words: String): FullScreenView()
         data class TribeJoin(val tribeJoinLink: TribeJoinLink): FullScreenView()
         data class EpisodeDetails(
             val episode: PodcastEpisode,

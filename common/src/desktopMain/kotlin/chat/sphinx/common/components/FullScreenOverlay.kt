@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import chat.sphinx.common.components.profile.BackupKeysQRScreen
 import chat.sphinx.common.components.profile.ProfileScreen
 import chat.sphinx.common.components.tribe.CreateTribeScreen
 import chat.sphinx.common.components.tribe.JoinTribeScreen
@@ -41,6 +42,7 @@ fun FullScreenOverlay(
                 is DashboardViewModel.FullScreenView.CreateInvoice,
                 is DashboardViewModel.FullScreenView.PayInvoice -> getPreferredWindowSize(420, 520)
                 is DashboardViewModel.FullScreenView.QRDetailFullScreen -> getPreferredWindowSize(357, 550)
+                is DashboardViewModel.FullScreenView.BackupKeysQR -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.OwnerQRDetail -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.TribeJoin -> getPreferredWindowSize(400, 800)
                 is DashboardViewModel.FullScreenView.EpisodeDetails -> getPreferredWindowSize(420, 550)
@@ -115,6 +117,14 @@ fun FullScreenOverlay(
                                 podcastTitle = fullScreenView.podcastTitle,
                                 dashboardViewModel = dashboardViewModel,
                                 episodeShare = fullScreenView.episodeShare,
+                                preferredSize = preferredSize
+                            )
+                        }
+                        is DashboardViewModel.FullScreenView.BackupKeysQR -> {
+                            BackupKeysQRScreen(
+                                dashboardViewModel = dashboardViewModel,
+                                title = fullScreenView.title,
+                                words = fullScreenView.words,
                                 preferredSize = preferredSize
                             )
                         }
