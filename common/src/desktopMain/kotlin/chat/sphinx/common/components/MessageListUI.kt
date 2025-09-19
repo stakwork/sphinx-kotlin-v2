@@ -304,15 +304,32 @@ private fun updateItemsEfficiently(
     items: SnapshotStateList<ChatMessage>,
     newMessages: List<ChatMessage>
 ) {
-    if (items.size == newMessages.size &&
-        items.zip(newMessages).all { (a, b) -> a.message.id == b.message.id }) {
+    if (items.isEmpty()) {
+        items.addAll(newMessages)
+        return
+    }
+
+    if (items.size == newMessages.size) {
+        var anyChanged = false
+        for (i in newMessages.indices) {
+            val old = items[i]
+            val neu = newMessages[i]
+            val contentChanged =
+                (old.isSeparator != neu.isSeparator) ||
+                        (old.message != neu.message)
+
+            if (contentChanged) {
+                items[i] = neu
+                anyChanged = true
+            }
+        }
+        if (!anyChanged) return
         return
     }
 
     if (newMessages.size > items.size) {
         val sizeDiff = newMessages.size - items.size
-
-        val existingMessagesMatch = items.size == 0 ||
+        val existingMessagesMatch = items.isEmpty() ||
                 items.zip(newMessages.drop(sizeDiff)).all { (existing, new) ->
                     existing.message.id == new.message.id
                 }
@@ -326,7 +343,6 @@ private fun updateItemsEfficiently(
         }
     }
 
-    val itemsToRemove = items.toList()
     items.clear()
     items.addAll(newMessages)
 }
