@@ -36,6 +36,7 @@ class ChatMessage(
     val flagMessage: () -> Unit,
     val deleteMessage: () -> Unit,
     val isSeparator: Boolean = false,
+    val isUnseenSeparator: Boolean = false,
     val background: BubbleBackground,
     private val previewProvider: suspend (link: LinkSpec) -> LinkPreview?,
 ) {
@@ -207,6 +208,7 @@ class ChatMessage(
                     flagMessage,
                     deleteMessage,
                     isSeparator,
+                    isUnseenSeparator,
                     background,
                     previewProvider
                 )

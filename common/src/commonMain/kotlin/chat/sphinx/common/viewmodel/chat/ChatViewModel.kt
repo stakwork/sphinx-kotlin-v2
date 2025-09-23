@@ -552,15 +552,69 @@ abstract class ChatViewModel(
     val notificationLevelStateFlow: StateFlow<Pair<Boolean, NotificationLevel?>>
         get() = _notificationLevelStateFlow.asStateFlow()
 
+    private var wasAlreadyInChat = false
+
+    private val _firstUnseenMessageId = MutableStateFlow<Long?>(null)
+    val firstUnseenMessageId: StateFlow<Long?> = _firstUnseenMessageId.asStateFlow()
+
+    private val _shouldShowUnseenSeparator = MutableStateFlow(false)
+    val shouldShowUnseenSeparator: StateFlow<Boolean> = _shouldShowUnseenSeparator.asStateFlow()
+
     init {
         messagesLoadJob = scope.launch(dispatchers.mainImmediate) {
             loadChatMessages()
         }
 
+        checkIfAlreadyInChat()
+
         scope.launch(dispatchers.io) {
             readMessages()
         }
+
+        scope.launch(dispatchers.io) {
+            initializeUnseenMessageTracking()
+        }
     }
+
+    private fun checkIfAlreadyInChat() {
+        val currentChatDetailState = ChatDetailState.screenState()
+        wasAlreadyInChat = when (currentChatDetailState) {
+            is ChatDetailData.SelectedChatDetailData.SelectedContactChatDetail -> {
+                currentChatDetailState.chatId == chatId
+            }
+            is ChatDetailData.SelectedChatDetailData.SelectedTribeChatDetail -> {
+                currentChatDetailState.chatId == chatId
+            }
+            else -> false
+        }
+    }
+
+    private suspend fun initializeUnseenMessageTracking() {
+        chatId?.let { nnChatId ->
+            val unseenMessages = repositoryDashboard.getUnseenReceivedMessages().firstOrNull()
+            val chatUnseenMessages = unseenMessages?.filter { it.chatId == nnChatId }
+
+            if (!chatUnseenMessages.isNullOrEmpty()) {
+                val firstUnseenMessage = chatUnseenMessages.minByOrNull { it.date.value }
+                firstUnseenMessage?.let {
+                    _firstUnseenMessageId.value = it.id.value
+                    _shouldShowUnseenSeparator.value = true
+                }
+            }
+        }
+    }
+
+    fun resetUnseenMessageTracking() {
+        _firstUnseenMessageId.value = null
+        _shouldShowUnseenSeparator.value = false
+    }
+
+    fun hideUnseenSeparator() {
+        _shouldShowUnseenSeparator.value = false
+        _firstUnseenMessageId.value = null
+    }
+
+
 
     private var screenInit: Boolean = false
     fun screenInit() {
@@ -659,6 +713,7 @@ abstract class ChatViewModel(
             else -> false
         }
     }
+
     private suspend fun processChatMessages(chat: Chat, messages: List<Message>, isThreadView: Boolean) {
         val owner = getOwner()
         val contact = getContact()
@@ -686,6 +741,10 @@ abstract class ChatViewModel(
 
         val timezoneMap = mutableMapOf<String, String>()
 
+        val shouldShowSeparator = _shouldShowUnseenSeparator.value
+        val firstUnseenId = _firstUnseenMessageId.value
+        var separatorInserted = false
+
         messagesList.forEach { message ->
             val alias = message.senderAlias?.value
             val tz = message.remoteTimezoneIdentifier?.value
@@ -708,6 +767,7 @@ abstract class ChatViewModel(
 
             groupingDate = groupingDateAndBubbleBackground.first
 
+            // Add date separator if it's a new day
             if (previousMessage == null || message.date.isDifferentDayThan(previousMessage.date)) {
                 chatMessages.add(
                     ChatMessage(
@@ -721,12 +781,38 @@ abstract class ChatViewModel(
                         flagMessage = {},
                         deleteMessage = {},
                         isSeparator = true,
+                        isUnseenSeparator = false,
                         background = BubbleBackground.Gone,
                         previewProvider = { handleLinkPreview(it) }
                     )
                 )
             }
 
+            // Insert unseen separator ABOVE the first unseen message (before adding the message itself)
+            if (shouldShowSeparator && !separatorInserted && firstUnseenId != null &&
+                message.id.value == firstUnseenId && message.sender != chat.contactIds.firstOrNull()) {
+                // Only show for received messages, not sent messages
+                chatMessages.add(
+                    ChatMessage(
+                        chat,
+                        contact,
+                        message, // Use the current message for context, but mark as separator
+                        colors,
+                        timezoneMap,
+                        accountOwner = { owner },
+                        boostMessage = {},
+                        flagMessage = {},
+                        deleteMessage = {},
+                        isSeparator = false,
+                        isUnseenSeparator = true,
+                        background = BubbleBackground.Gone,
+                        previewProvider = { handleLinkPreview(it) }
+                    )
+                )
+                separatorInserted = true
+            }
+
+            // Add the actual message
             chatMessages.add(
                 ChatMessage(
                     chat,
@@ -791,7 +877,6 @@ abstract class ChatViewModel(
             onNewMessageCallback?.invoke()
         }
     }
-
 
     private fun filterAndSortMessagesIfNecessary(
         chat: Chat,
@@ -1109,6 +1194,7 @@ abstract class ChatViewModel(
     fun readMessages() {
         chatId?.let {
             messageRepository.readMessages(chatId)
+            hideUnseenSeparator()
         }
     }
 
