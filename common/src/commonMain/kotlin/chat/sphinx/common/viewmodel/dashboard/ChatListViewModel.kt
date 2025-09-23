@@ -533,3 +533,4 @@ class ChatListViewModel {
         return null
     }
 }
+
