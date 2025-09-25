@@ -8,11 +8,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.wrapper.separatorTimeFormat
+import theme.primary_blue
 
 @Composable
 fun DateSeparator(
@@ -39,6 +41,35 @@ fun DateSeparator(
             Divider(
                 modifier = Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+    }
+}
+
+@Composable
+fun UnseenSeparator() {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Divider(
+                modifier = Modifier.weight(1f),
+                color = primary_blue,
+                thickness = 1.dp
+            )
+            Text(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                color = primary_blue,
+                text = "Unseen messages",
+                fontFamily = Roboto,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Divider(
+                modifier = Modifier.weight(1f),
+                color = primary_blue,
+                thickness = 1.dp
             )
         }
     }

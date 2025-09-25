@@ -2,6 +2,7 @@ package chat.sphinx.common.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.rememberScrollbarAdapter
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.sphinx.common.chatMesssageUI.ChatMessageUI
 import chat.sphinx.common.chatMesssageUI.DateSeparator
+import chat.sphinx.common.chatMesssageUI.UnseenSeparator
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.models.DashboardChat
 import chat.sphinx.common.models.isIncomingMessage
@@ -54,13 +56,29 @@ fun MessageListUI(
     val isInactiveConversation = dashboardChat is DashboardChat.Inactive.Conversation
     val localScope = rememberCoroutineScope()
 
+    val shouldShowUnseenSeparator by chatViewModel.shouldShowUnseenSeparator.collectAsState()
+    val firstUnseenMessageId by chatViewModel.firstUnseenMessageId.collectAsState()
+
+    suspend fun LazyListState.scrollItemToTop(index: Int) {
+        scrollToItem(index, 0)
+        kotlinx.coroutines.yield()
+
+        val li = layoutInfo
+        val item = li.visibleItemsInfo.firstOrNull { it.index == index } ?: return
+
+        val desiredTopFromStart = li.viewportEndOffset - li.afterContentPadding - item.size
+        val delta = (item.offset - desiredTopFromStart).toFloat()
+        if (delta != 0f) {
+            scrollBy(delta)
+        }
+    }
+
     Box {
         if (isThreadView) {
             when (val messageListData = MessageListState.threadScreenState()) {
                 is MessageListData.EmptyMessageListData -> {
                     ChatEmptyScreen(isInactiveConversation, dashboardChat)
                 }
-
                 is MessageListData.PopulatedMessageListData -> {
                     val listState = remember(messageListData.chatId) { LazyListState() }
 
@@ -75,8 +93,7 @@ fun MessageListUI(
                     var bottomAnchorMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
                     var unseenIncomingWhileScrolledUp by remember(messageListData.chatId) { mutableStateOf(0) }
 
-                    // Update items and handle scrolling
-                    LaunchedEffect(chatMessages) {
+                    LaunchedEffect(chatMessages, shouldShowUnseenSeparator, firstUnseenMessageId) {
                         val newSize = chatMessages.size
                         val currentLastMessageId = chatMessages.firstOrNull()?.message?.id?.value
 
@@ -85,8 +102,16 @@ fun MessageListUI(
 
                         updateItemsEfficiently(items, chatMessages)
 
-                        // Scroll to bottom if there are new messages and user was at bottom
-                        if ((hasNewMessages || hasNewMessage) && wasAtBottom) {
+                        if (shouldShowUnseenSeparator && firstUnseenMessageId != null && previousItemsSize == 0) {
+                            val targetIndex = items.indexOfFirst {
+                                it.isUnseenSeparator || (it.message.id.value == firstUnseenMessageId)
+                            }
+                            if (targetIndex >= 0) {
+                                kotlinx.coroutines.delay(50)
+                                listState.scrollItemToTop(targetIndex) // ⬅️ place at TOP
+                                wasAtBottom = false
+                            }
+                        } else if ((hasNewMessages || hasNewMessage) && wasAtBottom) {
                             kotlinx.coroutines.delay(10)
                             listState.scrollToItem(0, 0)
                         }
@@ -95,15 +120,16 @@ fun MessageListUI(
                         previousLastMessageId = currentLastMessageId
                     }
 
-                    // Track if user is at bottom
                     LaunchedEffect(isAtBottom) {
                         wasAtBottom = isAtBottom
+                        if (isAtBottom && shouldShowUnseenSeparator) {
+                            chatViewModel.readMessages()
+                        }
                     }
 
                     LaunchedEffect(messageListData.chatId) {
                         chatViewModel.onNewMessageCallback = {
                             localScope.launch {
-                                // Force scroll to bottom for any new message when at bottom
                                 if (wasAtBottom) {
                                     kotlinx.coroutines.delay(50)
                                     listState.animateScrollToItem(0, 0)
@@ -156,8 +182,7 @@ fun MessageListUI(
                                         wasAtBottom = true
                                     }
                                 },
-                                modifier = Modifier
-                                    .padding(end = 16.dp, bottom = 16.dp)
+                                modifier = Modifier.padding(end = 16.dp, bottom = 16.dp)
                             )
                         }
                         Box(
@@ -166,7 +191,6 @@ fun MessageListUI(
                         ) {
                             SuggestedAliasListBar(chatViewModel)
                         }
-
                         VerticalScrollbar(
                             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
                             reverseLayout = true,
@@ -180,34 +204,53 @@ fun MessageListUI(
                 is MessageListData.EmptyMessageListData -> {
                     ChatEmptyScreen(isInactiveConversation, dashboardChat)
                 }
-
                 is MessageListData.PopulatedMessageListData -> {
                     val listState = remember(messageListData.chatId) { LazyListState() }
 
                     val chatMessages = messageListData.messages
                     val items = remember(messageListData.chatId) { mutableStateListOf<ChatMessage>() }
 
-                    // Track previous size and messages to detect new messages
                     var previousItemsSize by remember(messageListData.chatId) { mutableStateOf(0) }
                     var previousLastMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
                     var wasAtBottom by remember(messageListData.chatId) { mutableStateOf(true) }
+                    var hasScrolledToUnseen by remember(messageListData.chatId) { mutableStateOf(false) }
 
                     val isAtBottom by rememberIsAtBottom(listState)
                     var bottomAnchorMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
                     var unseenIncomingWhileScrolledUp by remember(messageListData.chatId) { mutableStateOf(0) }
 
-                    // Update items and handle scrolling
-                    LaunchedEffect(chatMessages) {
+                    LaunchedEffect(chatMessages, shouldShowUnseenSeparator, firstUnseenMessageId) {
                         val newSize = chatMessages.size
                         val currentLastMessageId = chatMessages.firstOrNull()?.message?.id?.value
 
                         val hasNewMessages = newSize > previousItemsSize && previousItemsSize > 0
                         val hasNewMessage = currentLastMessageId != previousLastMessageId && previousLastMessageId != null
+                        val isInitialLoad = previousItemsSize == 0
 
                         updateItemsEfficiently(items, chatMessages)
 
-                        // Scroll to bottom if there are new messages and user was at bottom
-                        if ((hasNewMessages || hasNewMessage) && wasAtBottom) {
+                        if (shouldShowUnseenSeparator && firstUnseenMessageId != null && isInitialLoad && !hasScrolledToUnseen) {
+                            val unseenSeparatorIndex = items.indexOfFirst { it.isUnseenSeparator }
+                            val firstUnseenMessageIndex = items.indexOfFirst {
+                                !it.isSeparator && !it.isUnseenSeparator && it.message.id.value == firstUnseenMessageId
+                            }
+                            val targetIndex = if (unseenSeparatorIndex >= 0) unseenSeparatorIndex else firstUnseenMessageIndex
+
+                            if (targetIndex >= 0) {
+                                kotlinx.coroutines.delay(100)
+                                listState.scrollItemToTop(targetIndex) // ⬅️ place at TOP
+                                wasAtBottom = false
+                                hasScrolledToUnseen = true
+
+                                // Initialize badge count using items below current scroll
+                                unseenIncomingWhileScrolledUp = items
+                                    .take(targetIndex)
+                                    .count { it.isIncomingMessage() && !it.isSeparator }
+                            }
+                        } else if ((hasNewMessages || hasNewMessage) && wasAtBottom) {
+                            kotlinx.coroutines.delay(10)
+                            listState.scrollToItem(0, 0)
+                        } else if (isInitialLoad && !shouldShowUnseenSeparator) {
                             kotlinx.coroutines.delay(10)
                             listState.scrollToItem(0, 0)
                         }
@@ -216,16 +259,23 @@ fun MessageListUI(
                         previousLastMessageId = currentLastMessageId
                     }
 
-                    // Track if user is at bottom
                     LaunchedEffect(isAtBottom) {
                         wasAtBottom = isAtBottom
+                        if (isAtBottom) {
+                            unseenIncomingWhileScrolledUp = 0
+                            if (shouldShowUnseenSeparator) {
+                                chatViewModel.hideUnseenSeparator()
+                            }
+                        }
                     }
 
                     LaunchedEffect(messageListData.chatId) {
+                        hasScrolledToUnseen = false
                         chatViewModel.onNewMessageCallback = {
                             localScope.launch {
-                                // Force scroll to bottom for any new message when at bottom
-                                if (wasAtBottom) {
+                                val currentIsAtBottom = listState.firstVisibleItemIndex <= 1 &&
+                                        listState.firstVisibleItemScrollOffset <= 100
+                                if (currentIsAtBottom || wasAtBottom) {
                                     kotlinx.coroutines.delay(50)
                                     listState.animateScrollToItem(0, 0)
                                     wasAtBottom = true
@@ -275,10 +325,11 @@ fun MessageListUI(
                                     localScope.launch {
                                         listState.animateScrollToItem(0, 0)
                                         wasAtBottom = true
+                                        unseenIncomingWhileScrolledUp = 0
+                                        chatViewModel.hideUnseenSeparator()
                                     }
                                 },
-                                modifier = Modifier
-                                    .padding(end = 16.dp, bottom = 16.dp)
+                                modifier = Modifier.padding(end = 16.dp, bottom = 16.dp)
                             )
                         }
                         Box(
@@ -287,7 +338,6 @@ fun MessageListUI(
                         ) {
                             SuggestedAliasListBar(chatViewModel)
                         }
-
                         VerticalScrollbar(
                             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
                             reverseLayout = true,
@@ -349,16 +399,16 @@ private fun updateItemsEfficiently(
 
 @Composable
 private fun rememberIsAtBottom(listState: LazyListState): State<Boolean> {
-    return remember(listState) {
+    var debounceJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var debouncedIsAtBottom by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+
+    val immediateIsAtBottom = remember(listState) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
             val firstVisibleIndex = listState.firstVisibleItemIndex
             val firstVisibleOffset = listState.firstVisibleItemScrollOffset
 
-            // Consider at bottom if:
-            // 1. At absolute bottom (index 0, offset 0)
-            // 2. Very close to bottom (within 50 pixels)
-            // 3. Only one item visible and it's the first item
             val atAbsoluteBottom = firstVisibleIndex == 0 && firstVisibleOffset == 0
             val nearBottom = firstVisibleIndex == 0 && firstVisibleOffset <= 50
             val singleItemAtTop = layoutInfo.visibleItemsInfo.size == 1 &&
@@ -367,6 +417,23 @@ private fun rememberIsAtBottom(listState: LazyListState): State<Boolean> {
             atAbsoluteBottom || nearBottom || singleItemAtTop
         }
     }
+
+    LaunchedEffect(immediateIsAtBottom.value) {
+        debounceJob?.cancel()
+
+        if (immediateIsAtBottom.value) {
+            // If at bottom, update immediately
+            debouncedIsAtBottom = true
+        } else {
+            // If not at bottom, wait a bit before updating
+            debounceJob = scope.launch {
+                kotlinx.coroutines.delay(150) // Debounce delay
+                debouncedIsAtBottom = immediateIsAtBottom.value
+            }
+        }
+    }
+
+    return remember { derivedStateOf { debouncedIsAtBottom } }
 }
 
 @Composable
@@ -518,7 +585,6 @@ fun ChatMessagesList(
         reverseLayout = true,
         contentPadding = PaddingValues(8.dp)
     ) {
-        // Only set callback if needed (for backward compatibility)
         if (shouldSetCallback) {
             chatViewModel.onNewMessageCallback = {
                 scope.launch {
@@ -531,7 +597,13 @@ fun ChatMessagesList(
 
         itemsIndexed(
             items,
-            key = { _, item -> "${item.message.id}-${item.isSeparator}" }
+            key = { index, item ->
+                when {
+                    item.isUnseenSeparator -> "unseen-separator-$index"
+                    item.isSeparator -> "date-separator-$index"
+                    else -> "message-$index"
+                }
+            }
         ) { index, item ->
 
             LaunchedEffect(index) {
@@ -540,50 +612,55 @@ fun ChatMessagesList(
                 }
             }
 
-            if (item.isSeparator) {
-                DateSeparator(item)
-            } else {
-                ChatMessageUI(
-                    item,
-                    chatViewModel
+            when {
+                item.isUnseenSeparator -> {
+                    UnseenSeparator()
+                }
+
+                item.isSeparator -> {
+                    DateSeparator(item)
+                }
+
+                else -> {
+                    ChatMessageUI(item, chatViewModel)
+                }
+            }
+        }
+    }
+}
+
+    @Composable
+    private fun ScrollToBottomButton(
+        visible: Boolean,
+        unreadIncomingCount: Int,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        if (!visible) return
+
+        Box(modifier = modifier) {
+            FilledIconButton(
+                onClick = onClick,
+                modifier = Modifier.size(44.dp),
+                shape = CircleShape,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onBackground
+                )
+            ) {
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Scroll to bottom",
                 )
             }
-        }
-    }
-}
 
-@Composable
-private fun ScrollToBottomButton(
-    visible: Boolean,
-    unreadIncomingCount: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    if (!visible) return
-
-    Box(modifier = modifier) {
-        FilledIconButton(
-            onClick = onClick,
-            modifier = Modifier.size(44.dp),
-            shape = CircleShape,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor =MaterialTheme.colorScheme.onBackground
-            )
-        ) {
-            Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowDown,
-                contentDescription = "Scroll to bottom",
-            )
-        }
-
-        if (unreadIncomingCount > 0) {
-            Box(
-                modifier = Modifier
-                    .offset(x = (-8).dp, y = (-6).dp)
-            ) {
-                MessageCount(unreadIncomingCount.toString())
+            if (unreadIncomingCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .offset(x = (-8).dp, y = (-6).dp)
+                ) {
+                    MessageCount(unreadIncomingCount.toString())
+                }
             }
         }
     }
-}
