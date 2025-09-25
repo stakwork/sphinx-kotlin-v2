@@ -114,17 +114,16 @@ class ChatListViewModel {
                         }
 
                         // Calculate unseen message counts
-                        val chatUnseenMessagesCount = if (!chat.seen.isTrue()) {
+                        val rawUnseenMessages = if (!chat.seen.isTrue()) {
                             unseenMessagesByChatId[chat.id]?.size ?: 0
-                        } else {
-                            0
-                        }
-
-                        val chatUnseenMentionsCount = if (!chat.seen.isTrue()) {
+                        } else 0
+                        val rawUnseenMentions = if (!chat.seen.isTrue()) {
                             unseenMentionsByChatId[chat.id]?.size ?: 0
-                        } else {
-                            0
-                        }
+                        } else 0
+
+                        val isOpen = isChatCurrentlyOpen(chat.id)
+                        val chatUnseenMessagesCount = if (isOpen) 0 else rawUnseenMessages
+                        val chatUnseenMentionsCount = if (isOpen) 0 else rawUnseenMentions
 
                         if (chat.type.isConversation()) {
                             val contactId: ContactId = chat.contactIds.lastOrNull() ?: continue
@@ -266,35 +265,73 @@ class ChatListViewModel {
         }
     }
 
+    private fun isChatCurrentlyOpen(chatId: ChatId): Boolean {
+        return when (val s = ChatDetailState.screenState()) {
+            is ChatDetailData.SelectedChatDetailData.SelectedContactChatDetail -> s.chatId == chatId
+            is ChatDetailData.SelectedChatDetailData.SelectedTribeChatDetail   -> s.chatId == chatId
+            else -> false
+        }
+    }
+
     fun chatRowSelected(dashboardChat: DashboardChat) {
+        val cleared = when (dashboardChat) {
+            is DashboardChat.Active.Conversation -> DashboardChat.Active.Conversation(
+                chat = dashboardChat.chat,
+                message = dashboardChat.message,
+                contact = dashboardChat.contact,
+                color = dashboardChat.color,
+                unseenMessagesCount = 0
+            )
+            is DashboardChat.Active.GroupOrTribe -> DashboardChat.Active.GroupOrTribe(
+                chat = dashboardChat.chat,
+                message = dashboardChat.message,
+                owner = accountOwnerStateFlow.value,
+                color = dashboardChat.color,
+                unseenMessagesCount = 0,
+                unseenMentionsCount = 0
+            )
+            else -> dashboardChat
+        }
+
         (ChatListState.screenState() as? ChatListData.PopulatedChatListData)?.let { currentState ->
+            val updated = currentState.dashboardChats.map {
+                if (it.dashboardChatId == dashboardChat.dashboardChatId) cleared else it
+            }
             ChatListState.screenState(
                 ChatListData.PopulatedChatListData(
-                    currentState.dashboardChats,
-                    dashboardChat.dashboardChatId
+                    updated,
+                    cleared.dashboardChatId
                 )
             )
         }
 
+        // Keep the internal cache (used by filter/search) in sync as well
+        dashboardChats = ArrayList(
+            dashboardChats.map {
+                if (it.dashboardChatId == dashboardChat.dashboardChatId) cleared else it
+            }
+        )
+
+        // Navigate using the cleared instance so detail header also shows no badge
         ChatDetailState.screenState(
-            when (dashboardChat) {
+            when (cleared) {
                 is DashboardChat.Active.Conversation -> {
                     ChatDetailData.SelectedChatDetailData.SelectedContactChatDetail(
-                        dashboardChat.chat.id,
-                        dashboardChat.contact.id,
-                        dashboardChat
+                        cleared.chat.id,
+                        cleared.contact.id,
+                        cleared
                     )
                 }
                 is DashboardChat.Active.GroupOrTribe -> {
                     ChatDetailData.SelectedChatDetailData.SelectedTribeChatDetail(
-                        dashboardChat.chat.id,
-                        dashboardChat
+                        cleared.chat.id,
+                        cleared
                     )
                 }
                 is DashboardChat.Inactive.Conversation -> {
                     ChatDetailData.SelectedChatDetailData.SelectedContactDetail(
-                        dashboardChat.contact.id,
-                        dashboardChat
+                        cleared.contact.id,
+                        cleared
                     )
                 }
                 else -> ChatDetailData.EmptyChatDetailData
@@ -303,155 +340,132 @@ class ChatListViewModel {
     }
 
 
-    private suspend fun updateChatListContacts(contacts: List<Contact>, unseenMessagesByChatId: Map<ChatId, List<Message>>) {
+    private suspend fun updateChatListContacts(
+        contacts: List<Contact>,
+        unseenMessagesByChatId: Map<ChatId, List<Message>>
+    ) {
         collectionLock.withLock {
             contactsCollectionInitialized = true
+            if (contacts.isEmpty()) return@withLock
 
-            if (contacts.isEmpty()) {
-                return@withLock
-            }
-
-            val newList = ArrayList<Contact>(contacts.size)
             val contactIds = ArrayList<ContactId>(contacts.size)
 
             withContext(dispatchers.default) {
                 for (contact in contacts) {
                     if (contact.isOwner.isTrue()) {
                         _accountOwnerStateFlow.value = contact
-                        continue
+                    } else {
+                        contactIds.add(contact.id)
                     }
-
-                    contactIds.add(contact.id)
-                    newList.add(contact)
                 }
             }
 
-            _contactsStateFlow.value = newList.toList()
-
-            // Don't push update to chat view state, let it's collection do it.
-            if (!chatsCollectionInitialized) {
-                return@withLock
-            }
+            if (!chatsCollectionInitialized) return@withLock
 
             withContext(dispatchers.default) {
-                val currentChats: MutableList<DashboardChat> =
-                    when (val populatedChats = ChatListState.screenState()) {
-                        is ChatListData.PopulatedChatListData -> populatedChats.dashboardChats.toMutableList()
-                        else -> mutableListOf()
-                    }
-                val chatContactIds = mutableListOf<ContactId>()
+                val currentState = ChatListState.screenState()
+                val currentChats: MutableList<DashboardChat> = when (currentState) {
+                    is ChatListData.PopulatedChatListData -> currentState.dashboardChats.toMutableList()
+                    else -> mutableListOf()
+                }
 
+                val existingContactIdsInList = mutableListOf<ContactId>()
                 var updateChatViewState = false
-                for (chat in currentChats.toList()) {
 
+                for (chat in currentChats.toList()) {
                     val contact: Contact? = when (chat) {
-                        is DashboardChat.Active.Conversation -> {
-                            chat.contact
-                        }
-                        is DashboardChat.Active.GroupOrTribe -> {
-                            null
-                        }
-                        is DashboardChat.Inactive.Conversation -> {
-                            chat.contact
-                        }
-                        is DashboardChat.Inactive.Invite -> {
-                            chat.contact
-                        }
+                        is DashboardChat.Active.Conversation   -> chat.contact
+                        is DashboardChat.Inactive.Conversation -> chat.contact
+                        is DashboardChat.Inactive.Invite       -> chat.contact
+                        else                                   -> null
                     }
 
-                    contact?.let {
-                        chatContactIds.add(it.id)
-                        // if the id of the currently displayed chat is not contained
-                        // in the list collected here, it's either a new contact w/o
-                        // a chat, or a contact that was deleted which we need to remove
-                        // from the list of chats.
+                    contact?.let { c ->
+                        existingContactIdsInList.add(c.id)
 
-                        if (!contactIds.contains(it.id)) {
-                            //Contact deleted
+                        if (!contactIds.contains(c.id)) {
                             updateChatViewState = true
                             currentChats.remove(chat)
-                            chatContactIds.remove(it.id)
-
-                            resetChatDetailOnContactDeleted(it.id)
+                            existingContactIdsInList.remove(c.id)
+                            if (ChatDetailState.screenState() is ChatDetailData.SelectedChatDetailData
+                                && (ChatDetailState.screenState() as ChatDetailData.SelectedChatDetailData).contactId == c.id
+                            ) {
+                                ChatDetailState.screenState(ChatDetailData.EmptyChatDetailData)
+                            }
                         }
 
-                        if (repositoryDashboard.updatedContactIds.contains(it.id)) {
-                            //Contact updated
+                        if (repositoryDashboard.updatedContactIds.contains(c.id)) {
+                            updateChatViewState = true
                             currentChats.remove(chat)
-                            chatContactIds.remove(it.id)
+                            existingContactIdsInList.remove(c.id)
                         }
                     }
                 }
 
-                for (contact in _contactsStateFlow.value) {
-                    //Contact added
-                    if (!chatContactIds.contains(contact.id)) {
-                        updateChatViewState = true
+                for (contact in contacts) {
+                    if (contact.isOwner.isTrue()) continue
+                    if (existingContactIdsInList.contains(contact.id)) continue
 
-                        if (contact.isInviteContact()) {
-                            var contactInvite: Invite? = null
+                    updateChatViewState = true
 
-                            contact.inviteId?.let { inviteId ->
-                                contactInvite = withContext(dispatchers.io) {
-                                    repositoryDashboard.getInviteById(inviteId).firstOrNull()
-                                }
-                            }
-                            if (contactInvite != null) {
-                                currentChats.add(
-                                    DashboardChat.Inactive.Invite(
-                                        contact,
-                                        contactInvite!!,
-                                        getColorFor(contact, null)
-                                    )
+                    if (contact.isInviteContact()) {
+                        val invite = contact.inviteId?.let { inviteId ->
+                            withContext(dispatchers.io) { repositoryDashboard.getInviteById(inviteId).firstOrNull() }
+                        }
+
+                        if (invite != null) {
+                            currentChats.add(
+                                DashboardChat.Inactive.Invite(
+                                    contact,
+                                    invite,
+                                    getColorFor(contact, null)
                                 )
-                                continue
-                            }
+                            )
+                            continue
                         }
-
-                        var updatedContactChat: DashboardChat =
-                            DashboardChat.Inactive.Conversation(contact, getColorFor(contact, null))
-
-                        for (chat in currentChats.toList()) {
-                            if (chat is DashboardChat.Active.Conversation) {
-                                if (chat.contact.id == contact.id) {
-                                    updatedContactChat = DashboardChat.Active.Conversation(
-                                        chat.chat,
-                                        chat.message,
-                                        contact,
-                                        getColorFor(contact, chat.chat),
-                                        chat.unseenMessagesCount
-                                    )
-                                }
-                            }
-                        }
-
-                        if (updatedContactChat is DashboardChat.Inactive.Conversation) {
-                            //Contact unblocked
-                            repositoryDashboard.getConversationByContactIdFlow(contact.id)
-                                .firstOrNull()?.let { contactChat ->
-                                    val message: Message? = contactChat.latestMessageId?.let {
-                                        repositoryDashboard.getMessageById(it).firstOrNull()
-                                    }
-                                    val chatUnseenMessages =
-                                        if (!contactChat.seen.isTrue()) unseenMessagesByChatId[contactChat.id] else emptyList()
-
-
-                                    updatedContactChat = DashboardChat.Active.Conversation(
-                                        contactChat,
-                                        message,
-                                        contact,
-                                        getColorFor(contact, contactChat),
-                                        chatUnseenMessages?.size ?: 0
-                                    )
-                                }
-                        }
-
-                        currentChats.add(updatedContactChat)
                     }
+
+                    var row: DashboardChat = DashboardChat.Inactive.Conversation(
+                        contact = contact,
+                        color = getColorFor(contact, null)
+                    )
+
+                    repositoryDashboard.getConversationByContactIdFlow(contact.id).firstOrNull()?.let { contactChat ->
+                        val lastMessage: Message? = contactChat.latestMessageId?.let {
+                            repositoryDashboard.getMessageById(it).firstOrNull()
+                        }
+
+                        val baseUnseen = if (!contactChat.seen.isTrue()) {
+                            unseenMessagesByChatId[contactChat.id]?.size ?: 0
+                        } else 0
+
+                        val unseenForRow = if (isChatCurrentlyOpen(contactChat.id)) 0 else baseUnseen
+
+                        row = DashboardChat.Active.Conversation(
+                            chat = contactChat,
+                            message = lastMessage,
+                            contact = contact,
+                            color = getColorFor(contact, contactChat),
+                            unseenMessagesCount = unseenForRow
+                        )
+                    }
+
+                    currentChats.add(row)
                 }
 
                 if (updateChatViewState) {
+                    // Persist in-memory cache (used by search/filter)
                     dashboardChats = ArrayList(currentChats.sortedByDescending { it.sortBy })
+
+                    // Re-emit UI state, keeping current selection if any
+                    val selectedId = (currentState as? ChatListData.PopulatedChatListData)?.selectedDashboardId
+                    ChatListState.screenState(
+                        ChatListData.PopulatedChatListData(
+                            dashboardChats,
+                            selectedId
+                        )
+                    )
+
                     filterChats(searchText.value)
 
                     repositoryDashboard.updatedContactIds = mutableListOf()
