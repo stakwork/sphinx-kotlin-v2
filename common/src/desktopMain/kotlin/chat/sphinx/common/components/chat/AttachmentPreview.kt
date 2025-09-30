@@ -36,6 +36,7 @@ import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.utils.toAnnotatedString
 import chat.sphinx.wrapper.chat.isTribeOwnedByAccount
+import chat.sphinx.wrapper.chat.isTrue
 import chat.sphinx.wrapper.message.isPaidTextMessage
 import chat.sphinx.wrapper.message.media.FileName
 import chat.sphinx.wrapper.message.media.MediaType
@@ -311,7 +312,7 @@ fun MessagePinnedFullContent(
                         }
 
                         chatViewModel?.pinMessageState?.pinMessage?.value?.let { pinnedMessage ->
-                            if (pinnedMessage.chat.isTribeOwnedByAccount(pinnedMessage.accountOwner().nodePubKey)) {
+                            if (pinnedMessage.chat.ownedTribe?.isTrue() == true) {
                                 Spacer(modifier = Modifier.height(16.dp))
                                 CommonMenuButton(
                                     text = "Unpin Message",

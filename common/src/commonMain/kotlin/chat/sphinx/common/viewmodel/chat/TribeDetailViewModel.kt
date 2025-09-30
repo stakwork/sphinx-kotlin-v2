@@ -66,8 +66,8 @@ class TribeDetailViewModel(
                     val chat = chatRepository.getChatById(detailChatId)
                     chat?.let {
                         currentChat = chat
-                        val tribeOwner = chat.isTribeOwnedByAccount(owner.nodePubKey)
-                        val showTribeQrCode = chat.isTribeOwnedByAccount(owner.nodePubKey) || !chat.privateTribe.toBoolean()
+                        val tribeOwner = chat.ownedTribe?.isTrue() == true
+                        val showTribeQrCode = chat.ownedTribe?.isTrue() == true || !chat.privateTribe.toBoolean()
                         val shareTribeUrl = "sphinx.chat://?action=tribeV2&pubkey=${chat.uuid.value}&host=${tribeDefaultServerUrl}"
                         val createdAtDate = chat.createdAt.localDateTimeString(DateTime.getFormateeemmddhmma())
 

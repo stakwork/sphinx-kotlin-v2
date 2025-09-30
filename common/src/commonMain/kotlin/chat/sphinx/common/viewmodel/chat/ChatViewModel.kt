@@ -93,6 +93,7 @@ abstract class ChatViewModel(
     val memeInputStreamHandler = SphinxContainer.networkModule.memeInputStreamHandler
     private val mediaCacheHandler = SphinxContainer.appModule.mediaCacheHandler
     private val linkPreviewHandler = SphinxContainer.networkModule.linkPreviewHandler
+    val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
 
     private var currentMessageLimit = 100L
     private val messageLimitFlow = MutableStateFlow(100L)
@@ -574,6 +575,8 @@ abstract class ChatViewModel(
         scope.launch(dispatchers.io) {
             initializeUnseenMessageTracking()
         }
+        collectItemsFetched()
+        fetchMoreItems()
     }
 
     private fun checkIfAlreadyInChat() {
@@ -663,14 +666,47 @@ abstract class ChatViewModel(
     }
 
     fun loadMoreMessages() {
-        if (messageLimitFlow.value >= (totalMessagesCount.value ?: 0)) return
         if (isLoadingMore) return
 
         isLoadingMore = true
         isLoadingMoreMessages.value = true
-        currentMessageLimit += 100
-        messageLimitFlow.value = currentMessageLimit
+        fetchMoreItems()
     }
+
+    private fun fetchMoreItems() {
+        scope.launch(dispatchers.io) {
+            val chat = getChat()
+            chat?.ownerPubKey?.value?.let { publicKey ->
+                messageRepository.fetchMessagesPerContact(
+                    chat.id,
+                    publicKey
+                )
+            }
+        }
+    }
+
+    private fun collectItemsFetched() {
+        scope.launch(dispatchers.mainImmediate) {
+            val chat = getChat()
+
+            connectManagerRepository.fetchProcessState.collect { pair ->
+                if (pair?.second == chat?.ownerPubKey?.value) {
+                    if ((pair?.first ?: 0) > 0) {
+                        messageLimitFlow.value += 100
+                    } else {
+//                        reachEndOfResults()
+                    }
+                    if (chat != null) {
+                        connectManagerRepository.getTagsByChatId(chat.id)
+                    }
+                    delay(5000L)
+                    isLoadingMore = false
+                }
+            }
+        }
+    }
+
+
 
     fun resetMessageLimit() {
         currentMessageLimit = 100
