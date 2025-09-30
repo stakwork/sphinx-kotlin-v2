@@ -98,7 +98,8 @@ abstract class ChatViewModel(
     private var currentMessageLimit = 100L
     private val messageLimitFlow = MutableStateFlow(100L)
     private var isLoadingMore = false
-    private val totalMessagesCount = MutableStateFlow<Long?>(null)
+
+    private val _refreshFlow = MutableStateFlow(0L)
 
     val networkQueryPeople = SphinxContainer.networkModule.networkQuerySaveProfile
 
@@ -116,6 +117,10 @@ abstract class ChatViewModel(
 
     fun toggleGiphyPicker() {
         isGiphyPickerVisible.value = !isGiphyPickerVisible.value
+    }
+
+    private fun refreshMessages() {
+        _refreshFlow.value = System.currentTimeMillis()
     }
 
     fun searchGiphy(query: String) {
@@ -640,13 +645,6 @@ abstract class ChatViewModel(
 
     private suspend fun loadChatMessages() {
         getChat()?.let { chat ->
-            // Collect total messages count
-            scope.launch(dispatchers.io) {
-                messageRepository.getAllMessagesCountByChatId(chat.id).collect { count ->
-                    totalMessagesCount.value = count
-                }
-            }
-
             // Load messages with pagination
             messageLimitFlow
                 .flatMapLatest { limit ->

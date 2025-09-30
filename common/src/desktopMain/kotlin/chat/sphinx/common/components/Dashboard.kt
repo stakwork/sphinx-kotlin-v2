@@ -95,6 +95,12 @@ actual fun Dashboard(
     val selectedTabIndex by dashboardViewModel.selectedTabStateFlow.collectAsState()
     val floatingPlayerState by dashboardViewModel.floatingPlayerStateFlow.collectAsState()
 
+    DisposableEffect(Unit) {
+        onDispose {
+            dashboardViewModel.cleanup()
+        }
+    }
+
     LaunchedEffect(selectedTabIndex, splitScreenState) {
         val playingContent = dashboardViewModel.mediaPlayerHolder.getPlayingContent()
         if (playingContent?.third == true) { // isPlaying
@@ -141,6 +147,8 @@ actual fun Dashboard(
                     }
                     else -> null
                 }
+
+                dashboardViewModel.setChatViewModel(chatViewModel)
 
                 first(if (isSidebarHidden) 0.dp else 300.dp) {
                     DashboardSidebarUI(dashboardViewModel, webAppViewModel, feedViewModel)

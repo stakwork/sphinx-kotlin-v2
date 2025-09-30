@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import chat.sphinx.common.components.media_player.DesktopMediaPlayerHolder
 import chat.sphinx.common.components.toast
 import chat.sphinx.common.state.*
+import chat.sphinx.common.viewmodel.chat.ChatViewModel
 import chat.sphinx.concepts.repository.connect_manager.model.NetworkStatus
 import chat.sphinx.concepts.repository.message.model.SendPaymentRequest
 import chat.sphinx.database.core.SphinxDatabaseQueries
@@ -103,6 +104,30 @@ class DashboardViewModel(): WindowFocusListener {
         val type: SplitContentType? = null
     )
 
+    private var currentChatViewModel: ChatViewModel? = null
+
+    fun setChatViewModel(viewModel: ChatViewModel?) {
+        if (currentChatViewModel != null && currentChatViewModel != viewModel) {
+            val previousChatId = currentChatViewModel?.chatId
+            if (previousChatId != null) {
+                viewModelScope.launch(dispatchers.io) {
+                    messageRepository.cleanupOldMessages(previousChatId)
+                }
+            }
+        }
+        currentChatViewModel = viewModel
+    }
+
+    fun cleanup() {
+        currentChatViewModel?.let { viewModel ->
+            viewModel.chatId?.let { chatId ->
+                viewModelScope.launch(dispatchers.io) {
+                    messageRepository.cleanupOldMessages(chatId)
+                }
+            }
+        }
+        currentChatViewModel = null
+    }
 
     private val _floatingPlayerStateFlow = MutableStateFlow<FloatingPlayerState?>(null)
     val floatingPlayerStateFlow: StateFlow<FloatingPlayerState?> = _floatingPlayerStateFlow.asStateFlow()
