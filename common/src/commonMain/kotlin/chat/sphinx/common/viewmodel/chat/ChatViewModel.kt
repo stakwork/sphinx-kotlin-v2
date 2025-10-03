@@ -97,7 +97,7 @@ abstract class ChatViewModel(
 
     private var currentMessageLimit = 100L
     private val messageLimitFlow = MutableStateFlow(100L)
-    private var isLoadingMore = false
+    val isLoadingMore = MutableStateFlow(false)
 
     private val _refreshFlow = MutableStateFlow(0L)
 
@@ -581,7 +581,7 @@ abstract class ChatViewModel(
             initializeUnseenMessageTracking()
         }
         collectItemsFetched()
-        fetchMoreItems()
+//        fetchMoreItems()
     }
 
     private fun checkIfAlreadyInChat() {
@@ -641,7 +641,6 @@ abstract class ChatViewModel(
         messagesLoadJob?.cancel()
     }
 
-    val isLoadingMoreMessages = MutableStateFlow(false)
 
     private suspend fun loadChatMessages() {
         getChat()?.let { chat ->
@@ -653,8 +652,6 @@ abstract class ChatViewModel(
                 .flowOn(dispatchers.io)
                 .collect { messages ->
                     processChatMessages(chat, messages, false)
-                    isLoadingMore = false
-                    isLoadingMoreMessages.value = false
                 }
         } ?: run {
             MessageListState.screenState(
@@ -664,10 +661,9 @@ abstract class ChatViewModel(
     }
 
     fun loadMoreMessages() {
-        if (isLoadingMore) return
+        if (isLoadingMore.value) return
 
-        isLoadingMore = true
-        isLoadingMoreMessages.value = true
+        isLoadingMore.value = true
         fetchMoreItems()
     }
 
@@ -675,6 +671,7 @@ abstract class ChatViewModel(
         scope.launch(dispatchers.io) {
             val chat = getChat()
             chat?.ownerPubKey?.value?.let { publicKey ->
+                println("Triggered fetchMoreItems for chatId=${chat.id.value}")
                 messageRepository.fetchMessagesPerContact(
                     chat.id,
                     publicKey
@@ -688,23 +685,24 @@ abstract class ChatViewModel(
             val chat = getChat()
 
             connectManagerRepository.fetchProcessState.collect { pair ->
+                println("Triggered collectItemsFetched: $pair")
                 if (pair?.second == chat?.ownerPubKey?.value) {
                     if ((pair?.first ?: 0) > 0) {
-                        messageLimitFlow.value += 100
+                        messageLimitFlow.value += pair?.first ?: 100
                     } else {
 //                        reachEndOfResults()
                     }
                     if (chat != null) {
                         connectManagerRepository.getTagsByChatId(chat.id)
                     }
-                    delay(5000L)
-                    isLoadingMore = false
+                }
+                scope.launch(dispatchers.mainImmediate) {
+                    delay(5000)
+                    isLoadingMore.value = false
                 }
             }
         }
     }
-
-
 
     fun resetMessageLimit() {
         currentMessageLimit = 100
@@ -1892,4 +1890,33 @@ abstract class ChatViewModel(
         }
         return null
     }
+
+    fun cleanup() {
+        messagesLoadJob?.cancel()
+        currentThreadJob?.cancel()
+        recordingJob?.cancel()
+
+        cancelRecording(false)
+        cancelRecording(true)
+        targetDataLine?.close()
+        audioOutputStream?.close()
+
+        clearCurrentThread()
+
+        resetUnseenMessageTracking()
+        resetMessageLimit()
+
+        // Cancel the viewModelScope
+        scope.cancel()
+
+        // Clear from session storage
+        chatId?.let { id ->
+            sessionTextStorage.remove(id.value.toString())
+            sessionThreadTextStorage.entries.removeIf {
+                it.key.startsWith("${id.value}_")
+            }
+        }
+    }
 }
+
+

@@ -98,6 +98,7 @@ actual fun Dashboard(
     DisposableEffect(Unit) {
         onDispose {
             dashboardViewModel.cleanup()
+            chatViewModel?.cleanup()
         }
     }
 

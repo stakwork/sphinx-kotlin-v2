@@ -126,6 +126,7 @@ class DashboardViewModel(): WindowFocusListener {
                 }
             }
         }
+        currentChatViewModel?.cleanup()
         currentChatViewModel = null
     }
 
@@ -532,7 +533,8 @@ class DashboardViewModel(): WindowFocusListener {
         connectManagerRepository.connectAndSubscribeToMqtt()
         triggerSetProfileInfoRestore()
         networkRefresh()
-        // TODO V2 getAccountBalanceStateFlow
+
+        chatRepository.setLatestMessagesDatePerChat()
 
         viewModelScope.launch(dispatchers.mainImmediate) {
             repositoryDashboard.getAccountBalanceStateFlow().collect {

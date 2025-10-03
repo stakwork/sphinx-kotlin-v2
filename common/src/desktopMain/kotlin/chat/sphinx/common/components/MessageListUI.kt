@@ -1,5 +1,6 @@
 package chat.sphinx.common.components
 
+import Roboto
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.gestures.scrollBy
@@ -20,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,6 +43,7 @@ import chat.sphinx.wrapper.util.getHHMMSSString
 import chat.sphinx.wrapper.util.getHHMMString
 import chat.sphinx.wrapper.util.getInitials
 import chat.sphinx.wrapper.util.toFormattedDate
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import theme.md_theme_dark_onBackground
 
@@ -578,7 +581,28 @@ fun ChatMessagesList(
     shouldSetCallback: Boolean = true
 ) {
     val scope = rememberCoroutineScope()
-    val isLoadingMore by chatViewModel.isLoadingMoreMessages.collectAsState()
+    val isLoadingMore by chatViewModel.isLoadingMore.collectAsState()
+
+    LaunchedEffect(items.size) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItemsCount = layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+
+            Triple(lastVisibleItemIndex, totalItemsCount, isLoadingMore)
+        }
+            .distinctUntilChanged()
+            .collect { (lastVisibleItemIndex, totalItemsCount, currentlyLoading) ->
+                println("layoutInfo: ${listState.layoutInfo} totalItemsCount $totalItemsCount, lastVisibleItemIndex: $lastVisibleItemIndex, isLoadingMore: $currentlyLoading")
+
+                if (lastVisibleItemIndex >= totalItemsCount - 10 &&
+                    totalItemsCount > 0 &&
+                    !currentlyLoading) {
+                    chatViewModel.loadMoreMessages()
+                    println("Triggered loadMoreMessages from snapshotFlow, items size ${items.size}")
+                }
+            }
+    }
 
     LazyColumn(
         state = listState,
@@ -601,17 +625,10 @@ fun ChatMessagesList(
                 when {
                     item.isUnseenSeparator -> "unseen-separator-$index"
                     item.isSeparator -> "date-separator-$index"
-                    else -> "message-$index"
+                    else -> "message-${item.message.id}-$index"
                 }
             }
         ) { index, item ->
-
-            LaunchedEffect(index) {
-                if (index >= items.size - 10 && !isLoadingMore) {
-                    chatViewModel.loadMoreMessages()
-                }
-            }
-
             when {
                 item.isUnseenSeparator -> {
                     UnseenSeparator()
@@ -625,6 +642,45 @@ fun ChatMessagesList(
                     ChatMessageUI(item, chatViewModel)
                 }
             }
+        }
+
+        // Show loading indicator at the END of the list (which appears at the TOP in reverse layout)
+        if (isLoadingMore) {
+            item(key = "loading-more-indicator") {
+                LoadingMoreIndicator()
+            }
+        }
+    }
+}
+
+@Composable
+fun LoadingMoreIndicator() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(8.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Loading more messages...",
+                style = TextStyle(
+                    fontSize = 13.sp,
+                    fontFamily = Roboto,
+                    fontWeight = FontWeight.W400,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            )
         }
     }
 }
