@@ -593,7 +593,7 @@ fun ChatMessagesList(
         }
             .distinctUntilChanged()
             .collect { (lastVisibleItemIndex, totalItemsCount, currentlyLoading) ->
-                println("layoutInfo: ${listState.layoutInfo} totalItemsCount $totalItemsCount, lastVisibleItemIndex: $lastVisibleItemIndex, isLoadingMore: $currentlyLoading")
+//                println("layoutInfo: ${listState.layoutInfo} totalItemsCount $totalItemsCount, lastVisibleItemIndex: $lastVisibleItemIndex, isLoadingMore: $currentlyLoading")
 
                 if (lastVisibleItemIndex >= totalItemsCount - 10 &&
                     totalItemsCount > 0 &&

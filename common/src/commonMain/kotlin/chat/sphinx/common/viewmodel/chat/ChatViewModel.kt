@@ -688,7 +688,7 @@ abstract class ChatViewModel(
                 println("Triggered collectItemsFetched: $pair")
                 if (pair?.second == chat?.ownerPubKey?.value) {
                     if ((pair?.first ?: 0) > 0) {
-                        messageLimitFlow.value += pair?.first ?: 100
+                        messageLimitFlow.value += 100
                     } else {
 //                        reachEndOfResults()
                     }
@@ -696,11 +696,9 @@ abstract class ChatViewModel(
                         connectManagerRepository.getTagsByChatId(chat.id)
                     }
                 }
-                scope.launch(dispatchers.mainImmediate) {
-                    delay(5000)
+                    delay(2000)
                     isLoadingMore.value = false
                 }
-            }
         }
     }
 
