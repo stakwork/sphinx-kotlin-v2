@@ -668,6 +668,7 @@ abstract class ChatViewModel(
     }
 
     private fun fetchMoreItems() {
+        println("Fetching more items...")
         scope.launch(dispatchers.io) {
             val chat = getChat()
             chat?.ownerPubKey?.value?.let { publicKey ->
@@ -681,7 +682,7 @@ abstract class ChatViewModel(
     }
 
     private fun collectItemsFetched() {
-        scope.launch(dispatchers.mainImmediate) {
+        scope.launch(dispatchers.io) {
             val chat = getChat()
 
             connectManagerRepository.fetchProcessState.collect { pair ->
@@ -696,7 +697,6 @@ abstract class ChatViewModel(
                         connectManagerRepository.getTagsByChatId(chat.id)
                     }
                 }
-                    delay(2000)
                     isLoadingMore.value = false
                 }
         }

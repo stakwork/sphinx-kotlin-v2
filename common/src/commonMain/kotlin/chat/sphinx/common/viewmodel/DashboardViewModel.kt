@@ -754,7 +754,6 @@ class DashboardViewModel(): WindowFocusListener {
 
     fun cancelRestore() {
         jobRestore?.cancel()
-        _restoreStateFlow.value = null
         isRestoreCancelledState = true
         connectManagerRepository.cancelRestore()
     }

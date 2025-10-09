@@ -583,21 +583,19 @@ fun ChatMessagesList(
     val scope = rememberCoroutineScope()
     val isLoadingMore by chatViewModel.isLoadingMore.collectAsState()
 
-    LaunchedEffect(items.size) {
+    LaunchedEffect(listState) {
         snapshotFlow {
             val layoutInfo = listState.layoutInfo
             val totalItemsCount = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
 
-            Triple(lastVisibleItemIndex, totalItemsCount, isLoadingMore)
+            lastVisibleItemIndex to totalItemsCount
         }
             .distinctUntilChanged()
-            .collect { (lastVisibleItemIndex, totalItemsCount, currentlyLoading) ->
-//                println("layoutInfo: ${listState.layoutInfo} totalItemsCount $totalItemsCount, lastVisibleItemIndex: $lastVisibleItemIndex, isLoadingMore: $currentlyLoading")
-
+            .collect { (lastVisibleItemIndex, totalItemsCount) ->
                 if (lastVisibleItemIndex >= totalItemsCount - 10 &&
                     totalItemsCount > 0 &&
-                    !currentlyLoading) {
+                    !isLoadingMore) {
                     chatViewModel.loadMoreMessages()
                     println("Triggered loadMoreMessages from snapshotFlow, items size ${items.size}")
                 }
@@ -644,7 +642,6 @@ fun ChatMessagesList(
             }
         }
 
-        // Show loading indicator at the END of the list (which appears at the TOP in reverse layout)
         if (isLoadingMore) {
             item(key = "loading-more-indicator") {
                 LoadingMoreIndicator()
@@ -652,6 +649,7 @@ fun ChatMessagesList(
         }
     }
 }
+
 
 @Composable
 fun LoadingMoreIndicator() {
