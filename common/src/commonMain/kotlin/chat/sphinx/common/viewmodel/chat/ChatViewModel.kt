@@ -696,9 +696,10 @@ abstract class ChatViewModel(
                     if (chat != null) {
                         connectManagerRepository.getTagsByChatId(chat.id)
                     }
-                }
+                    delay(5000L)
                     isLoadingMore.value = false
                 }
+            }
         }
     }
 
