@@ -698,6 +698,8 @@ abstract class ChatViewModel(
                     }
                     delay(5000L)
                     isLoadingMore.value = false
+                } else {
+                    isLoadingMore.value = false
                 }
             }
         }
