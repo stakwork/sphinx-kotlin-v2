@@ -1418,7 +1418,11 @@ fun RestoreProgressUI(
             )
             Spacer(modifier = Modifier.height(32.dp))
             Row(modifier = Modifier.fillMaxWidth(0.8f)) {
-                CommonButton(text = "Continue Later") {
+                CommonButton(
+                    text = "Continue Later",
+                    enabled = false,
+                    backgroundColor = Color.Gray
+                ) {
                     dashboardViewModel.cancelRestore()
                 }
             }
