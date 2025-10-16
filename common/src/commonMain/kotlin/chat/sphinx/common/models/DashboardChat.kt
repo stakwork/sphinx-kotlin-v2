@@ -111,8 +111,8 @@ sealed class DashboardChat {
 
         abstract fun getMessageSender(message: Message, withColon: Boolean = true): String
 
-        fun isMyTribe(owner: Contact?): Boolean =
-            chat.isTribeOwnedByAccount(owner?.nodePubKey)
+        fun isMyTribe(): Boolean =
+            chat.ownedTribe?.isTrue() == true
 
         override fun hasUnseenMessages(): Boolean {
             val ownerId: ContactId? = chat.contactIds.firstOrNull()
@@ -163,14 +163,14 @@ sealed class DashboardChat {
                     "${getMessageSender(message, false)} wants to join the tribe"
                 }
                 message.type.isMemberReject() -> {
-                    if (isMyTribe(owner)) {
+                    if (isMyTribe()) {
                         "You have declined the request from ${getMessageSender(message, false)}"
                     } else {
                         "The admin declined your request"
                     }
                 }
                 message.type.isMemberApprove() -> {
-                    if (isMyTribe(owner)) {
+                    if (isMyTribe()) {
                         "You have approved the request from ${getMessageSender(message, false)}"
                     } else {
                         "${getMessageSender(message, false)} has joined the tribe"

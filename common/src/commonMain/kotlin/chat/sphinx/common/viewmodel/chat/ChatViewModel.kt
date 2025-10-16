@@ -93,11 +93,13 @@ abstract class ChatViewModel(
     val memeInputStreamHandler = SphinxContainer.networkModule.memeInputStreamHandler
     private val mediaCacheHandler = SphinxContainer.appModule.mediaCacheHandler
     private val linkPreviewHandler = SphinxContainer.networkModule.linkPreviewHandler
+    val connectManagerRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).connectManagerRepository
 
     private var currentMessageLimit = 100L
     private val messageLimitFlow = MutableStateFlow(100L)
-    private var isLoadingMore = false
-    private val totalMessagesCount = MutableStateFlow<Long?>(null)
+    val isLoadingMore = MutableStateFlow(false)
+
+    private val _refreshFlow = MutableStateFlow(0L)
 
     val networkQueryPeople = SphinxContainer.networkModule.networkQuerySaveProfile
 
@@ -115,6 +117,10 @@ abstract class ChatViewModel(
 
     fun toggleGiphyPicker() {
         isGiphyPickerVisible.value = !isGiphyPickerVisible.value
+    }
+
+    private fun refreshMessages() {
+        _refreshFlow.value = System.currentTimeMillis()
     }
 
     fun searchGiphy(query: String) {
@@ -574,6 +580,8 @@ abstract class ChatViewModel(
         scope.launch(dispatchers.io) {
             initializeUnseenMessageTracking()
         }
+        collectItemsFetched()
+//        fetchMoreItems()
     }
 
     private fun checkIfAlreadyInChat() {
@@ -633,17 +641,9 @@ abstract class ChatViewModel(
         messagesLoadJob?.cancel()
     }
 
-    val isLoadingMoreMessages = MutableStateFlow(false)
 
     private suspend fun loadChatMessages() {
         getChat()?.let { chat ->
-            // Collect total messages count
-            scope.launch(dispatchers.io) {
-                messageRepository.getAllMessagesCountByChatId(chat.id).collect { count ->
-                    totalMessagesCount.value = count
-                }
-            }
-
             // Load messages with pagination
             messageLimitFlow
                 .flatMapLatest { limit ->
@@ -652,8 +652,6 @@ abstract class ChatViewModel(
                 .flowOn(dispatchers.io)
                 .collect { messages ->
                     processChatMessages(chat, messages, false)
-                    isLoadingMore = false
-                    isLoadingMoreMessages.value = false
                 }
         } ?: run {
             MessageListState.screenState(
@@ -663,13 +661,48 @@ abstract class ChatViewModel(
     }
 
     fun loadMoreMessages() {
-        if (messageLimitFlow.value >= (totalMessagesCount.value ?: 0)) return
-        if (isLoadingMore) return
+        if (isLoadingMore.value) return
 
-        isLoadingMore = true
-        isLoadingMoreMessages.value = true
-        currentMessageLimit += 100
-        messageLimitFlow.value = currentMessageLimit
+        isLoadingMore.value = true
+        fetchMoreItems()
+    }
+
+    private fun fetchMoreItems() {
+        println("Fetching more items...")
+        scope.launch(dispatchers.io) {
+            val chat = getChat()
+            chat?.ownerPubKey?.value?.let { publicKey ->
+                println("Triggered fetchMoreItems for chatId=${chat.id.value}")
+                messageRepository.fetchMessagesPerContact(
+                    chat.id,
+                    publicKey
+                )
+            }
+        }
+    }
+
+    private fun collectItemsFetched() {
+        scope.launch(dispatchers.io) {
+            val chat = getChat()
+
+            connectManagerRepository.fetchProcessState.collect { pair ->
+                println("Triggered collectItemsFetched: $pair")
+                if (pair?.second == chat?.ownerPubKey?.value) {
+                    if ((pair?.first ?: 0) > 0) {
+                        messageLimitFlow.value += pair?.first ?: 100
+                    } else {
+//                        reachEndOfResults()
+                    }
+                    if (chat != null) {
+                        connectManagerRepository.getTagsByChatId(chat.id)
+                    }
+                    delay(5000L)
+                    isLoadingMore.value = false
+                } else {
+                    isLoadingMore.value = false
+                }
+            }
+        }
     }
 
     fun resetMessageLimit() {
@@ -1858,4 +1891,33 @@ abstract class ChatViewModel(
         }
         return null
     }
+
+    fun cleanup() {
+        messagesLoadJob?.cancel()
+        currentThreadJob?.cancel()
+        recordingJob?.cancel()
+
+        cancelRecording(false)
+        cancelRecording(true)
+        targetDataLine?.close()
+        audioOutputStream?.close()
+
+        clearCurrentThread()
+
+        resetUnseenMessageTracking()
+        resetMessageLimit()
+
+        // Cancel the viewModelScope
+        scope.cancel()
+
+        // Clear from session storage
+        chatId?.let { id ->
+            sessionTextStorage.remove(id.value.toString())
+            sessionThreadTextStorage.entries.removeIf {
+                it.key.startsWith("${id.value}_")
+            }
+        }
+    }
 }
+
+

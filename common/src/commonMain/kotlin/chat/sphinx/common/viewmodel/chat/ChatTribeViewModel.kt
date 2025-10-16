@@ -86,6 +86,11 @@ class ChatTribeViewModel(
                 }
             }
         }
+
+        scope.launch(dispatchers.mainImmediate) {
+            loadOwnerRole()
+            updateOwnerRole()
+        }
     }
 
     private suspend fun updatePinnedMessageState(
@@ -107,6 +112,34 @@ class ChatTribeViewModel(
                         )
                     }
                 }
+            }
+        }
+    }
+
+
+    private suspend fun updateOwnerRole(){
+        connectManagerRepository.tribeMembersState.collect { tribeMembersList ->
+            tribeMembersList?.let {
+                if (chatId != null) {
+                    chatRepository.updateChatOwned(
+                        chatId,
+                        OwnedTribe.True
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun loadOwnerRole() {
+        val chat = chatId?.let { chatRepository.getChatById(it) }
+        val tribeServerPubKey = connectManagerRepository.getTribeServerPubKey()
+
+        chat?.uuid?.value?.let { tribePubKey ->
+            if (tribeServerPubKey != null) {
+                connectManagerRepository.getTribeMembers(
+                    tribeServerPubKey,
+                    tribePubKey
+                )
             }
         }
     }

@@ -95,6 +95,13 @@ actual fun Dashboard(
     val selectedTabIndex by dashboardViewModel.selectedTabStateFlow.collectAsState()
     val floatingPlayerState by dashboardViewModel.floatingPlayerStateFlow.collectAsState()
 
+    DisposableEffect(Unit) {
+        onDispose {
+            dashboardViewModel.cleanup()
+            chatViewModel?.cleanup()
+        }
+    }
+
     LaunchedEffect(selectedTabIndex, splitScreenState) {
         val playingContent = dashboardViewModel.mediaPlayerHolder.getPlayingContent()
         if (playingContent?.third == true) { // isPlaying
@@ -141,6 +148,8 @@ actual fun Dashboard(
                     }
                     else -> null
                 }
+
+                dashboardViewModel.setChatViewModel(chatViewModel)
 
                 first(if (isSidebarHidden) 0.dp else 300.dp) {
                     DashboardSidebarUI(dashboardViewModel, webAppViewModel, feedViewModel)
@@ -1409,7 +1418,11 @@ fun RestoreProgressUI(
             )
             Spacer(modifier = Modifier.height(32.dp))
             Row(modifier = Modifier.fillMaxWidth(0.8f)) {
-                CommonButton(text = "Continue Later") {
+                CommonButton(
+                    text = "Continue Later",
+                    enabled = false,
+                    backgroundColor = Color.Gray
+                ) {
                     dashboardViewModel.cancelRestore()
                 }
             }

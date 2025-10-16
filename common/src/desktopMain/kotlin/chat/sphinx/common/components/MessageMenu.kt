@@ -25,6 +25,7 @@ import chat.sphinx.platform.imageResource
 import chat.sphinx.utils.saveFile
 import chat.sphinx.utils.toAnnotatedString
 import chat.sphinx.wrapper.chat.isTribeOwnedByAccount
+import chat.sphinx.wrapper.chat.isTrue
 import theme.badge_red
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.wrapper.message.media.FileName
@@ -90,7 +91,7 @@ actual fun MessageMenu(
                 OptionItem("Reply", imageVector = Icons.Default.Reply)
             }
         }
-        if (chatMessage.chat.isTribeOwnedByAccount(chatMessage.accountOwner().nodePubKey)) {
+        if (chatMessage.chat.ownedTribe?.isTrue() == true) {
             val pinText = if (isPinnedState.value) "Unpin Message" else "Pin Message"
 
             DropdownMenuItem(onClick = {

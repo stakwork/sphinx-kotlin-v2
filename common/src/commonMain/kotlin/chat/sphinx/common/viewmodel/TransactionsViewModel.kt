@@ -14,6 +14,7 @@ import chat.sphinx.utils.notifications.createSphinxNotificationManager
 import chat.sphinx.wrapper.DateTime
 import chat.sphinx.wrapper.chat.isConversation
 import chat.sphinx.wrapper.chat.isTribeNotOwnedByAccount
+import chat.sphinx.wrapper.chat.isTrue
 import chat.sphinx.wrapper.contact.Contact
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.ContactId
@@ -140,7 +141,7 @@ class TransactionsViewModel {
         chatRepository.getAllChatsByIds(chatIds).let { response ->
             response.forEach { chat ->
                 if (
-                    (chat.isTribeNotOwnedByAccount(owner.nodePubKey) || chat.isConversation()) &&
+                    ( chat.ownedTribe?.isTrue() == true || chat.isConversation()) &&
                     chat.contactIds.size == 2
                 ) {
                     chatsIdsMap[chat.id]?.let { transactionIds ->

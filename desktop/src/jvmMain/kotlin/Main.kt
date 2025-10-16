@@ -83,7 +83,10 @@ fun main() = application {
             WebViewInitializing(dashboardViewModel)
 
             Window(
-                onCloseRequest = ::exitApplication,
+                onCloseRequest = {
+                    dashboardViewModel.cleanup()
+                    exitApplication()
+                },
                 title = "Sphinx",
                 state = WindowState(
                     position = WindowPosition.Aligned(Alignment.Center),
@@ -110,7 +113,10 @@ fun main() = application {
                             }
                             else -> {}
                         }
-                        Item("Exit", onClick = ::exitApplication)
+                        Item("Exit", onClick = {
+                            dashboardViewModel.cleanup()
+                            exitApplication()
+                        })
                     }
                 }
 
