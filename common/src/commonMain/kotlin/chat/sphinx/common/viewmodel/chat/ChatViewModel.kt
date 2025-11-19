@@ -10,6 +10,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import chat.sphinx.common.components.AudioPlayer
 import chat.sphinx.common.models.ChatMessage
 import chat.sphinx.common.models.DashboardChat
+import chat.sphinx.common.models.SearchMatch
 import chat.sphinx.common.state.*
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.chat.payment.PaymentViewModel
@@ -121,6 +122,103 @@ abstract class ChatViewModel(
 
     private fun refreshMessages() {
         _refreshFlow.value = System.currentTimeMillis()
+    }
+
+    private val _searchState = MutableStateFlow<SearchState>(SearchState.Inactive)
+    val searchState: StateFlow<SearchState> = _searchState.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow(TextFieldValue(""))
+    val searchQuery: StateFlow<TextFieldValue> = _searchQuery.asStateFlow()
+
+    private val _searchMatches = MutableStateFlow<List<SearchMatch>>(emptyList())
+    val searchMatches: StateFlow<List<SearchMatch>> = _searchMatches.asStateFlow()
+
+    private val _currentMatchIndex = MutableStateFlow(0)
+    val currentMatchIndex: StateFlow<Int> = _currentMatchIndex.asStateFlow()
+
+    fun toggleSearch() {
+        _searchState.value = when (_searchState.value) {
+            is SearchState.Inactive -> SearchState.Active
+            else -> {
+                clearSearch()
+                SearchState.Inactive
+            }
+        }
+    }
+
+    fun onSearchQueryChanged(query: TextFieldValue) {
+        _searchQuery.value = query
+        if (query.text.isNotBlank()) {
+            performSearch(query.text)
+        } else {
+            _searchMatches.value = emptyList()
+            _currentMatchIndex.value = 0
+        }
+    }
+
+    private fun performSearch(query: String) {
+        scope.launch(dispatchers.io) {
+            _searchState.value = SearchState.Searching
+
+            val currentMessages = when (val state = MessageListState.screenState()) {
+                is MessageListData.PopulatedMessageListData -> state.messages
+                else -> emptyList()
+            }
+
+            val matches = mutableListOf<SearchMatch>()
+
+            currentMessages.forEach { chatMessage ->
+                val message = chatMessage.message
+                val messageText = message.retrieveTextToShow() ?: ""
+
+                if (messageText.contains(query, ignoreCase = true)) {
+                    matches.add(
+                        SearchMatch(
+                            messageId = message.id,
+                            message = message,
+                            matchText = messageText
+                        )
+                    )
+                }
+            }
+
+            _searchMatches.value = matches
+            _currentMatchIndex.value = if (matches.isNotEmpty()) 0 else -1
+            _searchState.value = SearchState.Active
+        }
+    }
+
+    fun navigateToNextMatch() {
+        val matches = _searchMatches.value
+        if (matches.isEmpty()) return
+
+        val newIndex = (_currentMatchIndex.value + 1) % matches.size
+        _currentMatchIndex.value = newIndex
+        scrollToMatch(matches[newIndex])
+    }
+
+    fun navigateToPreviousMatch() {
+        val matches = _searchMatches.value
+        if (matches.isEmpty()) return
+
+        val newIndex = if (_currentMatchIndex.value > 0) {
+            _currentMatchIndex.value - 1
+        } else {
+            matches.size - 1
+        }
+        _currentMatchIndex.value = newIndex
+        scrollToMatch(matches[newIndex])
+    }
+
+    private fun scrollToMatch(match: SearchMatch) {
+        scope.launch(dispatchers.mainImmediate) {
+        }
+    }
+
+    fun clearSearch() {
+        _searchQuery.value = TextFieldValue("")
+        _searchMatches.value = emptyList()
+        _currentMatchIndex.value = 0
     }
 
     fun searchGiphy(query: String) {

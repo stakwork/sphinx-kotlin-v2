@@ -374,8 +374,15 @@ actual fun Dashboard(
                                         webAppViewModel
                                     )
                                 },
+
                                 bottomBar = {
-                                    SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                    val searchState by chatViewModel?.searchState?.collectAsState() ?: remember { mutableStateOf(SearchState.Inactive) }
+
+                                    if (searchState is SearchState.Inactive) {
+                                        SphinxChatDetailBottomAppBar(dashboardChat, chatViewModel)
+                                    } else {
+                                        SphinxChatSearchBottomBar(chatViewModel!!)
+                                    }
                                 }
                             ) { paddingValues ->
                                 Column(
@@ -537,6 +544,8 @@ fun SphinxChatDetailTopAppBar(
     webAppViewModel: WebAppViewModel
 ) {
     val uriHandler = LocalUriHandler.current
+    val searchState by chatViewModel?.searchState?.collectAsState() ?: remember { mutableStateOf(SearchState.Inactive) }
+    val searchQuery by chatViewModel?.searchQuery?.collectAsState() ?: remember { mutableStateOf(TextFieldValue("")) }
 
     if (dashboardChat == null) {
         Row(
@@ -558,143 +567,127 @@ fun SphinxChatDetailTopAppBar(
         return
     }
 
-    val chatName = dashboardChat.chatName ?: "Unknown Chat"
-    val contactId = chatViewModel?.editMessageState?.contactId
-
     Column {
-        TopAppBar(
-            modifier = Modifier.height(60.dp),
-            title = {
-                Column {
-                    Row {
-                        Text(
-                            text = chatName, fontSize = 16.sp, fontWeight = FontWeight.W700,
-                            modifier = Modifier.clickable {
-                                if (dashboardChat.isTribe()) {
-                                    chatViewModel?.chatId?.let {
-                                        dashboardViewModel?.toggleTribeDetailSplitScreen(
+        if (searchState is SearchState.Inactive) {
+            // Normal top bar
+            TopAppBar(
+                modifier = Modifier.height(60.dp),
+                title = {
+                    Column {
+                        Row {
+                            Text(
+                                text = dashboardChat.chatName ?: "Unknown Chat",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.W700,
+                                modifier = Modifier.clickable {
+                                    if (dashboardChat.isTribe()) {
+                                        chatViewModel?.chatId?.let {
+                                            dashboardViewModel?.toggleTribeDetailSplitScreen(true, it)
+                                        }
+                                    } else {
+                                        dashboardViewModel?.toggleEditContactSplitScreen(
                                             true,
-                                            it
+                                            chatViewModel?.editMessageState?.contactId
                                         )
                                     }
-                                } else {
-                                    dashboardViewModel?.toggleEditContactSplitScreen(true, contactId)
                                 }
-                            }
-                        )
-
-                        Icon(
-                            if (dashboardChat?.isEncrypted() == true) Icons.Default.Lock else Icons.Default.LockOpen,
-                            "Lock",
-                            tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.size(23.dp).padding(4.dp, 0.dp, 4.dp, 2.dp)
-                        )
-
-                        chatViewModel?.let {
-                            val checkChatStatus by chatViewModel.checkChatStatus.collectAsState(
-                                LoadResponse.Loading
                             )
-                            val color = when (checkChatStatus) {
-                                is LoadResponse.Loading -> {
-                                    androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-                                }
-
-                                is Response.Error -> {
-                                    sphinx_orange
-                                }
-
-                                is Response.Success -> {
-                                    primary_green
-                                }
-                            }
 
                             Icon(
-                                Icons.Default.FlashOn,
-                                "Route",
-                                tint = color,
-                                modifier = Modifier.width(15.dp).height(23.dp).padding(0.dp, 0.dp, 0.dp, 2.dp)
+                                if (dashboardChat?.isEncrypted() == true) Icons.Default.Lock else Icons.Default.LockOpen,
+                                "Lock",
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(23.dp).padding(4.dp, 0.dp, 4.dp, 2.dp)
                             )
+
+                            chatViewModel?.let {
+                                val checkChatStatus by chatViewModel.checkChatStatus.collectAsState(LoadResponse.Loading)
+                                val color = when (checkChatStatus) {
+                                    is LoadResponse.Loading -> androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                                    is Response.Error -> sphinx_orange
+                                    is Response.Success -> primary_green
+                                }
+
+                                Icon(
+                                    Icons.Default.FlashOn,
+                                    "Route",
+                                    tint = color,
+                                    modifier = Modifier.width(15.dp).height(23.dp).padding(0.dp, 0.dp, 0.dp, 2.dp)
+                                )
+                            }
                         }
-                    }
 
-                    chatViewModel?.let {
-                        val chat = (dashboardChat as? DashboardChat.Active)?.chat
-                        val timezone = chat?.remoteTimezoneIdentifier?.value?.let {
-                            DateTime.getLocalTimeFor(it, null)
-                        }
+                        chatViewModel?.let {
+                            val chat = (dashboardChat as? DashboardChat.Active)?.chat
+                            val timezone = chat?.remoteTimezoneIdentifier?.value?.let {
+                                DateTime.getLocalTimeFor(it, null)
+                            }
 
-                        if (!timezone.isNullOrEmpty()) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = timezone,
-                                fontSize = 11.sp,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                    }
-
-                    chatViewModel?.let {
-                        val chat by chatViewModel.chatSharedFlow.collectAsState(
-                            (dashboardChat as? DashboardChat.Active)?.chat
-                        )
-
-                        chat?.let { nnChat ->
-                            if (nnChat.isTribe()) {
+                            if (!timezone.isNullOrEmpty()) {
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Price per message: ${
-                                        nnChat.pricePerMessage?.asFormattedString(
-                                            ' ',
-                                            false
-                                        ) ?: 0
-                                    } - Amount to stake: ${nnChat.escrowAmount?.asFormattedString(' ', false) ?: 0}",
+                                    text = timezone,
                                     fontSize = 11.sp,
                                     color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                                 )
                             }
                         }
-                    }
-                }
-            },
-            backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
-            contentColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-            elevation = 8.dp,
-            navigationIcon = {
-                Spacer(modifier = Modifier.width(14.dp))
-                PhotoUrlImage(
-                    dashboardChat.photoUrl,
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape),
-                    firstNameLetter = (dashboardChat.chatName ?: "Unknown Chat").getInitials(),
-                    color = if (dashboardChat.color != null) Color(dashboardChat.color!!) else null,
-                    fontSize = 16
-                )
-            },
-            actions = {
-                chatViewModel?.let {
-                    val tribeData by chatViewModel.tribeDataStateFlow.collectAsState(null)
 
-                    tribeData?.let {
-                        if (it.appUrl != null) {
-                            IconButton(onClick = {
-                                dashboardViewModel?.toggleWebAppWindow(true, tribeData?.appUrl?.value)
-                            }) {
-                                Icon(
-                                    Icons.Default.Apps,
-                                    contentDescription = "WebApp",
-                                    tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-                                )
+                        chatViewModel?.let {
+                            val chat by chatViewModel.chatSharedFlow.collectAsState(
+                                (dashboardChat as? DashboardChat.Active)?.chat
+                            )
+
+                            chat?.let { nnChat ->
+                                if (nnChat.isTribe()) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Price per message: ${
+                                            nnChat.pricePerMessage?.asFormattedString(' ', false) ?: 0
+                                        } - Amount to stake: ${nnChat.escrowAmount?.asFormattedString(' ', false) ?: 0}",
+                                        fontSize = 11.sp,
+                                        color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
                             }
                         }
-                        IconButton(onClick = {
-                            dashboardViewModel?.toggleSplitScreen(true,
-                                chatViewModel.chatId?.let { it1 -> DashboardViewModel.SplitContentType.Threads(it1) })
-                        }) {
-                            chatViewModel.let {
-//                                val chat by chatViewModel.chatSharedFlow.collectAsState(
-//                                    (dashboardChat as? DashboardChat.Active)?.chat
-//                                )
+                    }
+                },
+                backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                contentColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                elevation = 8.dp,
+                navigationIcon = {
+                    Spacer(modifier = Modifier.width(14.dp))
+                    PhotoUrlImage(
+                        dashboardChat.photoUrl,
+                        modifier = Modifier.size(46.dp).clip(CircleShape),
+                        firstNameLetter = (dashboardChat.chatName ?: "Unknown Chat").getInitials(),
+                        color = if (dashboardChat.color != null) Color(dashboardChat.color!!) else null,
+                        fontSize = 16
+                    )
+                },
+                actions = {
+                    chatViewModel?.let {
+                        val tribeData by chatViewModel.tribeDataStateFlow.collectAsState(null)
+
+                        tribeData?.let {
+                            if (it.appUrl != null) {
+                                IconButton(onClick = {
+                                    dashboardViewModel?.toggleWebAppWindow(true, tribeData?.appUrl?.value)
+                                }) {
+                                    Icon(
+                                        Icons.Default.Apps,
+                                        contentDescription = "WebApp",
+                                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            }
+                            IconButton(onClick = {
+                                dashboardViewModel?.toggleSplitScreen(
+                                    true,
+                                    chatViewModel.chatId?.let { it1 -> DashboardViewModel.SplitContentType.Threads(it1) }
+                                )
+                            }) {
                                 Icon(
                                     Icons.Default.Forum,
                                     contentDescription = "Thread",
@@ -703,34 +696,105 @@ fun SphinxChatDetailTopAppBar(
                             }
                         }
                     }
-                }
-                IconButton(onClick = {
-                    chatViewModel?.toggleChatMuted()
-                }) {
-                    chatViewModel?.let {
-                        val chat by chatViewModel.chatSharedFlow.collectAsState(
-                            (dashboardChat as? DashboardChat.Active)?.chat
-                        )
+                    IconButton(onClick = {
+                        chatViewModel?.toggleSearch()
+                    }) {
                         Icon(
-                            if (chat?.isMuted() == true) Icons.Default.NotificationsOff else Icons.Default.Notifications,
-                            contentDescription = "Mute/Unmute",
+                            Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    IconButton(onClick = {
+                        chatViewModel?.toggleChatMuted()
+                    }) {
+                        chatViewModel?.let {
+                            val chat by chatViewModel.chatSharedFlow.collectAsState(
+                                (dashboardChat as? DashboardChat.Active)?.chat
+                            )
+                            Icon(
+                                if (chat?.isMuted() == true) Icons.Default.NotificationsOff else Icons.Default.Notifications,
+                                contentDescription = "Mute/Unmute",
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    }
+                    IconButton(onClick = {
+                        chatViewModel?.sendCallInvite(false) { link ->
+                            uriHandler.openUri(link)
+                        }
+                    }) {
+                        Icon(
+                            Icons.Default.Phone,
+                            contentDescription = "Call",
                             tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                         )
                     }
                 }
-                IconButton(onClick = {
-                    chatViewModel?.sendCallInvite(false) { link ->
-                        uriHandler.openUri(link)
-                    }
-                }) {
-                    Icon(
-                        Icons.Default.Phone,
-                        contentDescription = "Call",
-                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+            )
+        } else {
+            // Search mode top bar
+            TopAppBar(
+                modifier = Modifier.height(60.dp),
+                backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                contentColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                elevation = 8.dp,
+                title = {
+                    CustomTextField(
+                        leadingIcon = {
+                            Spacer(modifier = Modifier.width(8.dp))
+                        },
+                        trailingIcon = {
+                            if (searchQuery.text.isNotEmpty()) {
+                                Icon(
+                                    Icons.Filled.Cancel,
+                                    contentDescription = "Clear search",
+                                    tint = place_holder_text,
+                                    modifier = Modifier
+                                        .width(28.dp)
+                                        .clickable {
+                                            chatViewModel?.onSearchQueryChanged(TextFieldValue(""))
+                                        }
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.width(28.dp),
+                                    tint = place_holder_text
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .background(
+                                androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                                RoundedCornerShape(percent = 50)
+                            )
+                            .padding(4.dp)
+                            .height(30.dp),
+                        fontSize = 14.sp,
+                        placeholderText = "Search",
+                        onValueChange = { input ->
+                            chatViewModel?.onSearchQueryChanged(input)
+                        },
+                        value = searchQuery,
                     )
+                },
+                actions = {
+                    IconButton(onClick = {
+                        chatViewModel?.toggleSearch()
+                    }) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close search",
+                            tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                        )
+                    }
                 }
-            }
-        )
+            )
+        }
+
+        // Pin message bar (if exists)
         if (chatViewModel?.pinMessageState?.pinMessage?.value != null) {
             Box(
                 modifier = Modifier
@@ -985,6 +1049,105 @@ fun SphinxChatDetailBottomAppBar(
                 }
 
                 Spacer(modifier = Modifier.width(10.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun SphinxChatSearchBottomBar(
+    chatViewModel: ChatViewModel
+) {
+    val searchMatches by chatViewModel.searchMatches.collectAsState()
+    val currentMatchIndex by chatViewModel.currentMatchIndex.collectAsState()
+    val searchState by chatViewModel.searchState.collectAsState()
+
+    if (searchState !is SearchState.Inactive) {
+        Surface(
+            color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+            elevation = 8.dp,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { chatViewModel.navigateToPreviousMatch() },
+                        enabled = searchMatches.isNotEmpty(),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowUp,
+                            contentDescription = "Previous match",
+                            tint = if (searchMatches.isNotEmpty())
+                                Color.LightGray
+                            else
+                                Color.DarkGray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { chatViewModel.navigateToNextMatch() },
+                        enabled = searchMatches.isNotEmpty(),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Next match",
+                            tint = if (searchMatches.isNotEmpty())
+                                Color.LightGray
+                            else
+                                Color.DarkGray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    if (searchState is SearchState.Searching) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                }
+
+                if (searchMatches.isEmpty()) {
+                    Text(
+                        text = "0 matches",
+                        fontSize = 14.sp,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                        fontFamily = Roboto,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${currentMatchIndex + 1}",
+                            fontSize = 14.sp,
+                            color = primary_green,
+                            fontFamily = Roboto
+                        )
+                        Text(
+                            text = "/${searchMatches.size} matches",
+                            fontSize = 14.sp,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                            fontFamily = Roboto
+                        )
+                    }
+                }
             }
         }
     }
