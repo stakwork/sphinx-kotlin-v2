@@ -8,6 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import chat.sphinx.utils.linkify.SphinxLinkify
 import chat.sphinx.utils.linkify.urlSpanStyle
+import theme.primary_green
 
 /**
  * Turn string to an annotated string (with clickable/highlighted text).
@@ -27,10 +28,14 @@ private val highlightSpanStyle = SpanStyle(
     fontWeight = FontWeight.Thin,
     background = Color(0x26FFFFFF)
 )
+private val searchHighlightSpanStyle = SpanStyle(
+    background = primary_green,
+    color = Color.Black
+)
 /**
  * Turn string into an annotated string with clickable links, bold text, and highlighted text.
  */
-fun String.toAnnotatedString(): AnnotatedString {
+fun String.toAnnotatedString(searchQuery: String = ""): AnnotatedString {
     val builder = AnnotatedString.Builder()
     var currentIndex = 0
 
@@ -109,6 +114,17 @@ fun String.toAnnotatedString(): AnnotatedString {
                 annotation = link.url,
                 start = mappedStart,
                 end = mappedEnd
+            )
+        }
+    }
+
+    if (searchQuery.isNotBlank()) {
+        val searchRegex = Regex(Regex.escape(searchQuery), RegexOption.IGNORE_CASE)
+        searchRegex.findAll(builder.toAnnotatedString().text).forEach { matchResult ->
+            builder.addStyle(
+                style = searchHighlightSpanStyle,
+                start = matchResult.range.first,
+                end = matchResult.range.last + 1
             )
         }
     }

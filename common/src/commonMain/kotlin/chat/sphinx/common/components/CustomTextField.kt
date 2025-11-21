@@ -1,10 +1,12 @@
 package chat.sphinx.common.components
 
 import Roboto
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -32,6 +34,8 @@ fun CustomTextField(
     enabled: Boolean = true,
     onFocusChanged: ((Boolean) -> Unit)? = null
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     BasicTextField(
         modifier = modifier
             .fillMaxWidth()
@@ -43,6 +47,7 @@ fun CustomTextField(
         enabled = enabled,
         singleLine = singleLine,
         maxLines = maxLines,
+        interactionSource = interactionSource,
         cursorBrush = SolidColor(cursorBrush ?: MaterialTheme.colors.primary),
         textStyle = LocalTextStyle.current.copy(
             fontFamily = Roboto,
@@ -52,7 +57,6 @@ fun CustomTextField(
         ),
         decorationBox = { innerTextField ->
             Row(
-                modifier,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (leadingIcon != null) leadingIcon()

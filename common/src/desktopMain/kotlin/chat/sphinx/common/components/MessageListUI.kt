@@ -39,6 +39,7 @@ import chat.sphinx.common.state.MessageListData
 import chat.sphinx.common.state.MessageListState
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.common.viewmodel.chat.ChatViewModel
+import chat.sphinx.wrapper.message.MessageId
 import chat.sphinx.wrapper.util.getHHMMSSString
 import chat.sphinx.wrapper.util.getHHMMString
 import chat.sphinx.wrapper.util.getInitials
@@ -62,6 +63,8 @@ fun MessageListUI(
     val shouldShowUnseenSeparator by chatViewModel.shouldShowUnseenSeparator.collectAsState()
     val firstUnseenMessageId by chatViewModel.firstUnseenMessageId.collectAsState()
 
+    val scrollToMessageId by chatViewModel.scrollToMessageId.collectAsState()
+
     suspend fun LazyListState.scrollItemToTop(index: Int) {
         scrollToItem(index, 0)
         kotlinx.coroutines.yield()
@@ -73,6 +76,25 @@ fun MessageListUI(
         val delta = (item.offset - desiredTopFromStart).toFloat()
         if (delta != 0f) {
             scrollBy(delta)
+        }
+    }
+
+    suspend fun LazyListState.scrollToSearchMatch(
+        items: List<ChatMessage>,
+        messageId: MessageId
+    ) {
+        val targetIndex = items.indexOfFirst {
+            !it.isSeparator && !it.isUnseenSeparator && it.message.id == messageId
+        }
+
+        if (targetIndex >= 0) {
+            scrollToItem(index = targetIndex, scrollOffset = 0)
+            kotlinx.coroutines.yield()
+
+            animateScrollToItem(
+                index = targetIndex,
+                scrollOffset = -200
+            )
         }
     }
 
@@ -96,6 +118,15 @@ fun MessageListUI(
                     var bottomAnchorMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
                     var unseenIncomingWhileScrolledUp by remember(messageListData.chatId) { mutableStateOf(0) }
 
+                    LaunchedEffect(scrollToMessageId) {
+                        scrollToMessageId?.let { messageId ->
+                            if (items.isNotEmpty()) {
+                                listState.scrollToSearchMatch(items, messageId)
+                                kotlinx.coroutines.yield()
+                            }
+                        }
+                    }
+
                     LaunchedEffect(chatMessages, shouldShowUnseenSeparator, firstUnseenMessageId) {
                         val newSize = chatMessages.size
                         val currentLastMessageId = chatMessages.firstOrNull()?.message?.id?.value
@@ -111,7 +142,7 @@ fun MessageListUI(
                             }
                             if (targetIndex >= 0) {
                                 kotlinx.coroutines.delay(50)
-                                listState.scrollItemToTop(targetIndex) // ⬅️ place at TOP
+                                listState.scrollItemToTop(targetIndex)
                                 wasAtBottom = false
                             }
                         } else if ((hasNewMessages || hasNewMessage) && wasAtBottom) {
@@ -222,6 +253,16 @@ fun MessageListUI(
                     var bottomAnchorMessageId by remember(messageListData.chatId) { mutableStateOf<Long?>(null) }
                     var unseenIncomingWhileScrolledUp by remember(messageListData.chatId) { mutableStateOf(0) }
 
+
+                    LaunchedEffect(scrollToMessageId) {
+                        scrollToMessageId?.let { messageId ->
+                            if (items.isNotEmpty()) {
+                                listState.scrollToSearchMatch(items, messageId)
+                                kotlinx.coroutines.yield()
+                            }
+                        }
+                    }
+
                     LaunchedEffect(chatMessages, shouldShowUnseenSeparator, firstUnseenMessageId) {
                         val newSize = chatMessages.size
                         val currentLastMessageId = chatMessages.firstOrNull()?.message?.id?.value
@@ -241,11 +282,10 @@ fun MessageListUI(
 
                             if (targetIndex >= 0) {
                                 kotlinx.coroutines.delay(100)
-                                listState.scrollItemToTop(targetIndex) // ⬅️ place at TOP
+                                listState.scrollItemToTop(targetIndex)
                                 wasAtBottom = false
                                 hasScrolledToUnseen = true
 
-                                // Initialize badge count using items below current scroll
                                 unseenIncomingWhileScrolledUp = items
                                     .take(targetIndex)
                                     .count { it.isIncomingMessage() && !it.isSeparator }

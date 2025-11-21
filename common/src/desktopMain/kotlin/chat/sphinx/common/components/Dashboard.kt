@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
@@ -66,6 +68,7 @@ import chat.sphinx.wrapper.message.retrieveTextToShow
 import chat.sphinx.wrapper.thumbnailUrl
 import chat.sphinx.wrapper.util.getInitials
 import chat.sphinx.wrapper_message.ThreadUUID
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
@@ -546,6 +549,7 @@ fun SphinxChatDetailTopAppBar(
     val uriHandler = LocalUriHandler.current
     val searchState by chatViewModel?.searchState?.collectAsState() ?: remember { mutableStateOf(SearchState.Inactive) }
     val searchQuery by chatViewModel?.searchQuery?.collectAsState() ?: remember { mutableStateOf(TextFieldValue("")) }
+    val searchFocusRequester = remember { FocusRequester() }
 
     if (dashboardChat == null) {
         Row(
@@ -734,51 +738,62 @@ fun SphinxChatDetailTopAppBar(
             )
         } else {
             // Search mode top bar
+            LaunchedEffect(Unit) {
+                delay(150)
+                searchFocusRequester.requestFocus()
+            }
+
             TopAppBar(
                 modifier = Modifier.height(60.dp),
                 backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
                 contentColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
                 elevation = 8.dp,
                 title = {
-                    CustomTextField(
-                        leadingIcon = {
-                            Spacer(modifier = Modifier.width(8.dp))
-                        },
-                        trailingIcon = {
-                            if (searchQuery.text.isNotEmpty()) {
-                                Icon(
-                                    Icons.Filled.Cancel,
-                                    contentDescription = "Clear search",
-                                    tint = place_holder_text,
-                                    modifier = Modifier
-                                        .width(28.dp)
-                                        .clickable {
-                                            chatViewModel?.onSearchQueryChanged(TextFieldValue(""))
-                                        }
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        CustomTextField(
+                            leadingIcon = {
+                                Spacer(modifier = Modifier.width(8.dp))
+                            },
+                            trailingIcon = {
+                                if (searchQuery.text.isNotEmpty()) {
+                                    Icon(
+                                        Icons.Filled.Cancel,
+                                        contentDescription = "Clear search",
+                                        tint = place_holder_text,
+                                        modifier = Modifier
+                                            .width(28.dp)
+                                            .clickable {
+                                                chatViewModel?.onSearchQueryChanged(TextFieldValue(""))
+                                            }
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Filled.Search,
+                                        contentDescription = null,
+                                        modifier = Modifier.width(28.dp),
+                                        tint = place_holder_text
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                                    RoundedCornerShape(percent = 50)
                                 )
-                            } else {
-                                Icon(
-                                    Icons.Filled.Search,
-                                    contentDescription = null,
-                                    modifier = Modifier.width(28.dp),
-                                    tint = place_holder_text
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .background(
-                                androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-                                RoundedCornerShape(percent = 50)
-                            )
-                            .padding(4.dp)
-                            .height(30.dp),
-                        fontSize = 14.sp,
-                        placeholderText = "Search",
-                        onValueChange = { input ->
-                            chatViewModel?.onSearchQueryChanged(input)
-                        },
-                        value = searchQuery,
-                    )
+                                .padding(4.dp)
+                                .height(30.dp)
+                                .focusRequester(searchFocusRequester),
+                            fontSize = 14.sp,
+                            placeholderText = "Search",
+                            onValueChange = { input ->
+                                chatViewModel?.onSearchQueryChanged(input)
+                            },
+                            value = searchQuery,
+                        )
+                    }
                 },
                 actions = {
                     IconButton(onClick = {

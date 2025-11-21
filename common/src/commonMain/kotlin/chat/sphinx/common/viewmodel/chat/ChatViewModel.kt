@@ -100,6 +100,10 @@ abstract class ChatViewModel(
     private val messageLimitFlow = MutableStateFlow(100L)
     val isLoadingMore = MutableStateFlow(false)
 
+    private val _scrollToMessageId = MutableStateFlow<MessageId?>(null)
+    val scrollToMessageId: StateFlow<MessageId?> = _scrollToMessageId.asStateFlow()
+    private val _isScrollingToMatch = MutableStateFlow(false)
+
     private val _refreshFlow = MutableStateFlow(0L)
 
     val networkQueryPeople = SphinxContainer.networkModule.networkQuerySaveProfile
@@ -190,16 +194,17 @@ abstract class ChatViewModel(
 
     fun navigateToNextMatch() {
         val matches = _searchMatches.value
-        if (matches.isEmpty()) return
+        if (matches.isEmpty() || _isScrollingToMatch.value) return
 
         val newIndex = (_currentMatchIndex.value + 1) % matches.size
         _currentMatchIndex.value = newIndex
+
         scrollToMatch(matches[newIndex])
     }
 
     fun navigateToPreviousMatch() {
         val matches = _searchMatches.value
-        if (matches.isEmpty()) return
+        if (matches.isEmpty() || _isScrollingToMatch.value) return
 
         val newIndex = if (_currentMatchIndex.value > 0) {
             _currentMatchIndex.value - 1
@@ -207,11 +212,19 @@ abstract class ChatViewModel(
             matches.size - 1
         }
         _currentMatchIndex.value = newIndex
+
         scrollToMatch(matches[newIndex])
     }
 
     private fun scrollToMatch(match: SearchMatch) {
         scope.launch(dispatchers.mainImmediate) {
+            _isScrollingToMatch.value = true
+            _scrollToMessageId.value = match.messageId
+
+            delay(500)
+
+            _scrollToMessageId.value = null
+            _isScrollingToMatch.value = false
         }
     }
 
