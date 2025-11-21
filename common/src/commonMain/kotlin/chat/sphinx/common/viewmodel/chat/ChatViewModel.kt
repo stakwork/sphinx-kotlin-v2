@@ -198,7 +198,6 @@ abstract class ChatViewModel(
             _currentMatchIndex.value = if (matches.isNotEmpty()) 0 else -1
             _searchState.value = SearchState.Active
 
-            println("🔍 Search completed: found ${matches.size} unique matches for '$query'")
         }
     }
 
