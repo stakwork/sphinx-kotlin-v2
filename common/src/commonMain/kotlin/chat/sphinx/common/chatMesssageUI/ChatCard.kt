@@ -403,8 +403,12 @@ fun MessageTextLabel(
     val isThreadHeader = chatMessage.isThreadHeader
     val isTribeLink = SphinxLinkify.gatherLinks(text = messageText, mask = SphinxLinkify.TRIBE_LINK).isNotEmpty()
 
+
+    val searchQuery by chatViewModel.searchQuery.collectAsState()
+    val currentSearchText = searchQuery.text
+
     if (messageText.isNotEmpty()) {
-        val annotatedString = messageText.toAnnotatedString()
+        val annotatedString = messageText.toAnnotatedString(currentSearchText)
 
         Row(
             modifier = Modifier
