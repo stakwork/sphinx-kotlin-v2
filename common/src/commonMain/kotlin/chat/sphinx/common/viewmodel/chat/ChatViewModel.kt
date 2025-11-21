@@ -170,9 +170,16 @@ abstract class ChatViewModel(
             }
 
             val matches = mutableListOf<SearchMatch>()
+            val seenMessageIds = mutableSetOf<Long>()
 
             currentMessages.forEach { chatMessage ->
                 val message = chatMessage.message
+                val messageId = message.id.value
+
+                if (seenMessageIds.contains(messageId)) {
+                    return@forEach
+                }
+
                 val messageText = message.retrieveTextToShow() ?: ""
 
                 if (messageText.contains(query, ignoreCase = true)) {
@@ -183,12 +190,15 @@ abstract class ChatViewModel(
                             matchText = messageText
                         )
                     )
+                    seenMessageIds.add(messageId)
                 }
             }
 
             _searchMatches.value = matches
             _currentMatchIndex.value = if (matches.isNotEmpty()) 0 else -1
             _searchState.value = SearchState.Active
+
+            println("🔍 Search completed: found ${matches.size} unique matches for '$query'")
         }
     }
 
