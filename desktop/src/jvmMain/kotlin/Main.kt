@@ -82,6 +82,16 @@ fun main() = application {
             val dashboardViewModel = remember { DashboardViewModel() }
             WebViewInitializing(dashboardViewModel)
 
+            val removeAccount by dashboardViewModel.removeAccountFlow.collectAsState()
+
+            LaunchedEffect(removeAccount) {
+                if (removeAccount) {
+                    sphinxStore.removeAccount()
+                    dashboardViewModel.clearDatabase()
+                    exitApplication()
+                }
+            }
+
             Window(
                 onCloseRequest = {
                     dashboardViewModel.cleanup()
@@ -106,9 +116,10 @@ fun main() = application {
                         when (DashboardScreenState.screenState()) {
                             DashboardScreenType.Unlocked -> {
                                 Item("Remove Account from this machine", onClick = {
-                                    sphinxStore.removeAccount()
-                                    dashboardViewModel.clearDatabase()
-                                    exitApplication()
+                                    dashboardViewModel.toggleConfirmationWindow(
+                                        true,
+                                        ConfirmationType.RemoveAccount
+                                    )
                                 })
                             }
                             else -> {}

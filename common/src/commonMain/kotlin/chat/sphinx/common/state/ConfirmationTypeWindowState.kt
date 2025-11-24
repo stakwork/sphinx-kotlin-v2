@@ -19,4 +19,7 @@ sealed class ConfirmationType {
     data class PodcastShare(
         val fromBeginningLink: String,
         val fromCurrentTimeLink: String
-    ) : ConfirmationType()}
+    ) : ConfirmationType()
+    object RemoveAccount : ConfirmationType()
+}
+
