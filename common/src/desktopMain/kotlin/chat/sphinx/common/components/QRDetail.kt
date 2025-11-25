@@ -9,6 +9,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,9 +36,15 @@ import chat.sphinx.wrapper.util.getInitials
 import theme.primary_red
 
 @Composable
-fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeViewModel, preferredSize: DpSize) {
+fun QRDetailScreen(
+    dashboardViewModel: DashboardViewModel,
+    viewModel: QRCodeViewModel,
+    preferredSize: DpSize
+) {
     val clipboardManager: ClipboardManager = LocalClipboardManager.current
     val isInvite = viewModel.contactQRCodeState.viewTitle.uppercase() == "INVITE CODE"
+
+    var showDeleteInviteDialog by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -55,31 +62,14 @@ fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeView
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
                         .padding(32.dp),
-                    verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (isInvite) {
-                        Box(
-                            modifier = Modifier.align(Alignment.Start).padding(bottom = 16.dp)
-                        ) {
-                            CommonButton(
-                                text = "DELETE INVITE",
-                                enabled = true,
-                                customColor = primary_red,
-                                textButtonSize = 10.sp,
-                                fontWeight = FontWeight.W500,
-                                modifier = Modifier
-                                    .width(80.dp)
-                                    .height(40.dp),
-                                callback = {
-                                    dashboardViewModel.deleteInvite(viewModel.contactQRCodeState.string)
-                                    dashboardViewModel.closeFullScreenView()
-                                }
-                            )
-                        }
-                    }
 
+                    Spacer(Modifier.height(24.dp))
+
+                    // TITLE
                     Text(
                         text = viewModel.contactQRCodeState.viewTitle.uppercase(),
                         fontFamily = SphinxFonts.montserratFamily,
@@ -89,10 +79,10 @@ fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeView
 
                     Spacer(Modifier.height(24.dp))
 
+                    // HINT ROW
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(end = 24.dp)
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             Icons.Default.TouchApp,
@@ -100,6 +90,8 @@ fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeView
                             tint = Color.Gray,
                             modifier = Modifier.size(30.dp)
                         )
+
+                        Spacer(Modifier.width(8.dp))
 
                         Text(
                             text = "CLICK TO COPY",
@@ -111,28 +103,32 @@ fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeView
 
                     Spacer(Modifier.height(18.dp))
 
+                    // QR CODE
                     viewModel.contactQRCodeState.bitMatrix?.let { bitMatrix ->
-                        val qrCodeSize = 200.dp // Fixed size to ensure proportion
+                        val qrCodeSize = 200.dp
 
                         Box(
                             modifier = Modifier
                                 .size(qrCodeSize)
                                 .clickable {
-                                    clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
+                                    clipboardManager.setText(
+                                        viewModel.contactQRCodeState.string.toAnnotatedString()
+                                    )
                                     viewModel.toast("Code copied to clipboard")
                                 }
                         ) {
-                            Canvas(modifier = Modifier.size(qrCodeSize).clickable {
-                                clipboardManager.setText(viewModel.contactQRCodeState.string.toAnnotatedString())
-                                viewModel.toast("Code copied to clipboard")
-                            }) {
+                            Canvas(
+                                modifier = Modifier.size(qrCodeSize)
+                            ) {
                                 val scaleX = size.width / bitMatrix.width
                                 val scaleY = size.height / bitMatrix.height
 
                                 for (x in 0 until bitMatrix.width) {
                                     for (y in 0 until bitMatrix.height) {
                                         drawRect(
-                                            brush = SolidColor(if (bitMatrix.get(x, y)) Color.Black else Color.White),
+                                            brush = SolidColor(
+                                                if (bitMatrix.get(x, y)) Color.Black else Color.White
+                                            ),
                                             topLeft = Offset(x * scaleX, y * scaleY),
                                             size = Size(scaleX, scaleY)
                                         )
@@ -144,16 +140,107 @@ fun QRDetailScreen(dashboardViewModel: DashboardViewModel, viewModel: QRCodeView
 
                     Spacer(Modifier.height(24.dp))
 
+                    // CODE TEXT - Improved wrapping and centering
                     Text(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
                         text = viewModel.contactQRCodeState.string,
                         fontFamily = SphinxFonts.montserratFamily,
                         color = Color.Gray,
                         fontSize = 11.sp,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        lineHeight = 14.sp,
+                        overflow = TextOverflow.Visible
                     )
+
+                    // DELETE INVITE SECTION
+                    if (isInvite) {
+                        Spacer(Modifier.height(32.dp))
+
+                        Divider(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color.White.copy(alpha = 0.08f)
+                        )
+
+                        Spacer(Modifier.height(24.dp))
+
+                        // Delete button styled like CommonMenuButton
+                        Button(
+                            shape = RoundedCornerShape(23.dp),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = primary_red),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp),
+                            onClick = { showDeleteInviteDialog = true }
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete invite",
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .size(20.dp)
+                                )
+                                Text(
+                                    text = "Delete invite",
+                                    fontSize = 12.sp,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.W500,
+                                    fontFamily = SphinxFonts.montserratFamily,
+                                    textAlign = TextAlign.Start,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+                    }
                 }
             }
+        }
+
+        // CONFIRMATION DIALOG
+        if (showDeleteInviteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteInviteDialog = false },
+                title = {
+                    Text(
+                        text = "Delete this invite?",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        text = "This action cannot be undone. People with this invite code will no longer be able to use it."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            dashboardViewModel.deleteInvite(viewModel.contactQRCodeState.string)
+                            showDeleteInviteDialog = false
+                            dashboardViewModel.closeFullScreenView()
+                        }
+                    ) {
+                        Text(
+                            text = "Delete",
+                            color = primary_red,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteInviteDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
