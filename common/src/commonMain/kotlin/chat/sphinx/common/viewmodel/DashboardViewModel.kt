@@ -141,7 +141,6 @@ class DashboardViewModel(): WindowFocusListener {
         _floatingPlayerStateFlow.value = null
     }
 
-    // Add to DashboardViewModel class
     private val _webAppWindowStateFlow: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(false)
     }
@@ -149,6 +148,9 @@ class DashboardViewModel(): WindowFocusListener {
     private val _webViewStateFlow: MutableStateFlow<String?> by lazy {
         MutableStateFlow(null)
     }
+
+    private val _removeAccountFlow = MutableStateFlow(false)
+    val removeAccountFlow: StateFlow<Boolean> = _removeAccountFlow.asStateFlow()
 
     val webAppWindowStateFlow: StateFlow<Boolean>
         get() = _webAppWindowStateFlow.asStateFlow()
@@ -763,6 +765,12 @@ class DashboardViewModel(): WindowFocusListener {
             queries.transaction {
                 deleteAll(queries)
             }
+        }
+    }
+
+    fun removeAccountConfirmed() {
+        viewModelScope.launch(dispatchers.main) {
+            _removeAccountFlow.value = true
         }
     }
 

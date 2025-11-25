@@ -51,10 +51,11 @@ fun ConfirmationUI(
                 is ConfirmationType.TribeDeleteMember -> "Confirm Delete Member"
                 is ConfirmationType.ContactDelete -> "Confirm Delete Contact"
                 is ConfirmationType.PodcastShare -> "Share Episode"
+                is ConfirmationType.RemoveAccount -> "Logout"
             },
             state = WindowState(
                 position = WindowPosition.Aligned(Alignment.Center),
-                size = getPreferredWindowSize(300, 190)
+                size = getPreferredWindowSize(360, 220)
             )
         ) {
             Column(
@@ -81,11 +82,14 @@ fun ConfirmationUI(
                         is ConfirmationType.TribeDeleteMember -> "Are you sure you want to remove ${confirmationType.alias?.value}?"
                         is ConfirmationType.ContactDelete -> "Are you sure you want to delete this contact?"
                         is ConfirmationType.PodcastShare -> "Share from beginning or current time?"
+                        is ConfirmationType.RemoveAccount -> "Are you sure you want to logout? All data and preferences will be deleted."
                     },
                     color = MaterialTheme.colorScheme.tertiary,
+
                     fontFamily = Roboto,
                     fontWeight = FontWeight.Light,
-                    fontSize = 13.sp
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -98,7 +102,8 @@ fun ConfirmationUI(
                     when (confirmationType) {
                         is ConfirmationType.PayInvoice,
                         is ConfirmationType.TribeDeleteMember,
-                        is ConfirmationType.ContactDelete -> {
+                        is ConfirmationType.ContactDelete,
+                        is ConfirmationType.RemoveAccount -> {
                             Button(
                                 onClick = {
                                     isOpen = false
@@ -136,6 +141,10 @@ fun ConfirmationUI(
 
                                         is ConfirmationType.ContactDelete -> {
                                             dashboardViewModel.deleteSelectedContact()
+                                        }
+
+                                        is ConfirmationType.RemoveAccount -> {
+                                            dashboardViewModel.removeAccountConfirmed()
                                         }
 
                                         else -> {}
