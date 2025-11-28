@@ -8,6 +8,7 @@ import chat.sphinx.features.repository.util.upsertContact
 import chat.sphinx.wrapper.dashboard.ContactId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SphinxStore {
     private val scope = SphinxContainer.appModule.applicationScope
@@ -17,12 +18,25 @@ class SphinxStore {
     private val onBoardStepHandler = OnBoardStepHandler()
 
     fun removeAccount() {
-        // TODO: logout Confirmation...
         scope.launch(SphinxContainer.appModule.dispatchers.main) {
+            withContext(SphinxContainer.appModule.dispatchers.io) {
 
-            authenticationStorage.clearAuthenticationStorage()
-            authenticationManager.logOut()
-            encryptionKeyHandler.clearKeysToRestore()
+                try {
+                    authenticationManager.logOut()
+                    encryptionKeyHandler.clearKeysToRestore()
+                    authenticationStorage.clearAuthenticationStorage()
+
+                    delay(100L)
+
+                    val hasCredentials = authenticationStorage.hasCredential()
+                    if (hasCredentials) {
+                        authenticationStorage.clearAuthenticationStorage()
+                        delay(100L)
+                    }
+                } catch (e: Exception) {
+                    println("Error during account removal: ${e.message}")
+                }
+            }
         }
     }
 

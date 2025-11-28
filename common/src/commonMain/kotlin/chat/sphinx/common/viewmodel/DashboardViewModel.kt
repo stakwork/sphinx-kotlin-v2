@@ -118,6 +118,14 @@ class DashboardViewModel(): WindowFocusListener {
         currentChatViewModel = viewModel
     }
 
+    fun onChatChanged(newChatId: ChatId?) {
+        currentChatViewModel?.chatId?.let { oldChatId ->
+            if (oldChatId != newChatId) {
+                resetPodcastClosedState(oldChatId)
+            }
+        }
+    }
+
     fun cleanup() {
         currentChatViewModel?.let { viewModel ->
             viewModel.chatId?.let { chatId ->
@@ -175,6 +183,16 @@ class DashboardViewModel(): WindowFocusListener {
         toast("WebView is not available at the moment")
     }
 
+    private val _userClosedPodcasts = MutableStateFlow<Set<ChatId>>(emptySet())
+
+    fun wasPodcastClosedByUser(chatId: ChatId): Boolean {
+        return _userClosedPodcasts.value.contains(chatId)
+    }
+
+    fun resetPodcastClosedState(chatId: ChatId) {
+        _userClosedPodcasts.value = _userClosedPodcasts.value - chatId
+    }
+
     // Add to DashboardViewModel class
     private val _authorizeViewStateFlow: MutableStateFlow<AuthorizeViewState> by lazy {
         MutableStateFlow(AuthorizeViewState.Closed())
@@ -223,6 +241,13 @@ class DashboardViewModel(): WindowFocusListener {
         get() = _splitScreenStateFlow.asStateFlow()
 
     fun toggleSplitScreen(isOpen: Boolean, type: SplitContentType? = null) {
+        if (!isOpen && splitScreenStateFlow.value.type is SplitContentType.Podcast) {
+            val podcastType = splitScreenStateFlow.value.type as SplitContentType.Podcast
+            podcastType.chatId?.let { chatId ->
+                _userClosedPodcasts.value = _userClosedPodcasts.value + chatId
+            }
+        }
+
         _splitScreenStateFlow.value = SplitScreenState(isOpen, type)
     }
 

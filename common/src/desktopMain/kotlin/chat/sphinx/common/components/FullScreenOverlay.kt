@@ -41,7 +41,14 @@ fun FullScreenOverlay(
             when (fullScreenView) {
                 is DashboardViewModel.FullScreenView.CreateInvoice,
                 is DashboardViewModel.FullScreenView.PayInvoice -> getPreferredWindowSize(420, 520)
-                is DashboardViewModel.FullScreenView.QRDetailFullScreen -> getPreferredWindowSize(357, 550)
+                is DashboardViewModel.FullScreenView.QRDetailFullScreen -> {
+                    val isInvite = fullScreenView.title?.uppercase() == "INVITE CODE"
+                    if (isInvite) {
+                        getPreferredWindowSize(357, 650)
+                    } else {
+                        getPreferredWindowSize(357, 550)
+                    }
+                }
                 is DashboardViewModel.FullScreenView.BackupKeysQR -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.OwnerQRDetail -> getPreferredWindowSize(357, 550)
                 is DashboardViewModel.FullScreenView.TribeJoin -> getPreferredWindowSize(400, 800)
@@ -135,7 +142,6 @@ fun FullScreenOverlay(
         }
     }
 }
-
 
 @Composable
 fun TopHeaderContainer(

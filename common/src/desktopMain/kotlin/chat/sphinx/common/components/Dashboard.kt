@@ -135,6 +135,14 @@ actual fun Dashboard(
                 val chatDetailState = ChatDetailState.screenState()
                 val dashboardChat = (chatDetailState as? ChatDetailData.SelectedChatDetailData)?.dashboardChat
 
+                val newChatId = when (chatDetailState) {
+                    is ChatDetailData.SelectedChatDetailData.SelectedContactChatDetail -> chatDetailState.chatId
+                    is ChatDetailData.SelectedChatDetailData.SelectedTribeChatDetail -> chatDetailState.chatId
+                    else -> null
+                }
+
+                dashboardViewModel.onChatChanged(newChatId)
+
                 chatViewModel?.readMessages()
                 chatViewModel?.cancelMessagesJob()
 

@@ -1,14 +1,11 @@
 package chat.sphinx.common.components
 
 import Roboto
-import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -295,130 +292,140 @@ fun ThreadHeaderUI(
     chatMessage: ChatMessage,
     chatViewModel: ChatViewModel? = null
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(md_theme_dark_background)
-            .padding(horizontal = 12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically // Center elements vertically
+    BoxWithConstraints {
+        val maxHeaderHeight = maxHeight * 0.5f
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = maxHeaderHeight)
+                .background(md_theme_dark_background)
+                .padding(horizontal = 12.dp)
         ) {
-            PhotoUrlImage(
-                photoUrl = chatMessage.contact?.photoUrl?.thumbnailUrl ?: chatMessage.message.senderPic?.thumbnailUrl,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape),
-                color = chatMessage.replyToMessageColor?.let { Color(it) },
-                firstNameLetter = chatMessage.replyToMessageSenderAliasPreview.getInitials(),
-                fontSize = 12
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PhotoUrlImage(
+                    photoUrl = chatMessage.contact?.photoUrl?.thumbnailUrl ?: chatMessage.message.senderPic?.thumbnailUrl,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape),
+                    color = chatMessage.replyToMessageColor?.let { Color(it) },
+                    firstNameLetter = chatMessage.replyToMessageSenderAliasPreview.getInitials(),
+                    fontSize = 12
+                )
 
-            Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = chatMessage.replyToMessageSenderAliasPreview,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        fontSize = 12.sp,
-                        fontFamily = Roboto,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = chatMessage.replyToMessageSenderAliasPreview,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontSize = 12.sp,
+                            fontFamily = Roboto,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
 
-                    Text(
-                        text = chatMessage.message.date.chatTimeFormat(),
-                        fontWeight = FontWeight.W400,
-                        fontFamily = Roboto,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontSize = 10.sp,
-                        maxLines = 1
-                    )
+                        Text(
+                            text = chatMessage.message.date.chatTimeFormat(),
+                            fontWeight = FontWeight.W400,
+                            fontFamily = Roboto,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontSize = 10.sp,
+                            maxLines = 1
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
                 }
 
-                Spacer(modifier = Modifier.height(2.dp))
+                if (chatViewModel != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    ChatOptionMenu(chatMessage, chatViewModel)
+                }
             }
 
-            // Three dots menu on the right
-            if (chatViewModel != null) {
-                Spacer(modifier = Modifier.width(8.dp))
-                ChatOptionMenu(chatMessage, chatViewModel)
-            }
-        }
-
-        Column(modifier = Modifier.fillMaxWidth()) {
-            if (chatViewModel != null) {
-                chatMessage.message.messageMedia?.let { media ->
-                    when {
-                        media.mediaType.isImage -> {
-                            Column(
-                                modifier = Modifier.fillMaxWidth().height(160.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                MessageMediaImage(
+            // Scrollable content area
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (chatViewModel != null) {
+                    chatMessage.message.messageMedia?.let { media ->
+                        when {
+                            media.mediaType.isImage -> {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().height(160.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    MessageMediaImage(
+                                        chatMessage = chatMessage,
+                                        chatViewModel = chatViewModel,
+                                        modifier = Modifier
+                                            .wrapContentHeight()
+                                            .widthIn(max = 300.dp)
+                                    )
+                                }
+                            }
+                            media.mediaType.isUnknown || media.mediaType.isPdf -> {
+                                MessageFile(
+                                    chatMessage = chatMessage,
+                                    chatViewModel = chatViewModel
+                                )
+                            }
+                            media.mediaType.isVideo -> {
+                                MessageVideo(
                                     chatMessage = chatMessage,
                                     chatViewModel = chatViewModel,
                                     modifier = Modifier
                                         .wrapContentHeight()
-                                        .widthIn(max = 300.dp) // Adjust the max width as needed
+                                        .fillMaxWidth()
+                                )
+                            }
+                            media.mediaType.isAudio -> {
+                                MessageAudio(
+                                    chatMessage = chatMessage,
+                                    chatViewModel = chatViewModel
                                 )
                             }
                         }
-                        media.mediaType.isUnknown || media.mediaType.isPdf -> {
-                            MessageFile(
-                                chatMessage = chatMessage,
-                                chatViewModel = chatViewModel
-                            )
-                        }
-                        media.mediaType.isVideo -> {
-                            MessageVideo(
-                                chatMessage = chatMessage,
-                                chatViewModel = chatViewModel,
-                                modifier = Modifier
-                                    .wrapContentHeight()
-                                    .fillMaxWidth()
-                            )
-                        }
-                        media.mediaType.isAudio -> {
-                            MessageAudio(
-                                chatMessage = chatMessage,
-                                chatViewModel = chatViewModel
-                            )
-                        }
-                    }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = chatMessage.message.retrieveTextToShow()?.trim()?.toAnnotatedString() ?: AnnotatedString(""),
+                    fontWeight = FontWeight.W400,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    fontSize = 14.sp,
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = chatMessage.message.retrieveTextToShow()?.trim()?.toAnnotatedString() ?: AnnotatedString(""),
-                fontWeight = FontWeight.W400,
-                color = MaterialTheme.colorScheme.tertiary,
-                fontSize = 14.sp,
+            BoostedFooter(
+                chatMessage,
+                modifier = Modifier.fillMaxWidth(),
+                isThreadHeader = true
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Divider(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        BoostedFooter(
-            chatMessage,
-            modifier = Modifier.fillMaxWidth(),
-            isThreadHeader = true
-        )
-
-        Divider(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

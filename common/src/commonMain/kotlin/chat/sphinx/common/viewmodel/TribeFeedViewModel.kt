@@ -23,13 +23,14 @@ class TribeFeedViewModel(
     private val chatRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).chatRepository
     private val feedRepository = SphinxContainer.repositoryModule(sphinxNotificationManager).feedRepository
 
+    private val openedPodcasts = mutableSetOf<ChatId>()
+
     fun handleTribeData(data: TribeData) {
         scope.launch(dispatchers.mainImmediate) {
             val feedUrl = data.feedUrl
             val feedType = data.feedType
 
             if (feedUrl != null && chatViewModel.chatId != null) {
-                // Update feed content
                 feedRepository.updateFeedContent(
                     chatId = chatViewModel.chatId,
                     host = data.host,
@@ -40,15 +41,24 @@ class TribeFeedViewModel(
                 )
 
                 if (feedType.isPodcast()) {
+                    // Remove the check for openedPodcasts here since we want it to reopen
+                    if (dashboardViewModel.wasPodcastClosedByUser(chatViewModel.chatId)) {
+                        return@launch
+                    }
+
                     scope.launch(dispatchers.mainImmediate) {
                         delay(500L)
 
                         feedRepository.getPodcastByChatId(chatViewModel.chatId).collect { podcast ->
                             podcast?.let { nnPodcast ->
-                                dashboardViewModel.toggleSplitScreen(
-                                    true,
-                                    DashboardViewModel.SplitContentType.Podcast(chatViewModel.chatId, null)
-                                )
+                                if (!dashboardViewModel.wasPodcastClosedByUser(chatViewModel.chatId)) {
+                                    openedPodcasts.add(chatViewModel.chatId)
+
+                                    dashboardViewModel.toggleSplitScreen(
+                                        true,
+                                        DashboardViewModel.SplitContentType.Podcast(chatViewModel.chatId, null)
+                                    )
+                                }
                             }
                         }
                     }

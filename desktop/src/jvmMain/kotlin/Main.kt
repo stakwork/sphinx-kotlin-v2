@@ -86,8 +86,10 @@ fun main() = application {
 
             LaunchedEffect(removeAccount) {
                 if (removeAccount) {
-                    sphinxStore.removeAccount()
                     dashboardViewModel.clearDatabase()
+                    delay(100L)
+                    sphinxStore.removeAccount()
+                    delay(100L)
                     exitApplication()
                 }
             }
