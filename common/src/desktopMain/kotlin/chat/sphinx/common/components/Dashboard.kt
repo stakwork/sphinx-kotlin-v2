@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import chat.sphinx.common.Res
 import chat.sphinx.common.components.chat.AttachmentPreview
 import chat.sphinx.common.components.chat.MessagePinnedFullContent
@@ -517,10 +518,18 @@ actual fun Dashboard(
             val restoreState by dashboardViewModel.restoreProgressStateFlow.collectAsState()
             restoreState?.let { restoreState ->
                 if (restoreState.restoring && !dashboardViewModel.isRestoreCancelledState) {
-                    RestoreProgressUI(
-                        dashboardViewModel,
-                        restoreState
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .zIndex(100f)
+                            .clickable(enabled = false) {}
+                    ) {
+                        RestoreProgressUI(
+                            dashboardViewModel,
+                            restoreState
+                        )
+                    }
                 }
             }
         }
@@ -1574,7 +1583,10 @@ fun RestoreProgressUI(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .background(SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.background), alpha = 0.5f)
+            .background(
+                SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.background),
+                alpha = 0.5f
+            )
             .fillMaxSize()
     ) {
         Column(
@@ -1585,34 +1597,52 @@ fun RestoreProgressUI(
                     SolidColor(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant),
                     RoundedCornerShape(10.dp)
                 )
-                .width(300.dp),
+                .width(300.dp)
         ) {
             Spacer(modifier = Modifier.height(32.dp))
+
+            val labelText = when {
+                restoreState.progress <= 10 -> "Restoring Contacts: ${restoreState.progress}%"
+                else -> "Restoring Messages: ${restoreState.progress}%"
+            }
+
             Text(
-                text = "Restoring: ${restoreState.progress}%",
+                text = labelText,
                 fontFamily = Roboto,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.W500,
                 color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
             )
+
             Spacer(modifier = Modifier.height(32.dp))
+
             LinearProgressIndicator(
                 progress = restoreState.progress.toFloat() / 100,
                 modifier = Modifier.fillMaxWidth(0.8f),
                 color = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
                 backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
             )
+
             Spacer(modifier = Modifier.height(32.dp))
+
+            /*
+            // "Continue Later" button - enabled only when progress > 10
             Row(modifier = Modifier.fillMaxWidth(0.8f)) {
                 CommonButton(
                     text = "Continue Later",
-                    enabled = false,
-                    backgroundColor = Color.Gray
+                    enabled = restoreState.progress > 10,
+                    backgroundColor = if (restoreState.progress > 10) {
+                        androidx.compose.material3.MaterialTheme.colorScheme.primary
+                    } else {
+                        Color.Gray
+                    }
                 ) {
                     dashboardViewModel.cancelRestore()
                 }
             }
+
             Spacer(modifier = Modifier.height(32.dp))
+            */
         }
     }
 }
