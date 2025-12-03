@@ -5,19 +5,19 @@ import androidx.compose.runtime.mutableStateOf
 import chat.sphinx.wrapper.chat.Chat
 import chat.sphinx.wrapper.chat.ChatType
 import chat.sphinx.wrapper.contact.Contact
-import chat.sphinx.wrapper.invoiceExpirationTimeFormat
 import chat.sphinx.wrapper.message.*
 import chat.sphinx.common.state.BubbleBackground
 import chat.sphinx.concepts.link_preview.model.*
 import chat.sphinx.utils.linkify.LinkSpec
-import chat.sphinx.wrapper.PhotoUrl
+import chat.sphinx.utils.platform.getCurrentTimeInMillis
+import chat.sphinx.wrapper.*
 import chat.sphinx.wrapper.chat.isConversation
-import chat.sphinx.wrapper.chatTimeFormat
 import chat.sphinx.wrapper.contact.ContactAlias
 import chat.sphinx.wrapper.contact.toContactAlias
 import chat.sphinx.wrapper.lightning.LightningNodeDescriptor
 import chat.sphinx.wrapper.lightning.Sat
 import chat.sphinx.wrapper.tribe.TribeJoinLink
+import com.soywiz.klock.DateTimeTz
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -309,6 +309,29 @@ class ChatMessage(
             null
         }
     }
+
+    val isResendAllowed: Boolean
+        get() {
+            if (message.isPaidMessage) {
+                return false
+            }
+            if (message.status == MessageStatus.Failed) {
+                return true
+            }
+
+            if (message.status == MessageStatus.Pending) {
+                message.date.let { messageDate ->
+                    val currentTime = getCurrentTimeInMillis()
+                    val messageTime = messageDate.time
+                    val timeDifferenceInMillis = currentTime - messageTime
+                    val thirtySecondsInMillis = 30_000L
+
+                    return timeDifferenceInMillis >= thirtySecondsInMillis
+                }
+            }
+
+            return false
+        }
 
     data class ThreadHolder(
         val replyCount: Int,
