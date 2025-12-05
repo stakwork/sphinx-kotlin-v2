@@ -1604,6 +1604,55 @@ abstract class ChatViewModel(
         }
     }
 
+    fun resendMessage(chatMessage: ChatMessage) {
+        scope.launch(dispatchers.mainImmediate) {
+            val messageId = chatMessage.message.id
+
+            if (messageId == null || messageId.value >= 0) {
+                toast("Cannot resend this message", badge_red)
+                return@launch
+            }
+
+            val chat = chatMessage.chat
+            val message = chatMessage.message
+
+            val mediaInfo = message.messageMedia
+
+            val attachmentInfo = mediaInfo?.let { media ->
+                media.localFile?.let { localFile ->
+                    AttachmentInfo(
+                        filePath = localFile,
+                        mediaType = media.mediaType,
+                        fileName = media.fileName ?: localFile.name.toFileName(),
+                        isLocalFile = true
+                    )
+                }
+            }
+
+            val contactPubKey = chatMessage.contact?.nodePubKey?.value ?: chat.uuid.value
+
+            messageRepository.sendNewMessage(
+                contact = contactPubKey,
+                messageContent = message.messageContentDecrypted?.value ?: "",
+                attachmentInfo = attachmentInfo,
+                mediaToken = mediaInfo?.mediaToken,
+                mediaKey = mediaInfo?.mediaKey,
+                messageType = message.type,
+                provisionalId = messageId,
+                amount = message.amount,
+                replyUUID = message.replyUUID,
+                threadUUID = message.threadUUID,
+                isTribe = chat.isTribe(),
+                memberPubKey = null,
+                chatAlias = chat.myAlias,
+                chatProfilePic = chat.myPhotoUrl,
+                metadata = null
+            )
+
+            toast("Resending message...")
+        }
+    }
+
     fun onPinClicked(pinMessage: ChatMessage) {
         if (pinMessageState.pinMessage.value?.message != null) {
             unPinMessage(pinMessageState.pinMessage.value?.message)

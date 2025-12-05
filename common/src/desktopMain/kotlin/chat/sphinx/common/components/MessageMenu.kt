@@ -39,12 +39,12 @@ actual fun MessageMenu(
 ) {
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
-
-    val dismissKebab = {
-        isVisible.value = false
+    val dismissKebab = { isVisible.value = false }
+    val isPinnedState = remember {
+        mutableStateOf(
+            chatMessage.chat.pinedMessage?.value == chatMessage.message.uuid?.value
+        )
     }
-
-    val isPinnedState = remember { mutableStateOf(chatMessage.chat.pinedMessage?.value == chatMessage.message.uuid?.value) }
 
     CursorDropdownMenu(
         expanded = isVisible.value,
@@ -63,6 +63,7 @@ actual fun MessageMenu(
                 OptionItem("Boost", Res.drawable.ic_boost_green)
             }
         }
+
         if (chatMessage.message.isCopyAllowed) {
             DropdownMenuItem(onClick = {
                 clipboardManager.setText(messageText.toAnnotatedString())
@@ -75,7 +76,9 @@ actual fun MessageMenu(
 
         if (chatMessage.message.isCopyLinkAllowed) {
             DropdownMenuItem(onClick = {
-                chatMessage.message.retrieveSphinxCallLink()?.value?.toAnnotatedString()?.let { clipboardManager.setText(it) }
+                chatMessage.message.retrieveSphinxCallLink()?.value?.toAnnotatedString()?.let {
+                    clipboardManager.setText(it)
+                }
                 chatViewModel.toast("Call Link copied to clipboard")
                 dismissKebab()
             }) {
@@ -91,9 +94,18 @@ actual fun MessageMenu(
                 OptionItem("Reply", imageVector = Icons.Default.Reply)
             }
         }
+
+        if (chatMessage.isResendAllowed && chatMessage.isSent) {
+            DropdownMenuItem(onClick = {
+                chatViewModel.resendMessage(chatMessage)
+                dismissKebab()
+            }) {
+                OptionItem("Resend", imageVector = Icons.Default.Send)
+            }
+        }
+
         if (chatMessage.chat.ownedTribe?.isTrue() == true) {
             val pinText = if (isPinnedState.value) "Unpin Message" else "Pin Message"
-
             DropdownMenuItem(onClick = {
                 if (isPinnedState.value) {
                     chatViewModel.onUnpinnedClicked(chatMessage)
@@ -106,12 +118,14 @@ actual fun MessageMenu(
                 OptionItem(pinText, imageVector = Icons.Default.PushPin)
             }
         }
+
         if (chatMessage.message.isSaveAllowed) {
             DropdownMenuItem(onClick = {
                 chatMessage.message.messageMedia?.localFile?.let { attachmentFilepath ->
                     scope.launch {
                         saveFile(
-                            chatMessage.message.messageMedia?.fileName ?: FileName(attachmentFilepath.name),
+                            chatMessage.message.messageMedia?.fileName
+                                ?: FileName(attachmentFilepath.name),
                             attachmentFilepath
                         )
                     }
@@ -127,11 +141,14 @@ actual fun MessageMenu(
                 chatMessage.accountOwner().nodePubKey
             )) {
             DropdownMenuItem(onClick = {
-                // TODO: Confirm action...
                 chatMessage.deleteMessage()
                 dismissKebab()
             }) {
-                OptionItem("Delete", imageVector = Icons.Default.Delete, color = badge_red)
+                OptionItem(
+                    "Delete",
+                    imageVector = Icons.Default.Delete,
+                    color = badge_red
+                )
             }
         }
     }
