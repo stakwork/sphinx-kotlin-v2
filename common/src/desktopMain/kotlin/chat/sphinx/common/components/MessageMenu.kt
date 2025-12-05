@@ -97,7 +97,7 @@ actual fun MessageMenu(
 
         if (chatMessage.isResendAllowed && chatMessage.isSent) {
             DropdownMenuItem(onClick = {
-//                chatMessage.resendMessage()
+                chatViewModel.resendMessage(chatMessage)
                 dismissKebab()
             }) {
                 OptionItem("Resend", imageVector = Icons.Default.Send)
