@@ -66,8 +66,21 @@ object DesktopSphinxNotificationManager: SphinxNotificationManager {
             cancel
         )
     }
-}
 
+    override suspend fun notifyWithSound(
+        notificationId: Long,
+        groupId: String?,
+        title: String,
+        message: String,
+        playSound: Boolean
+    ) {
+        notify(notificationId, groupId, title, message)
+
+        if (playSound) {
+            DesktopNotificationSoundPlayer.playNotificationSound()
+        }
+    }
+}
 class SphinxAlertConfirm(
     val windowTitle: String,
     val title: String,

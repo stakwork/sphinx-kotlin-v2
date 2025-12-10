@@ -13,10 +13,7 @@ import chat.sphinx.common.state.ChatListState
 import chat.sphinx.di.container.SphinxContainer
 import chat.sphinx.utils.UserColorsHelper
 import chat.sphinx.utils.notifications.createSphinxNotificationManager
-import chat.sphinx.wrapper.chat.Chat
-import chat.sphinx.wrapper.chat.ChatStatus
-import chat.sphinx.wrapper.chat.getColorKey
-import chat.sphinx.wrapper.chat.isConversation
+import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.*
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.ContactId
@@ -24,6 +21,7 @@ import chat.sphinx.wrapper.invite.Invite
 import chat.sphinx.wrapper.isTrue
 import chat.sphinx.wrapper.lightning.NodeBalance
 import chat.sphinx.wrapper.message.*
+import chat.sphinx.wrapper_chat.NotificationLevel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -191,6 +189,70 @@ class ChatListViewModel {
                 }
             }
         }
+        scope.launch(dispatchers.mainImmediate) {
+            var previousUnseenMessages: Set<MessageId> = emptySet()
+
+            getUnseenReceivedMessages().collect { unseenMessages ->
+                val currentUnseenMessageIds = unseenMessages?.map { it.id }?.toSet() ?: emptySet()
+
+                // Detect new messages (not in previous set)
+                val newMessageIds = currentUnseenMessageIds - previousUnseenMessages
+
+                if (newMessageIds.isNotEmpty()) {
+                    unseenMessages?.filter { it.id in newMessageIds }?.forEach { message ->
+                        handleNewMessage(message)
+                    }
+                }
+
+                previousUnseenMessages = currentUnseenMessageIds
+            }
+        }
+    }
+
+    private suspend fun handleNewMessage(message: Message) {
+        val dashboardChat = dashboardChats.find {
+            when (it) {
+                is DashboardChat.Active.Conversation -> it.chat.id == message.chatId
+                is DashboardChat.Active.GroupOrTribe -> it.chat.id == message.chatId
+                else -> false
+            }
+        }
+
+        val chat = when (dashboardChat) {
+            is DashboardChat.Active.Conversation -> dashboardChat.chat
+            is DashboardChat.Active.GroupOrTribe -> dashboardChat.chat
+            else -> null
+        } ?: return
+
+
+        if (chat.notify is NotificationLevel.MuteChat) {
+            return
+        }
+
+        if (isChatCurrentlyOpen(chat.id)) {
+            return
+        }
+
+        withContext(dispatchers.io) {
+            sphinxNotificationManager.notifyWithSound(
+                notificationId = message.id.value,
+                groupId = chat.id.value.toString(),
+                title = "New Message",
+                message = "You have received a new message.",
+                playSound = true
+            )
+        }
+
+        val chatName = when (dashboardChat) {
+            is DashboardChat.Active.Conversation -> dashboardChat.contact.alias?.value ?: "Contact"
+            is DashboardChat.Active.GroupOrTribe -> dashboardChat.chat.name?.value ?: "Group"
+            else -> "Chat"
+        }
+
+        toast(
+            "New message from $chatName",
+            primary_green
+        )
     }
 
     private suspend fun reloadChatDetailsOnFirstMessageSent(
