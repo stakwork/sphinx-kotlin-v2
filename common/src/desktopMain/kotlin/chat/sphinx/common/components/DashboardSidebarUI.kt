@@ -50,6 +50,7 @@ fun DashboardSidebarUI(
     var selectedTabIndex = dashboardViewModel.selectedTabStateFlow.collectAsState().value
     var isMenuExpanded by remember { mutableStateOf(false) }
     val unseenTribeMessagesCount by dashboardViewModel.unseenTribeMessagesCount.collectAsState()
+    var isSatsHidden by remember { mutableStateOf(false) }
 
     Box(
         Modifier
@@ -111,10 +112,13 @@ fun DashboardSidebarUI(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.clickable {
+                                isSatsHidden = !isSatsHidden
+                            }
                         ) {
                             val balance by dashboardViewModel.balanceStateFlow.collectAsState()
                             androidx.compose.material3.Text(
-                                text = balance?.balance?.asFormattedString(' ') ?: "0",
+                                text = if (isSatsHidden) "****" else (balance?.balance?.asFormattedString(' ') ?: "0"),
                                 color = MaterialTheme.colorScheme.tertiary,
                                 fontFamily = SphinxFonts.montserratFamily,
                                 fontSize = 12.sp
