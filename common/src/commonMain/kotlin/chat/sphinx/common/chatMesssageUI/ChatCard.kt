@@ -8,7 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -19,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.draw.clip
@@ -29,18 +32,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -403,7 +407,6 @@ fun MessageTextLabel(
     val isThreadHeader = chatMessage.isThreadHeader
     val isTribeLink = SphinxLinkify.gatherLinks(text = messageText, mask = SphinxLinkify.TRIBE_LINK).isNotEmpty()
 
-
     val searchQuery by chatViewModel.searchQuery.collectAsState()
     val currentSearchText = searchQuery.text
 
@@ -417,7 +420,7 @@ fun MessageTextLabel(
                 .then(if (isThreadHeader || isTribeLink) Modifier.width(316.dp) else Modifier),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ClickableText(
+            SelectableClickableText(
                 text = annotatedString,
                 style = TextStyle(
                     fontWeight = FontWeight.W400,
@@ -461,6 +464,58 @@ fun MessageTextLabel(
             fontSize = 14.sp,
             fontStyle = FontStyle.Italic,
             color = MaterialTheme.colorScheme.tertiary
+        )
+    }
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun SelectableClickableText(
+    text: AnnotatedString,
+    modifier: Modifier = Modifier,
+    style: TextStyle = TextStyle.Default,
+    softWrap: Boolean = true,
+    overflow: TextOverflow = TextOverflow.Clip,
+    maxLines: Int = Int.MAX_VALUE,
+    onTextLayout: (TextLayoutResult) -> Unit = {},
+    onClick: (Int) -> Unit
+) {
+    val layoutResult = remember { mutableStateOf<TextLayoutResult?>(null) }
+    var isPressed by remember { mutableStateOf(false) }
+    var pressPosition by remember { mutableStateOf<Offset?>(null) }
+
+    SelectionContainer {
+        BasicText(
+            text = text,
+            modifier = modifier
+                .onPointerEvent(PointerEventType.Press) { event ->
+                    isPressed = true
+                    pressPosition = event.changes.firstOrNull()?.position
+                }
+                .onPointerEvent(PointerEventType.Release) { event ->
+                    if (isPressed) {
+                        val releasePosition = event.changes.firstOrNull()?.position
+                        if (pressPosition != null && releasePosition != null) {
+                            val distance = (pressPosition!! - releasePosition).getDistance()
+                            if (distance < 5f) {
+                                layoutResult.value?.let { layout ->
+                                    val offset = layout.getOffsetForPosition(releasePosition)
+                                    onClick(offset)
+                                }
+                            }
+                        }
+                        isPressed = false
+                        pressPosition = null
+                    }
+                },
+            style = style,
+            softWrap = softWrap,
+            overflow = overflow,
+            maxLines = maxLines,
+            onTextLayout = {
+                layoutResult.value = it
+                onTextLayout(it)
+            }
         )
     }
 }

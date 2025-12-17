@@ -3,6 +3,7 @@ package chat.sphinx.common.chatMesssageUI
 import Roboto
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
@@ -10,8 +11,12 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,6 +32,7 @@ import chat.sphinx.wrapper.message.retrieveUrlAndMessageMedia
 import theme.wash_out_received
 import theme.wash_out_send
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ReplyingToMessageUI(
     chatMessage: ChatMessage,
@@ -39,16 +45,22 @@ fun ReplyingToMessageUI(
             Color.Gray
         }
 
+        var isHovered by remember { mutableStateOf(false) }
+
         Row(
-            modifier = Modifier.height(44.dp).padding(top = 8.dp, start = 8.dp, end = 8.dp),
-            horizontalArrangement = Arrangement.End,
+            modifier = Modifier
+                .height(IntrinsicSize.Min)
+                .padding(top = 8.dp, start = 8.dp, end = 8.dp)
+                .onPointerEvent(PointerEventType.Enter) { isHovered = true }
+                .onPointerEvent(PointerEventType.Exit) { isHovered = false },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .width(4.dp)
                     .fillMaxHeight()
-                    .background(color),
+                    .width(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(color)
             )
             replyMessage.retrieveUrlAndMessageMedia()?.second?.let { media ->
                 Spacer(modifier = Modifier.width(5.dp))
@@ -94,7 +106,7 @@ fun ReplyingToMessageUI(
                         textAlign = TextAlign.Start,
                         maxLines = 1,
                         fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.tertiary,
+                        color = color,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -107,9 +119,12 @@ fun ReplyingToMessageUI(
                             fontFamily = Roboto,
                             fontWeight = FontWeight.W400,
                             textAlign = TextAlign.Start,
-                            maxLines = 1,
+                            maxLines = if (isHovered) Int.MAX_VALUE else 1,
                             fontSize = 11.sp,
-                            color = if (chatMessage.isSent) wash_out_send else wash_out_received,
+                            color = if (isHovered)
+                                MaterialTheme.colorScheme.tertiary
+                            else
+                                if (chatMessage.isSent) wash_out_send else wash_out_received,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
