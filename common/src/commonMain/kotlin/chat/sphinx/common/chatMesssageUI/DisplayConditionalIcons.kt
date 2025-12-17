@@ -101,10 +101,13 @@ fun DisplayConditionalIcons(
         if (chatMessage.showBoltIcon && !isPaidSentInvoice ||
             (isUnpaidSentInvoice || isReceivedPaidInvoice || isPaymentTypeSent)
         ) {
+
+            val boltColor = if (chatMessage.message.isPaymentConfirmed()) Color.Gray else MaterialTheme.colorScheme.secondaryContainer
+
             Icon(
                 Icons.Default.FlashOn,
                 "Confirmed",
-                tint = MaterialTheme.colorScheme.secondaryContainer,
+                tint = boltColor,
                 modifier = Modifier.height(14.dp).width(13.dp).padding(bottom = 1.dp)
             )
         }
