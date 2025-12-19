@@ -242,17 +242,6 @@ class ChatListViewModel {
                 playSound = true
             )
         }
-
-        val chatName = when (dashboardChat) {
-            is DashboardChat.Active.Conversation -> dashboardChat.contact.alias?.value ?: "Contact"
-            is DashboardChat.Active.GroupOrTribe -> dashboardChat.chat.name?.value ?: "Group"
-            else -> "Chat"
-        }
-
-        toast(
-            "New message from $chatName",
-            primary_green
-        )
     }
 
     private suspend fun reloadChatDetailsOnFirstMessageSent(
