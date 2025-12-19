@@ -442,7 +442,7 @@ fun DashboardSidebarUI(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Version 1.0.23",
+                        text = "Version 1.0.24",
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.align(Alignment.Start)
