@@ -108,7 +108,7 @@ compose.desktop {
 
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Sphinx"
-            packageVersion = "1.0.24"
+            packageVersion = "1.0.25"
 
             val sphinxProperties = Properties().apply {
                 val defaultsFile = project.file("../local.defaults.properties")
