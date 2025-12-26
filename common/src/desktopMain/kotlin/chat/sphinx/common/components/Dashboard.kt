@@ -894,6 +894,9 @@ fun SphinxChatDetailBottomAppBar(
 
     val scope = rememberCoroutineScope()
 
+    // Add emoji picker state
+    var isEmojiPickerVisible by remember { mutableStateOf(false) }
+
     Surface(
         color = androidx.compose.material3.MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxWidth().wrapContentHeight(),
@@ -937,107 +940,153 @@ fun SphinxChatDetailBottomAppBar(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // TextField + Giphy + Emoji
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(
-                            androidx.compose.material3.MaterialTheme.colorScheme.surface,
-                            RoundedCornerShape(20.dp)
-                        )
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        val textValue = if (isThreadView) {
-                            chatViewModel?.threadMessageState?.messageText?.value ?: TextFieldValue("")
-                        } else {
-                            chatViewModel?.editMessageState?.messageText?.value ?: TextFieldValue("")
+                // TextField + Giphy + Emoji - Wrapped in Box to position emoji picker
+                Box(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                androidx.compose.material3.MaterialTheme.colorScheme.surface,
+                                RoundedCornerShape(20.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            val textValue = if (isThreadView) {
+                                chatViewModel?.threadMessageState?.messageText?.value ?: TextFieldValue("")
+                            } else {
+                                chatViewModel?.editMessageState?.messageText?.value ?: TextFieldValue("")
+                            }
+
+                            CustomTextField(
+                                trailingIcon = null,
+                                modifier = Modifier
+                                    .defaultMinSize(Dp.Unspecified, 32.dp)
+                                    .onKeyEvent(onKeyUp(Key.Enter) {
+                                        if (chatViewModel?.aliasMatcherState?.isOn == true) {
+                                            chatViewModel?.onAliasSelected()
+                                        } else {
+                                            chatViewModel?.onSendMessage(threadUUID?.value)
+                                        }
+                                    })
+                                    .onKeyEvent(onKeyUp(Key.DirectionDown) {
+                                        chatViewModel?.onAliasNextFocus()
+                                    })
+                                    .onKeyEvent(onKeyUp(Key.DirectionUp) {
+                                        chatViewModel?.onAliasPreviousFocus()
+                                    })
+                                    .onKeyEvent(onKeyUp(Key.Tab) {
+                                        chatViewModel?.onAliasSelected()
+                                    }),
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                placeholderText = "Message...",
+                                singleLine = false,
+                                maxLines = 4,
+                                onValueChange = { newValue ->
+                                    val proposedText = newValue.text
+                                    val proposedTextBytes = proposedText.toByteArray().size
+                                    if (proposedTextBytes <= 592) {
+                                        if (isThreadView) {
+                                            chatViewModel?.onThreadMessageTextChanged(newValue, threadUUID?.value)
+                                        } else {
+                                            chatViewModel?.onMessageTextChanged(newValue)
+                                        }
+                                    }
+                                },
+                                value = textValue,
+                                cursorBrush = primary_blue,
+                                enabled = !(dashboardChat?.getChatOrNull()
+                                    ?.isPrivateTribe() == true && dashboardChat?.getChatOrNull()?.status?.isPending() == true)
+                            )
                         }
 
-                        CustomTextField(
-                            trailingIcon = null,
-                            modifier = Modifier
-                                .defaultMinSize(Dp.Unspecified, 32.dp)
-                                .onKeyEvent(onKeyUp(Key.Enter) {
-                                    if (chatViewModel?.aliasMatcherState?.isOn == true) {
-                                        chatViewModel?.onAliasSelected()
-                                    } else {
-                                        chatViewModel?.onSendMessage(threadUUID?.value)
-                                    }
-                                })
-                                .onKeyEvent(onKeyUp(Key.DirectionDown) {
-                                    chatViewModel?.onAliasNextFocus()
-                                })
-                                .onKeyEvent(onKeyUp(Key.DirectionUp) {
-                                    chatViewModel?.onAliasPreviousFocus()
-                                })
-                                .onKeyEvent(onKeyUp(Key.Tab) {
-                                    chatViewModel?.onAliasSelected()
-                                }),
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            placeholderText = "Message...",
-                            singleLine = false,
-                            maxLines = 4,
-                            onValueChange = { newValue ->
-                                val proposedText = newValue.text
-                                val proposedTextBytes = proposedText.toByteArray().size
-                                if (proposedTextBytes <= 592) {
-                                    if (isThreadView) {
-                                        chatViewModel?.onThreadMessageTextChanged(newValue, threadUUID?.value)
-                                    } else {
-                                        chatViewModel?.onMessageTextChanged(newValue)
-                                    }
-                                }
+                        // GIF icon
+                        IconButton(
+                            onClick = {
+                                // Close emoji picker when GIF is opened
+                                isEmojiPickerVisible = false
+                                chatViewModel?.toggleGiphyPicker()
+                                chatViewModel?.fetchTrendingGifs()
                             },
-                            value = textValue,
-                            cursorBrush = primary_blue,
-                            enabled = !(dashboardChat?.getChatOrNull()
-                                ?.isPrivateTribe() == true && dashboardChat?.getChatOrNull()?.status?.isPending() == true)
-                        )
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .padding(1.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Gif,
+                                contentDescription = "Gif",
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(12.dp))
+
+                        // Emoji icon - Updated with click functionality
+                        IconButton(
+                            onClick = {
+                                isEmojiPickerVisible = !isEmojiPickerVisible
+                            },
+                            modifier = Modifier.size(25.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.EmojiEmotions,
+                                contentDescription = "Emoji",
+                                tint = if (isEmojiPickerVisible)
+                                    androidx.compose.material3.MaterialTheme.colorScheme.primary
+                                else
+                                    androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(24.dp).padding(bottom = 1.dp)
+                            )
+                        }
                     }
 
-                    // GIF icon
-                    IconButton(
-                        onClick = {
-                            chatViewModel?.toggleGiphyPicker()
-                            chatViewModel?.fetchTrendingGifs()
-                        },
-                        modifier = Modifier
-                            .size(24.dp)
-                            .background(
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.outline,
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(1.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Gif,
-                            contentDescription = "Gif",
-                            tint = androidx.compose.material3.MaterialTheme.colorScheme.background,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    // Emoji Picker positioned above the text field
+                    if (isEmojiPickerVisible) {
+                        Box(
+                            modifier = Modifier
+                                .offset(y = (-360).dp)
+                                .fillMaxWidth()
+                        ) {
+                            EmojiPicker(
+                                isVisible = isEmojiPickerVisible,
+                                onEmojiSelected = { emoji ->
+                                    val currentText = if (isThreadView) {
+                                        chatViewModel?.threadMessageState?.messageText?.value
+                                    } else {
+                                        chatViewModel?.editMessageState?.messageText?.value
+                                    } ?: TextFieldValue("")
 
-                    Spacer(Modifier.width(12.dp))
+                                    val beforeCursor = currentText.text.substring(0, currentText.selection.start)
+                                    val afterCursor = currentText.text.substring(currentText.selection.end)
+                                    val newText = beforeCursor + emoji + afterCursor
+                                    val newCursorPosition = beforeCursor.length + emoji.length
 
-                    // Emoji icon
-                    IconButton(
-                        onClick = {},
-                        modifier = Modifier.size(25.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.EmojiEmotions,
-                            contentDescription = "Emoji",
-                            tint = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.size(24.dp).padding(bottom = 1.dp)
-                        )
+                                    val newTextFieldValue = TextFieldValue(
+                                        text = newText,
+                                        selection = androidx.compose.ui.text.TextRange(newCursorPosition)
+                                    )
+
+                                    if (isThreadView) {
+                                        chatViewModel?.onThreadMessageTextChanged(newTextFieldValue, threadUUID?.value)
+                                    } else {
+                                        chatViewModel?.onMessageTextChanged(newTextFieldValue)
+                                    }
+                                },
+                                onDismiss = { isEmojiPickerVisible = false }
+                            )
+                        }
                     }
                 }
 
@@ -1056,6 +1105,9 @@ fun SphinxChatDetailBottomAppBar(
                 // Mic or Send icon based on text
                 IconButton(
                     onClick = {
+                        // Close emoji picker when sending message
+                        isEmojiPickerVisible = false
+
                         if (hasContentToSend) {
                             chatViewModel?.onSendMessage(threadUUID?.value)
                         } else {
