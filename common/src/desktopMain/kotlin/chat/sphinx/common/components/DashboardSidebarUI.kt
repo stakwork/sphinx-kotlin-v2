@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import java.time.Year
 import androidx.compose.material.TabRowDefaults.Indicator
 import androidx.compose.material.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material.icons.Icons
@@ -451,7 +452,7 @@ fun DashboardSidebarUI(
                     Spacer(Modifier.height(8.dp))
 
                     Text(
-                        text = "© 2025 Stakwork All rights reserved",
+                        text = "© ${Year.now().value} Stakwork All rights reserved",
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         color = place_holder_text,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
