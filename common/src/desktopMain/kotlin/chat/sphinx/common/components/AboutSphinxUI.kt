@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
+import java.time.Year
 import chat.sphinx.common.Res
 import chat.sphinx.common.viewmodel.DashboardViewModel
 import chat.sphinx.platform.imageResource
@@ -71,7 +72,7 @@ fun AboutSphinx(dashboardViewModel: DashboardViewModel) {
                 Spacer(Modifier.height(8.dp))
 
                 Text(
-                    text = "Copyright © 2020 Stakwork. All rights reserved.",
+                    text = "Copyright © ${Year.now().value} Stakwork. All rights reserved.",
                     color = MaterialTheme.colorScheme.tertiary,
                     fontFamily = Roboto,
                     fontWeight = FontWeight.Light,
