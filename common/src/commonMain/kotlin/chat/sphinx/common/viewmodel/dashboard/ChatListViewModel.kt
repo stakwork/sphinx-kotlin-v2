@@ -17,6 +17,7 @@ import chat.sphinx.wrapper.chat.*
 import chat.sphinx.wrapper.contact.*
 import chat.sphinx.wrapper.dashboard.ChatId
 import chat.sphinx.wrapper.dashboard.ContactId
+import chat.sphinx.wrapper.dashboard.InviteId
 import chat.sphinx.wrapper.invite.Invite
 import chat.sphinx.wrapper.isTrue
 import chat.sphinx.wrapper.lightning.NodeBalance
@@ -46,7 +47,10 @@ class ChatListViewModel {
 
     private var dashboardChats: ArrayList<DashboardChat> = ArrayList()
     private val sphinxNotificationManager = createSphinxNotificationManager()
-    private val repositoryDashboard = SphinxContainer.repositoryModule(sphinxNotificationManager).repositoryDashboard
+    private val repositoryModule = SphinxContainer.repositoryModule(sphinxNotificationManager)
+    private val repositoryDashboard = repositoryModule.repositoryDashboard
+    private val contactRepository = repositoryModule.contactRepository
+    private val messageRepository = repositoryModule.messageRepository
 
     private val colorsHelper = UserColorsHelper(SphinxContainer.appModule.dispatchers)
 
@@ -103,13 +107,15 @@ class ChatListViewModel {
                 collectionLock.withLock {
                     chatsCollectionInitialized = true
 
+                    val latestMessagesById = getLatestMessagesById(chats)
+                    val contactsById = getContactsById(chats)
+                    val invitesById = getInvitesById(contactsById.values)
+
                     val newList = ArrayList<DashboardChat>(chats.size)
                     val contactsAdded = mutableListOf<ContactId>()
 
                     for (chat in chats) {
-                        val message: Message? = chat.latestMessageId?.let {
-                            repositoryDashboard.getMessageById(it).firstOrNull()
-                        }
+                        val message: Message? = chat.latestMessageId?.let(latestMessagesById::get)
 
                         // Calculate unseen message counts
                         val rawUnseenMessages = if (!chat.seen.isTrue()) {
@@ -126,8 +132,7 @@ class ChatListViewModel {
                         if (chat.type.isConversation()) {
                             val contactId: ContactId = chat.contactIds.lastOrNull() ?: continue
 
-                            val contact: Contact = repositoryDashboard.getContactById(contactId)
-                                .firstOrNull() ?: continue
+                            val contact: Contact = contactsById[contactId] ?: continue
 
                             (ChatDetailState.screenState() as? ChatDetailData.SelectedChatDetailData.SelectedContactDetail)?.let {
                                 if (contactId == it.contactId) {
@@ -140,9 +145,7 @@ class ChatListViewModel {
                                     var contactInvite: Invite? = null
 
                                     contact.inviteId?.let { inviteId ->
-                                        contactInvite = withContext(dispatchers.io) {
-                                            repositoryDashboard.getInviteById(inviteId).firstOrNull()
-                                        }
+                                        contactInvite = invitesById[inviteId]
                                     }
 
                                     if (contactInvite != null) {
@@ -206,6 +209,56 @@ class ChatListViewModel {
 
                 previousUnseenMessages = currentUnseenMessageIds
             }
+        }
+    }
+
+    private suspend fun getLatestMessagesById(chats: List<Chat>): Map<MessageId, Message> {
+        val messageIds = chats.mapNotNull { it.latestMessageId }.distinct()
+        if (messageIds.isEmpty()) return emptyMap()
+
+        return withContext(dispatchers.io) {
+            messageRepository.getMessagesByIds(messageIds)
+                .firstOrNull()
+                .orEmpty()
+                .filterNotNull()
+                .associateBy { it.id }
+        }
+    }
+
+    private suspend fun getContactsById(chats: List<Chat>): Map<ContactId, Contact> {
+        val contactIds = chats.mapNotNull { chat ->
+            if (chat.type.isConversation()) {
+                chat.contactIds.lastOrNull()
+            } else {
+                null
+            }
+        }.distinct()
+
+        if (contactIds.isEmpty()) return emptyMap()
+
+        return withContext(dispatchers.io) {
+            contactRepository.getAllContactsByIds(contactIds)
+                .associateBy { it.id }
+        }
+    }
+
+    private suspend fun getInvitesById(contacts: Collection<Contact>): Map<InviteId, Invite> {
+        val inviteIds = contacts.mapNotNull { contact ->
+            if (contact.status is ContactStatus.Pending && contact.isInviteContact()) {
+                contact.inviteId
+            } else {
+                null
+            }
+        }.distinct()
+
+        if (inviteIds.isEmpty()) return emptyMap()
+
+        return withContext(dispatchers.io) {
+            repositoryDashboard.getAllInvites
+                .firstOrNull()
+                .orEmpty()
+                .filter { it.id in inviteIds }
+                .associateBy { it.id }
         }
     }
 
@@ -598,4 +651,3 @@ class ChatListViewModel {
         return null
     }
 }
-
